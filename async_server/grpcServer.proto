@@ -1,0 +1,63 @@
+
+syntax = "proto3";
+
+package test.server;
+
+// Interface exported by the server.
+service GrpcService 
+{
+    // Shutdown the server
+    rpc Shutdown (ShutdownRequest) returns (ShutdownResponse) {}
+
+    // Ping the server 
+    rpc Ping (PingRequest) returns (PingResponse) {}
+
+    // Test server-side streaming 
+    rpc StreamTest (StreamTestRequest) returns (stream StreamTestResponse) {}
+}
+
+message Result
+{
+    enum Status
+    {
+        UNKNOWN = 0;
+        SUCCESS = 1;
+        ERROR   = 2;
+        TIMEOUT = 3;
+    }
+    
+    Status status  = 1;
+    string message = 2;
+}
+
+message ShutdownRequest
+{
+    string reason = 1;
+}
+
+message ShutdownResponse
+{
+    Result result = 1;
+}
+
+message PingRequest
+{
+    // empty message
+}
+
+message PingResponse
+{
+    Result result = 1;
+}
+
+message StreamTestRequest 
+{
+    string msg = 1; // The string to be included in every response message
+}
+
+message StreamTestResponse
+{
+    string msg = 1; 
+}
+
+

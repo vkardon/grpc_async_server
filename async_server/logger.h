@@ -1,0 +1,52 @@
+#ifndef __LOGGER__
+#define __LOGGER__
+
+#include <iostream> // cout
+#include <sstream>  // ostringstream
+#include <mutex>    // mutex, unique_lock
+
+//
+// Multi-threaded logger access methods
+//
+namespace Logger
+{
+    inline std::mutex& GetMutex()
+    {
+        // Mutex to protect logger in multi-threading logging
+        static std::mutex sLoggerMutex;
+        return sLoggerMutex;
+    }
+
+    inline const char* SetThreadPrefix(const char* newPrefix)
+    {
+        // Thread-local storage for thread-specific prefix string
+#ifdef __APPLE__
+        static __thread     const char* sLoggerThreadPrefix = ""; 
+#else
+        static thread_local const char* sLoggerThreadPrefix = "";
+#endif 
+        if(newPrefix)
+            sLoggerThreadPrefix = newPrefix;
+        return sLoggerThreadPrefix;
+    }
+
+    inline const char* GetThreadPrefix() { return SetThreadPrefix(nullptr); }
+}
+
+//
+// Thread-safe logging
+//
+#define MSG_MT(msg_type, msg)                                   \
+do{                                                             \
+    std::unique_lock<std::mutex> lock(Logger::GetMutex());      \
+    std::cout << (*msg_type == '\0' ? "" : "[" msg_type "] ")   \
+              << __func__ << ": " << Logger::GetThreadPrefix()  \
+              << msg << std::endl;                              \
+}while(0)                                                       
+
+#define OUTMSG_MT(msg)    MSG_MT("", msg)
+#define INFOMSG_MT(msg)   MSG_MT("INFO", msg)
+#define ERRORMSG_MT(msg)  MSG_MT("ERROR", msg)
+
+#endif // __LOGGER__
+
