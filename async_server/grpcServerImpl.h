@@ -45,7 +45,7 @@ public:
         Context(grpc::ServerContext* ctx);
         ~Context() = default;
         void GetMetadata(const char* key, std::string& value);
-        grpc::ServerContext* mCtx = NULL;
+        grpc::ServerContext* mCtx = nullptr;
         std::string mLoggerPrefix;
     };
 
