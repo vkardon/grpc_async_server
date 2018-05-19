@@ -1,17 +1,17 @@
 
 # Target(s) to build
-TARGET = server
-TARGET2 = client
+TARGET_SRV = server
+TARGET_CLN = client
 
 # Sources
 PROJECT_HOME = .
 OBJ_DIR = $(PROJECT_HOME)/_obj
 
-SRCS = $(PROJECT_HOME)/main.cpp \
-       $(PROJECT_HOME)/grpcServer.cpp \
-       $(PROJECT_HOME)/grpcServerImpl.cpp 
+SRCS_SRV = $(PROJECT_HOME)/main.cpp \
+           $(PROJECT_HOME)/grpcServer.cpp \
+           $(PROJECT_HOME)/grpcServerImpl.cpp 
 
-SRCS2 = $(PROJECT_HOME)/client.cpp 
+SRCS_CLN = $(PROJECT_HOME)/client.cpp 
 
 # gRPC proto files 
 PROTO_HOME = $(PROJECT_HOME)
@@ -50,18 +50,18 @@ LIBS = -lpthread \
 # gRpc files to generate from *.proto files 
 PROTO_NAMES   = $(basename $(notdir $(PROTO_SRCS)))
 
-PROTOC_CC     = $(addprefix $(PROTO_OUT)/, $(addsuffix .pb.cc, $(PROTO_NAMES)))
-PROTOC_CC_OBJ = $(addprefix $(OBJ_DIR)/,   $(addsuffix .pb.o,  $(PROTO_NAMES)))
+PROTOC_CC   = $(addprefix $(PROTO_OUT)/, $(addsuffix .pb.cc, $(PROTO_NAMES)))
+PROTOC_OBJS = $(addprefix $(OBJ_DIR)/,   $(addsuffix .pb.o,  $(PROTO_NAMES)))
 
-GRPC_CC       = $(addprefix $(PROTO_OUT)/, $(addsuffix .grpc.pb.cc, $(PROTO_NAMES)))
-GRPC_CC_OBJ   = $(addprefix $(OBJ_DIR)/,   $(addsuffix .grpc.pb.o,  $(PROTO_NAMES)))
+GRPC_CC     = $(addprefix $(PROTO_OUT)/, $(addsuffix .grpc.pb.cc, $(PROTO_NAMES)))
+GRPC_OBJS   = $(addprefix $(OBJ_DIR)/,   $(addsuffix .grpc.pb.o,  $(PROTO_NAMES)))
 
 # Objective files to build
-OBJS = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS)))))
-OBJS += $(PROTOC_CC_OBJ) $(GRPC_CC_OBJ)
+OBJS_SRV =  $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS_SRV)))))
+OBJS_SRV += $(PROTOC_OBJS) $(GRPC_OBJS)
 
-OBJS2 = $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS2)))))
-OBJS2 += $(PROTOC_CC_OBJ) $(GRPC_CC_OBJ)
+OBJS_CLN =  $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS_CLN)))))
+OBJS_CLN += $(PROTOC_OBJS) $(GRPC_OBJS)
 
 # Compiler and linker to use
 CC = g++
@@ -69,13 +69,13 @@ CFLAGS = -std=c++11 -Wall -pthread
 LD = $(CC)
 
 # Build target(s)
-all: $(TARGET) $(TARGET2)
+all: $(TARGET_SRV) $(TARGET_CLN)
 
-$(TARGET): $(PROTOC_CC) $(GRPC_CC) $(OBJS) 
-	$(LD) $(LDFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
+$(TARGET_SRV): $(PROTOC_CC) $(GRPC_CC) $(OBJS_SRV) 
+	$(LD) $(LDFLAGS) -o $(TARGET_SRV) $(OBJS_SRV) $(LIBS)
 
-$(TARGET2): $(PROTOC_CC) $(GRPC_CC) $(OBJS2) 
-	$(LD) $(LDFLAGS) -o $(TARGET2) $(OBJS2) $(LIBS)
+$(TARGET_CLN): $(PROTOC_CC) $(GRPC_CC) $(OBJS_CLN) 
+	$(LD) $(LDFLAGS) -o $(TARGET_CLN) $(OBJS_CLN) $(LIBS)
 
 # Compile source files
 # Add -MP to generate dependency list
@@ -106,18 +106,18 @@ clean:
 #	@echo PROTO_SRCS = $(PROTO_SRCS)
 #	@echo PROTO_NAMES = $(PROTO_NAMES)
 #	@echo PROTO_OUT = $(PROTO_OUT)
-#	@echo PROTOC_CC_OBJ = $(PROTOC_CC_OBJ)
-#	@echo GRPC_CC_OBJ = $(GRPC_CC_OBJ)
-#	@echo OBJS = $(OBJS)
-#	@echo OBJS2 = $(OBJS2)
-	rm -rf $(TARGET) $(TARGET2) $(OBJ_DIR) $(PROTO_OUT) core
+#	@echo PROTOC_OBJS = $(PROTOC_OBJS)
+#	@echo GRPC_OBJS = $(GRPC_OBJS)
+#	@echo OBJS_SRV = $(OBJS_SRV)
+#	@echo OBJS_CLN = $(OBJS_CLN)
+	rm -rf $(TARGET_SRV) $(TARGET_CLN) $(OBJ_DIR) $(PROTO_OUT) core
 
 #
 # Read the dependency files.
 # Note: use '-' prefix to don't display error or warning
 # if include file do not exist (just remade it)
 #
--include $(OBJS:.o=.d)
--include $(OBJS2:.o=.d)
+-include $(OBJS_SRV:.o=.d)
+-include $(OBJS_CLN:.o=.d)
 
 
