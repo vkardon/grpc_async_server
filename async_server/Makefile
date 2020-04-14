@@ -7,15 +7,16 @@ TARGET_CLN = client
 PROJECT_HOME = .
 OBJ_DIR = $(PROJECT_HOME)/_obj
 
-SRCS_SRV = $(PROJECT_HOME)/main.cpp \
-           $(PROJECT_HOME)/grpcServer.cpp \
-           $(PROJECT_HOME)/grpcServerImpl.cpp 
+SRCS_SRV = $(PROJECT_HOME)/grpcServer.cpp \
+           $(PROJECT_HOME)/main.cpp \
+           $(PROJECT_HOME)/testServer.cpp \
+           $(PROJECT_HOME)/testService.cpp 
 
 SRCS_CLN = $(PROJECT_HOME)/client.cpp 
 
 # gRPC proto files 
 PROTO_HOME = $(PROJECT_HOME)
-PROTO_SRCS = $(PROTO_HOME)/grpcServer.proto 
+PROTO_SRCS = $(PROTO_HOME)/test.proto 
 PROTO_OUT  = $(PROJECT_HOME)/_generate
 
 # Detect operating system
@@ -37,6 +38,7 @@ GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
 # Include directories
 INCS = -I$(PROJECT_HOME) \
+       -I$(PROJECT_HOME)\gen \
        -I$(GRPC_INC) \
        -I$(PROTO_OUT)
 

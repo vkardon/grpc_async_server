@@ -1,406 +1,242 @@
 //
 // grpcServer.cpp
 //
-// Note: The multithreaded gRpc server is implemented Based on
-//       grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
-//
+#include <thread>
+#include <signal.h>             // pthread_sigmask
+#include <unistd.h>             // sleep
 
 #include "grpcServer.h"
-#include "grpcServerImpl.h"
-#include "logger.h"
 
-#include <thread>
-#include <mutex>
-#include <signal.h>   // pthread_sigmask
-#include <unistd.h>   // sleep
-
-#include <grpc++/grpc++.h>
-#include "grpcServer.grpc.pb.h"
-
-// gRpc namespaces
-using grpc::Status;
-using grpc::Server;
-using grpc::ServerBuilder;
-using grpc::ServerContext;
-using grpc::ServerReader;
-using grpc::ServerWriter;
-using grpc::ServerReaderWriter;
-using grpc::ServerCompletionQueue;
-using grpc::ServerAsyncResponseWriter;
-using grpc::ServerAsyncWriter;
-using grpc::CompletionQueue;
-
-// Our Grpc Service namespace
-using test::server::GrpcService;
-
-
-//const int GRPC_MAX_MESSAGE_SIZE = 1024 * 8; // 8K
+namespace gen {
 
 //
-// Helper macros PROCESS_UNARY and PROCESS_STREAM to start processing requests.
+//  Signal handler for SIGHUP & SIGINT signals
 //
-// The equivalent code example is below:
-//
-//    std::vector<RequestContext<ShutdownRequest, ShutdownResponse> > shutdown_contexts(context_count);
-//    for(RequestContext<ShutdownRequest, ShutdownResponse>& ctx : shutdown_contexts)
-//    {
-//        ctx.fProcessPtr = &GrpcServer::Shutdown;
-//        ctx.fRequestPtr = &GrpcService::AsyncService::RequestShutdown;
-//        ctx.StartProcessing(this);
-//    }
-
-//
-// Create array of contexts and start processing unary RPC request.
-//
-#define PROCESS_UNARY(REQ, RESP, RPC, IMPL, CONTEXT_COUNT)                       \
-    std::vector<RequestContext<REQ, RESP> > RPC##_contexts(CONTEXT_COUNT);       \
-    for(RequestContext<REQ, RESP>& ctx : RPC##_contexts)                         \
-    {                                                                            \
-        ctx.fProcessPtr = &GrpcServer::IMPL;                                     \
-        ctx.fRequestPtr = &GrpcService::AsyncService::Request##RPC;              \
-        ctx.StartProcessing(this);                                               \
-    }
-
-//
-// Create array of contexts and start processing streaming RPC request.
-//
-#define PROCESS_STREAM(REQ, RESP, RPC, IMPL, CONTEXT_COUNT)                      \
-    std::vector<RequestStreamContext<REQ, RESP> > RPC##_contexts(CONTEXT_COUNT); \
-    for(RequestStreamContext<REQ, RESP>& ctx : RPC##_contexts)                   \
-    {                                                                            \
-        ctx.fProcessPtr = &GrpcServer::IMPL;                                     \
-        ctx.fRequestPtr = &GrpcService::AsyncService::Request##RPC;              \
-        ctx.StartProcessing(this);                                               \
-    }
-
-//
-// Class GrpcServer
-//
-class GrpcServer : public GrpcServerImpl
+extern "C"
 {
-public:
-    GrpcServer(const char* serverAddress, int threadCount)
-    : serverAddress_(serverAddress), threadCount_(threadCount) { /**/ }
-
-    virtual ~GrpcServer() = default;
-
-    // Run() is blocked. It doesn't return until Stop() is called from another thread.
-    void Run();
-
-private:
-    struct RequestContextBase
+    static void HandleHangupSignal(int /*signalNumber*/)
     {
-        RequestContextBase() = default;
-        ~RequestContextBase() = default;
-
-        std::unique_ptr<ServerContext> srv_ctx;
-        enum : char { UNKNOWN=0, REQUEST, WRITE, FINISH } state = UNKNOWN;
-        virtual void StartProcessing(GrpcServer* srv) = 0;
-        virtual void Process(GrpcServer* srv) = 0;
-        virtual void EndProcessing(GrpcServer* srv, bool isError) = 0;
-    };
-
-    //
-    // Template class to handle unary respone
-    //
-    template<class Request, class Response>
-    struct RequestContext : public RequestContextBase
-    {
-        RequestContext() : fProcessPtr(nullptr), fRequestPtr(nullptr) {};
-        ~RequestContext() = default;
-
-        Request req;
-        std::unique_ptr<ServerAsyncResponseWriter<Response>> resp_writer;
-
-        // Pointer to function that does actual processing
-        void (GrpcServer::*fProcessPtr)(const GrpcServerImpl::Context&, const Request&, Response&);
-
-        // Pointer to function that *request* the system to start processing given requests
-        void (GrpcService::AsyncService::*fRequestPtr)(ServerContext*, Request*,
-                ServerAsyncResponseWriter<Response>*, CompletionQueue*, ServerCompletionQueue*, void*);
-
-        void StartProcessing(GrpcServer* srv)
-        {
-            state = RequestContextBase::REQUEST;
-            srv_ctx.reset(new ServerContext);
-            resp_writer.reset(new ServerAsyncResponseWriter<Response>(srv_ctx.get()));
-            req.Clear();
-
-            // *Request* that the system start processing given requests.
-            // In this request, "this" acts as the tag uniquely identifying
-            // the request (so that different context instances can serve
-            // different requests concurrently), in this case the memory address
-            // of this context instance.
-            (srv->service_.*fRequestPtr)(srv_ctx.get(), &req, resp_writer.get(),
-                    srv->cq_.get(), srv->cq_.get(), this);
-        }
-
-        void Process(GrpcServer* srv)
-        {
-            // The actual processing
-            Response resp;
-            (srv->*fProcessPtr)(GrpcServerImpl::Context(srv_ctx.get()), req, resp);
-
-            // And we are done! Let the gRPC runtime know we've finished, using the
-            // memory address of this instance as the uniquely identifying tag for
-            // the event.
-            state = RequestContextBase::FINISH;
-            resp_writer->Finish(resp, Status::OK, this);
-        }
-
-        void EndProcessing(GrpcServer* srv, bool /*isError*/)
-        {
-            // TODO
-            // Handle processing errors ...
-
-            // Ask the system start processing requests
-            StartProcessing(srv);
-        }
-    };
-
-    //
-    // Template class to handle streaming respone
-    //
-    template<class Request, class Response>
-    struct RequestStreamContext : public RequestContextBase
-    {
-        RequestStreamContext() : fProcessPtr(nullptr), fRequestPtr(nullptr) {};
-        ~RequestStreamContext() = default;
-
-        Request req;
-        std::unique_ptr<ServerAsyncWriter<Response>> resp_writer;
-        std::unique_ptr<GrpcServerImpl::StreamContext> stream_ctx;
-
-        // Pointer to function that does actual processing
-        void (GrpcServer::*fProcessPtr)(const GrpcServerImpl::StreamContext&, const Request&, Response&);
-
-        // Pointer to function that *request* the system to start processing given requests
-        void (GrpcService::AsyncService::*fRequestPtr)(ServerContext*, Request*,
-                ServerAsyncWriter<Response>*, CompletionQueue*, ServerCompletionQueue*, void*);
-
-        void StartProcessing(GrpcServer* srv)
-        {
-            state = RequestContextBase::REQUEST;
-            srv_ctx.reset(new ServerContext);
-            resp_writer.reset(new ServerAsyncWriter<Response>(srv_ctx.get()));
-            stream_ctx.reset();
-            req.Clear();
-
-//            OUTMSG_MT("Calling fRequestPtr(), tag='" << this << "', "
-//                    << "state=" << (state == RequestContextBase::REQUEST ? "REQUEST" :
-//                                    state == RequestContextBase::WRITE   ? "WRITE"   :
-//                                    state == RequestContextBase::FINISH  ? "FINISH"  : "UNKNOWN"));
-
-            // *Request* that the system start processing given requests.
-            // In this request, "this" acts as the tag uniquely identifying
-            // the request (so that different context instances can serve
-            // different requests concurrently), in this case the memory address
-            // of this context instance.
-            (srv->service_.*fRequestPtr)(srv_ctx.get(), &req, resp_writer.get(),
-                    srv->cq_.get(), srv->cq_.get(), this);
-        }
-
-        void Process(GrpcServer* srv)
-        {
-            if(state == RequestContextBase::REQUEST)
-            {
-                // This is very first Process call for the given request.
-                state = RequestContextBase::WRITE;
-
-                // Create new GrpcServerImpl::StreamContext
-                stream_ctx.reset(new GrpcServerImpl::StreamContext(srv_ctx.get()));
-            }
-
-            // The actual processing
-            Response resp;
-            (srv->*fProcessPtr)(*stream_ctx, req, resp);
-
-            // Are there more responses to stream?
-            if(stream_ctx->mHasMore)
-            {
-//                OUTMSG_MT("Calling Write(), tag='" << this << "', "
-//                        << "state=" << (state == RequestContextBase::REQUEST ? "REQUEST" :
-//                                        state == RequestContextBase::WRITE   ? "WRITE"   :
-//                                        state == RequestContextBase::FINISH  ? "FINISH"  : "UNKNOWN"));
-
-                resp_writer->Write(resp, this);
-            }
-            // There are no more responses to stream
-            else
-            {
-                // And we are done! Let the gRPC runtime know we've finished, using the
-                // memory address of this instance as the uniquely identifying tag for
-                // the event.
-                state = RequestContextBase::FINISH;
-
-//                OUTMSG_MT("Calling Finish(), tag='" << this << "', "
-//                        << "state=" << (state == RequestContextBase::REQUEST ? "REQUEST" :
-//                                        state == RequestContextBase::WRITE   ? "WRITE"   :
-//                                        state == RequestContextBase::FINISH  ? "FINISH"  : "UNKNOWN"));
-
-                resp_writer->Finish(Status::OK, this);
-            }
-        }
-
-        void EndProcessing(GrpcServer* srv, bool isError)
-        {
-            if(stream_ctx)
-            {
-                if(isError)
-                {
-                    ERRORMSG_MT("Error streaming for tag '" << this << "', stream='" << stream_ctx->mStream << "', "
-                        << "state=" <<
-                        (state == RequestContextBase::REQUEST ? "REQUEST (ServerAsyncWriter::fRequestPtr() failed)" :
-                         state == RequestContextBase::WRITE   ? "WRITE (ServerAsyncWriter::Write() failed)"   :
-                         state == RequestContextBase::FINISH  ? "FINISH (ServerAsyncWriter::Finish() failed)" : "UNKNOWN"));
-                }
-
-                // End processing
-                stream_ctx->mStatus = (isError ? StreamContext::ERROR : StreamContext::SUCCESS);
-                Response resp;
-                (srv->*fProcessPtr)(*stream_ctx, req, resp);
-            }
-            else
-            {
-                // Note: stream_ctx is set by a very first Process() call, that is called
-                // after successful compleation of the event placed by fRequestPtr().
-                // If processing of fRequestPtr() event failed, then we will be here
-                // even before stream_ctx gets a chance to be initialized.
-                // In this case we don't have a stream yet.
-
-                ERRORMSG_MT("Ending streaming for tag '" << this << "', "
-                        << "stream='Not Started', "
-                        << "state=" <<
-                        (state == RequestContextBase::REQUEST ? "REQUEST" :
-                         state == RequestContextBase::WRITE   ? "WRITE"   :
-                         state == RequestContextBase::FINISH  ? "FINISH"  : "UNKNOWN"));
-            }
-
-            // Ask the system start processing requests
-            StartProcessing(srv);
-        }
-    };
-
-    //
-    // Implementation
-    //
-    void Stop();
-    void ThreadProc(int threadIndex);
-
-    //
-    // Class data
-    //
-    std::unique_ptr<Server> server_;
-    std::string serverAddress_;
-    GrpcService::AsyncService service_;
-    std::unique_ptr<ServerCompletionQueue> cq_;
-
-    std::vector<std::thread> threads_;
-    int threadCount_ = 0;
-};
-
-//
-//  Handle for SIGHUP & SIGINT signals
-//
-extern "C" void HandleHangupSignal(int signalNumber)
-{
-    INFOMSG_MT("Got a signal " << signalNumber << ", exiting...");
-    _exit(1); // TODO
+//        INFOMSG(Con(), strsignal(signalNumber)
+//            << " signal (" << signalNumber << ") received, exiting...");
+        exit(1); // TODO
+    }
 }
 
 //
-// GrpcServer implementation
+// Class RpcContext implementation
 //
-void GrpcServer::Run()
+void RpcContext::SetStatus(::grpc::StatusCode statusCode, const std::string& err) const
 {
-    // Handle SIGHUP and SIGINT in the main process,
+    grpcStatusCode = statusCode;
+
+    // Note: Ignore err if status is grpc::OK. Otherwise, it will be
+    // an error to construct gen::Status::OK with non-empty error_message.
+    if(statusCode != grpc::OK)
+        grpcErr = err;
+}
+
+void RpcContext::GetMetadata(const char* key, std::string& value) const
+{
+    assert(srvCtx);
+    const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = srvCtx->client_metadata();
+    auto itr = client_metadata.find(key);
+    if(itr != client_metadata.end())
+        value.assign(itr->second.data(), itr->second.size());
+}
+
+void RpcContext::SetMetadata(const char* key, const std::string& value) const
+{
+    assert(srvCtx);
+    srvCtx->AddTrailingMetadata(key, value);
+}
+
+std::string RpcContext::Peer() const
+{
+    assert(srvCtx);
+    return srvCtx->peer();
+}
+
+//
+// Class GrpcServer implementation
+//
+void GrpcServer::Run(unsigned short port, int threadCount)
+{
+    // PR5044360: Handle SIGHUP and SIGINT in the main process,
     // but not in any of the threads that are spawned.
-    sigset_t set;
-    sigemptyset(&set);
-    sigaddset(&set, SIGHUP);
-    sigaddset(&set, SIGINT);
-    pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
 
+    // Examine the current set of the blocked signals
+    sigset_t curset;
+    pthread_sigmask(0, nullptr, &curset);
+
+    // Is either SIGHUP or SIGINT blocked?
+    bool isBlockedSIGHUP = (sigismember(&curset, SIGHUP) == 1);
+    bool isBlockedSIGINT = (sigismember(&curset, SIGINT) == 1);
+
+    // Unblock SIGHUP & SIGINT if either is blocked
+    if(isBlockedSIGHUP || isBlockedSIGINT)
+    {
+        // Note: It is permissible to unblock a signal which is not blocked.
+        sigset_t set;
+        sigemptyset(&set);
+        sigaddset(&set, SIGHUP);
+        sigaddset(&set, SIGINT);
+        pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
+    }
+
+    // Set SIGHUP & SIGINT signal handler
     struct sigaction act;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
     act.sa_handler = HandleHangupSignal;
-    sigaction(SIGHUP, &act, nullptr);
-    sigaction(SIGINT, &act, nullptr);
 
-    INFOMSG_MT("serverAddress_ = " << serverAddress_);
+    struct sigaction oldactSIGHUP;
+    sigaction(SIGHUP, &act, &oldactSIGHUP);
 
-    // Setup server
-    ServerBuilder builder;
-    builder.AddListeningPort(serverAddress_, grpc::InsecureServerCredentials());
-    builder.RegisterService(&service_);
-    //builder.SetMaxSendMessageSize(GRPC_MAX_MESSAGE_SIZE);     // For testing max message size
-    //builder.SetMaxReceiveMessageSize(GRPC_MAX_MESSAGE_SIZE);  // For testing max message size
+    struct sigaction oldactSIGINT;
+    sigaction(SIGINT, &act, &oldactSIGINT);
 
-    cq_ = builder.AddCompletionQueue();
-    server_ = builder.BuildAndStart();
+    // Run the server
+    RunImpl(port, threadCount);
 
-    // Create contexts for the server threads.
+    // If SIGHUP was blocked but we have it unblocked, then block it back
+    if(isBlockedSIGHUP)
+    {
+        sigset_t set;
+        sigemptyset(&set);
+        sigaddset(&set, SIGHUP);
+        pthread_sigmask(SIG_BLOCK, &set, nullptr);
+    }
+
+    // If SIGINT was blocked but we have it unblocked, then block it back
+    if(isBlockedSIGINT)
+    {
+        sigset_t set;
+        sigemptyset(&set);
+        sigaddset(&set, SIGINT);
+        pthread_sigmask(SIG_BLOCK, &set, nullptr);
+    }
+
+    // Restore sigactions for SIGHUP and SIGINT
+    sigaction(SIGHUP, &oldactSIGHUP, nullptr);
+    sigaction(SIGINT, &oldactSIGINT, nullptr);
+}
+
+void GrpcServer::RunImpl(unsigned short port, int threadCount)
+{
+    // Get the number of contexts for the server threads.
     // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
     // the number of contexts are multiple to 100 to the number of threads.
     // This defines the number of simultaneous completion queue requests
-    // of the same type (through GrpcService::AsyncService::RequestXXX).
-    // Presuming fast application response (through GrpcServer::XXX),
+    // of the same type (through SessionManagerService::AsyncService::RequestXXX).
+    // Presuming fast application response (through genGrpcServer::XXX),
     // this approach should be sufficient.
-    //int context_count = threadCount_ * 100;
-    int context_count = threadCount_ * 10;
+    //int context_count = threadCount * 100;
+    contextCount_ = threadCount * 10;
 
-    PROCESS_STREAM(StreamTestRequest, StreamTestResponse, StreamTest, StreamTest, context_count)
-    PROCESS_UNARY(ShutdownRequest, ShutdownResponse, Shutdown, Shutdown, context_count)
-    PROCESS_UNARY(PingRequest, PingResponse, Ping, Ping, context_count)
-
-    // Start server threads
-    threads_.resize(threadCount_);
-    int threadIndx = 0;
-    for(std::thread& thread : threads_)
+    while(true)
     {
-        thread = std::thread(&GrpcServer::ThreadProc, this, threadIndx++);
+        // Call derived class initialization
+        if(!OnInit())
+        {
+            OnError("Server inialization failed");
+            break;
+        }
+        else if(serviceList_.empty())
+        {
+            OnError("Server inialization failed: no services registered");
+            break;
+        }
+        else if(requestContextList_.empty())
+        {
+            OnError("Server inialization failed: no RPC request registered");
+            break;
+        }
+
+        // Setup server
+        std::string serverAddress = "0.0.0.0:" + std::to_string(port);
+        OnInfo("serverAddress_ = " + serverAddress);
+
+        ::grpc::ServerBuilder builder;
+        builder.AddListeningPort(serverAddress, ::grpc::InsecureServerCredentials());
+
+        // Register services
+        for(GrpcService* srv : serviceList_)
+        {
+            builder.RegisterService(srv->service->get());
+        }
+
+        std::unique_ptr<::grpc::ServerCompletionQueue> cq = builder.AddCompletionQueue();
+        std::unique_ptr<::grpc::Server> server = builder.BuildAndStart();
+
+        // Ask the system start processing requests
+        for(RequestContext* ctx : requestContextList_)
+        {
+            ctx->StartProcessing(cq.get());
+        }
+
+        // Start threads
+        std::vector<std::thread> threads(threadCount);
+
+        int threadIndx = 0;
+        for(std::thread& thread : threads)
+        {
+            thread = std::thread(&GrpcServer::ProcessRpcsProc, this, cq.get(), threadIndx++);
+        }
+
+        OnInfo("GrpcServer is running with " + std::to_string(threads.size()) + " threads");
+
+        // Loop until OnRun()returns
+        while(OnRun())
+        {
+            sleep(2); // Sleep for 2 seconds and continue
+        }
+
+        OnInfo("Stopping Session GrpcServer Server...");
+
+        server->Shutdown();
+        cq->Shutdown();
+
+        OnInfo("Waiting for server threads to complete...");
+
+        for(std::thread& thread : threads)
+        {
+            thread.join();
+        }
+        threads.clear();
+
+        OnInfo("All server threads are completed");
+
+        // Ignore all remaining events
+        void* ignored_tag = nullptr;
+        bool ignored_ok = false;
+        while (cq->Next(&ignored_tag, &ignored_ok))
+            ;
+
+        // We are done
+        break;
     }
 
-    INFOMSG_MT("Grpc Server is running with " << threads_.size() << " threads");
-
-    // Loop until GrpcServerImpl::OnRun()returns
-    while(GrpcServerImpl::OnRun())
+    // Clean up...
+    for(GrpcService* srv : serviceList_)
     {
-        sleep(2); // Sleep for 2 seconds and continue
+        delete srv->service;
+        srv->service = nullptr;
     }
+    serviceList_.clear();
 
-    INFOMSG_MT("Stopping Grpc Server...");
+    for(RequestContext* ctx : requestContextList_)
+    {
+        delete ctx;
+    }
+    requestContextList_.clear();
 
-    Stop();
+    contextCount_ = 0;
 }
 
-void GrpcServer::Stop()
-{
-    server_->Shutdown();
-    cq_->Shutdown();
-
-    INFOMSG_MT("Waiting for server threads to complete...");
-
-    for(std::thread& thread : threads_)
-    {
-        thread.join();
-    }
-    threads_.clear();
-
-    INFOMSG_MT("All server threads are completed");
-
-    // Ignore all remaining events
-    void* ignored_tag = nullptr;
-    bool ignored_ok = false;
-    while (cq_->Next(&ignored_tag, &ignored_ok))
-        ;
-
-    // We are done
-}
-
-void GrpcServer::ThreadProc(int threadIndex)
+void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIndex)
 {
     // PR5044360: Don't handle SIGHUP or SIGINT in the spawned threads -
-    // let the main process handle them.
+    // let the main thread handle them.
     sigset_t set;
     sigemptyset(&set);
     sigaddset(&set, SIGHUP);
@@ -410,32 +246,35 @@ void GrpcServer::ThreadProc(int threadIndex)
     void* tag = nullptr;
     bool eventReadSuccess = false;
 
-    while(cq_->Next(&tag, &eventReadSuccess))
+    while(cq->Next(&tag, &eventReadSuccess))
     {
         if(tag == nullptr)
         {
-            ERRORMSG_MT("Server Completion Queue returned empty tag");
+            OnError("Server Completion Queue returned empty tag");
             continue;
         }
 
         // Get the request context for the specific tag
-        RequestContextBase* ctx = static_cast<RequestContextBase*>(tag);
+        RequestContext* ctx = static_cast<RequestContext*>(tag);
 
+//        // victor test
 //        OUTMSG_MT("Next Event: tag='" << tag << "', eventReadSuccess=" << eventReadSuccess << ", "
-//                << "state=" << (ctx->state == RequestContextBase::REQUEST ? "REQUEST" :
-//                                ctx->state == RequestContextBase::WRITE   ? "WRITE"   :
-//                                ctx->state == RequestContextBase::FINISH  ? "FINISH"  : "UNKNOWN"));
+//                << "state=" << (ctx->state == RequestContext::REQUEST ? "REQUEST" :
+//                                ctx->state == RequestContext::WRITE   ? "WRITE"   :
+//                                ctx->state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
 
-        // Have we read event successfully?
+        // Have we successfully read event?
         if(!eventReadSuccess)
         {
             // Ignore events that failed to read due to shutting down
-            if(ctx->state != RequestContextBase::REQUEST)
+            if(ctx->state != RequestContext::REQUEST)
             {
-                ERRORMSG_MT("Server Completion Queue failed to read event for tag '" << tag << "'");
+                std::stringstream ss;
+                ss << "Server Completion Queue failed to read event for tag '" << tag << "'";
+                OnError(ss.str());
 
                 // Abort processing if we failed reading event
-                ctx->EndProcessing(this, true /*isError*/);
+                ctx->EndProcessing(this, cq, true /*isError*/);
             }
             continue;
         }
@@ -443,36 +282,92 @@ void GrpcServer::ThreadProc(int threadIndex)
         // Process the event
         switch(ctx->state)
         {
-            case RequestContextBase::REQUEST:  // Completion of fRequestPtr()
-            case RequestContextBase::WRITE:    // Completion of Write()
+            case RequestContext::REQUEST:  // Completion of fRequestPtr()
+            case RequestContext::WRITE:    // Completion of Write()
                 // Process request
-                ctx->Process(this);
+                ctx->Process();
                 break;
 
-            case RequestContextBase::FINISH:    // Completion of Finish()
+            case RequestContext::FINISH:    // Completion of Finish()
                 // Process post-Finish() event
-                ctx->EndProcessing(this, false /*isError*/);
+                ctx->EndProcessing(this, cq, false /*isError*/);
                 break;
 
             default:
-                ERRORMSG_MT("Unknown Completion Queue event: "
-                    << "ctx->state=" << ctx->state << ", tag='" << tag << "'");
-                //abort();
+                std::stringstream ss;
+                ss << "Unknown Completion Queue event: ctx->state=" << ctx->state << ", tag='" << tag << "'";
+                OnError(ss.str());
                 break;
         } // end of switch
     } // end of while
 
-    INFOMSG_MT("Thread " << threadIndex << " is completed");
+    OnInfo("Thread " + std::to_string(threadIndex) + " is completed");
 }
 
-// Global function to create and run Grpc Server
-bool StartGrpcServer(unsigned short port, int threadCount)
-{
-    // Build & start gRpc server
-    std::string serverAddress = "0.0.0.0:" + std::to_string(port);
-    GrpcServer srv(serverAddress.c_str(), threadCount);
-    srv.Run();
-    return true;
-}
+//void GrpcServer::ProcessRpcsProcAsync()
+//{
+//    pthread_t thread_id = pthread_self();
+//
+//    gpr_timespec timeout = { 2, 0, GPR_TIMESPAN }; // 2 seconds
+//
+//    void* tag = nullptr; // Uniquely identifies a request.
+//    bool ok = false;
+//
+//    while(true)
+//    {
+//        ::grpc::ServerCompletionQueue::NextStatus st = cq_->AsyncNext(&tag, &ok, timeout);
+//
+//        if(st == ::grpc::ServerCompletionQueue::TIMEOUT)
+//        {
+//            printf("[Thread %li]: TIMEOUT\n", thread_id);
+//            continue;
+//        }
+//        else if(st == ::grpc::ServerCompletionQueue::GOT_EVENT)
+//        {
+//            //printf("[Thread %li]: GOT_EVENT\n", thread_id);
+//
+//            // victor test
+//            static int false_count = 0;
+//            if(!ok)
+//            {
+//                false_count++;
+//                if(false_count < 20)
+//                    printf("[Thread %li]: GOT_EVENT ok=false, tag=%p\n", thread_id, tag);
+//            }
+//            else
+//            {
+//                printf("[Thread %li]: GOT_EVENT\n", thread_id);
+//            }
+//            // victor test end
+//
+//            if(ok && tag != nullptr)
+//            {
+//                Contex* ctx = static_cast<Contex*>(tag);
+//
+//                if(ctx->state == Contex::READY)
+//                {
+//                    // Process request
+//                    ctx->Process(this, thread_id);
+//                }
+//                else if(ctx->state == Contex::DONE)
+//                {
+//                    // *Request* that the system start processing requests
+//                    ctx->StartProcessing(this);
+//                }
+//                else
+//                {
+//                    // TODO
+//                    GPR_ASSERT(false);
+//                }
+//            }
+//        }
+//        else if(st == ::grpc::ServerCompletionQueue::SHUTDOWN)
+//        {
+//            printf("[Thread %li]: SHUTDOWN: exiting...\n", thread_id);
+//            break;
+//        }
+//    }
+//}
 
+} //namespace gen
 

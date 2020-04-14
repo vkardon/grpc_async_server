@@ -11,23 +11,12 @@
 
 #include <grpc++/grpc++.h>
 
-#include "grpcServer.grpc.pb.h"
+#include "test.grpc.pb.h"
 #include "logger.h"
 
-using grpc::Status;
-using grpc::Channel;
-using grpc::ClientContext;
-using grpc::ClientReader;
-using test::server::GrpcService;
-using test::server::Result;
-using test::server::PingRequest;
-using test::server::PingResponse;
-using test::server::ShutdownRequest;
-using test::server::ShutdownResponse;
-using test::server::StreamTestRequest;
-using test::server::StreamTestResponse;
-
-
+//
+// Helper CTimeElapsed class to measure elapsed time
+//
 class CTimeElapsed
 {
     struct timeval start_tv;
@@ -58,6 +47,9 @@ public:
     }
 };
 
+//
+// grpc::StatusCode to string conversion routine
+//
 const char* StatusToStr(grpc::StatusCode code)
 {
     switch(code)
@@ -90,32 +82,32 @@ const char* StatusToStr(grpc::StatusCode code)
 class GrpcClient
 {
 public:
-    GrpcClient(std::shared_ptr<Channel> channel) 
+    GrpcClient(std::shared_ptr<grpc::Channel> channel)
     {
-        stub_ = GrpcService::NewStub(channel);
+        stub_ = test::GrpcService::NewStub(channel);
     }
 
     bool StreamTest(const std::string& reqMsg)
     {
-        StreamTestRequest req;
+        test::StreamTestRequest req;
         req.set_msg(reqMsg);
 
         // Set random sessionId and requestId
-        ClientContext context;
+        grpc::ClientContext context;
         context.AddMetadata("sessionid", std::to_string(rand() % 1000));
         context.AddMetadata("requestid", std::to_string(rand() % 1000));
 
         // Send request and read responses
-        std::list<StreamTestResponse> respList;
+        std::list<test::StreamTestResponse> respList;
 
-        StreamTestResponse resp;
-        std::unique_ptr<ClientReader<StreamTestResponse> > reader(stub_->StreamTest(&context, req));
+        test::StreamTestResponse resp;
+        std::unique_ptr<grpc::ClientReader<test::StreamTestResponse> > reader(stub_->StreamTest(&context, req));
         while(reader->Read(&resp))
         {
             //INFOMSG_MT("Got Record: " << resp.msg());
             respList.push_back(resp);
         }
-        Status s = reader->Finish();
+        grpc::Status s = reader->Finish();
 
         if(!s.ok())
         {
@@ -130,7 +122,7 @@ public:
         // Dump all collected responses
         std::unique_lock<std::mutex> lock(Logger::GetMutex());
         std::cout << "BEGIN" << std::endl;
-        for(const StreamTestResponse& resp : respList)
+        for(const test::StreamTestResponse& resp : respList)
         {
             std::cout << resp.msg() << std::endl;
         }
@@ -142,12 +134,12 @@ public:
     bool Ping()
     {
         // Set random sessionId and requestId
-        ClientContext context;
+        grpc::ClientContext context;
         context.AddMetadata("sessionid", std::to_string(rand() % 1000));
         context.AddMetadata("requestid", std::to_string(rand() % 1000));
 
-        PingRequest req;
-        PingResponse resp;
+        test::PingRequest req;
+        test::PingResponse resp;
 
         grpc::Status s = stub_->Ping(&context, req, &resp);
 
@@ -161,7 +153,7 @@ public:
             return false;
         }
 
-        const char* result = (resp.result().status() == Result::SUCCESS ? "success" : resp.result().message().c_str());
+        const char* result = (resp.result().status() == test::Result::SUCCESS ? "success" : resp.result().message().c_str());
         INFOMSG_MT(result);
         return true;
     }
@@ -169,12 +161,12 @@ public:
     bool Shutdown()
     {
         // Set random sessionId and requestId
-        ClientContext context;
+        grpc::ClientContext context;
         context.AddMetadata("sessionid", std::to_string(rand() % 1000));
         context.AddMetadata("requestid", std::to_string(rand() % 1000));
 
-        ShutdownRequest req;
-        ShutdownResponse resp;
+        test::ShutdownRequest req;
+        test::ShutdownResponse resp;
 
         req.set_reason("Shutdown Test");
         grpc::Status s = stub_->Shutdown(&context, req, &resp);
@@ -189,13 +181,13 @@ public:
             return false;
         }
 
-        const char* result = (resp.result().status() == Result::SUCCESS ? "success" : resp.result().message().c_str());
+        const char* result = (resp.result().status() == test::Result::SUCCESS ? "success" : resp.result().message().c_str());
         INFOMSG_MT(result);
         return true;
      }
 
 private:
-    std::unique_ptr<GrpcService::Stub> stub_;
+    std::unique_ptr<test::GrpcService::Stub> stub_;
 };
 
 int main(int argc, char** argv)

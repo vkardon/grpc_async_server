@@ -1,7 +1,7 @@
 
 syntax = "proto3";
 
-package test.server;
+package test;
 
 // Interface exported by the server.
 service GrpcService 
