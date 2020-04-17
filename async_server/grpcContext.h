@@ -45,10 +45,6 @@ public:
     RpcStreamContext(::grpc::ServerContext* ctx) : RpcContext(ctx) {}
     ~RpcStreamContext() = default;
 
-    StreamStatus streamStatus = STREAMING;
-    mutable bool streamHasMore = false;   // Are there more responses to stream?
-    mutable void* streamParam = nullptr;  // Request-specific stream data (for derived class to use)
-
     StreamStatus GetStreamStatus() const { return streamStatus; }
 
     void  SetHasMore(bool hasMore) const { streamHasMore = hasMore; }
@@ -56,6 +52,14 @@ public:
 
     void  SetParam(void* param) const { streamParam = param; }
     void* GetParam() const { return streamParam; }
+
+private:
+    StreamStatus streamStatus = STREAMING;
+    mutable bool streamHasMore = false;   // Are there more responses to stream?
+    mutable void* streamParam = nullptr;  // Request-specific stream data (for derived class to use)
+
+    template<class RPC_SERVICE, class REQ, class RESP>
+    friend struct RequestContextStream;
 };
 
 //
