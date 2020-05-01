@@ -11,11 +11,11 @@
 //
 #define TEST_UNARY(RPC) ADD_UNARY( \
     RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
-    &TestService::RPC, srv)
+    &TestService::RPC, nullptr, srv)
 
 #define TEST_STREAM(RPC) ADD_STREAM( \
     RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
-    &TestService::RPC, srv)
+    &TestService::RPC, nullptr, srv)
 
 bool TestService::Init(gen::GrpcServer* srv)
 {

@@ -1,8 +1,8 @@
 //
-// grpcContext.h
+// grpcContext.hpp
 //
-#ifndef __GRPC_CONTEXT_H__
-#define __GRPC_CONTEXT_H__
+#ifndef __GRPC_CONTEXT_HPP__
+#define __GRPC_CONTEXT_HPP__
 
 #include <grpcpp/impl/codegen/status_code_enum.h>   // grpc::StatusCode
 #include <string>
@@ -17,7 +17,7 @@ namespace gen {
 class RpcContext
 {
 public:
-    RpcContext(::grpc::ServerContext* ctx) : srvCtx(ctx) {}
+    RpcContext(::grpc::ServerContext* ctx, const void* param) : srvCtx(ctx), rpcParam(param) {}
     ~RpcContext() = default;
 
     void SetStatus(::grpc::StatusCode statusCode, const std::string& err) const;
@@ -28,8 +28,12 @@ public:
     void SetMetadata(const char* key, const std::string& value) const;
     std::string Peer() const;
 
+    // Get application-level data set by AddUnaryRpcRequest/AddStreamRpcRequest
+    const void* GetRpcParam() const { return rpcParam; }
+
 private:
     ::grpc::ServerContext* srvCtx = nullptr;
+    const void* rpcParam{nullptr};
     mutable ::grpc::StatusCode grpcStatusCode{grpc::UNKNOWN};
     mutable std::string grpcErr;
 };
@@ -42,7 +46,7 @@ enum StreamStatus : char { STREAMING=1, SUCCESS, ERROR };
 class RpcStreamContext : public RpcContext
 {
 public:
-    RpcStreamContext(::grpc::ServerContext* ctx) : RpcContext(ctx) {}
+    RpcStreamContext(::grpc::ServerContext* ctx, const void* param) : RpcContext(ctx, param) {}
     ~RpcStreamContext() = default;
 
     StreamStatus GetStreamStatus() const { return streamStatus; }
@@ -59,7 +63,7 @@ private:
     mutable void* streamParam = nullptr;  // Request-specific stream data (for derived class to use)
 
     template<class RPC_SERVICE, class REQ, class RESP>
-    friend struct RequestContextStream;
+    friend struct StreamRequestContext;
 };
 
 //
@@ -77,51 +81,8 @@ public:
 };
 
 
-//
-// Helper macros PROCESS_UNARY and PROCESS_STREAM to start processing requests.
-//
-// The equivalent code example is below:
-//
-//    std::vector<RequestContextUnary<SessionManagerService, ShutdownRequest, ShutdownResponse> > Shutdown_contexts(context_count);
-//    for(RequestContextUnary<SessionManagerService, ShutdownRequest, ShutdownResponse>& ctx : Shutdown_contexts)
-//    {
-//        ctx.asyncService = &sessmgr_service;
-//        ctx.fProcessPtr = &GrpcServer::Shutdown;
-//        ctx.fRequestPtr = &SessionManagerService::AsyncService::RequestShutdown;
-//        ctx.StartProcessing(this);
-//    }
-
-//
-// Helper macro to create request context for the given service
-//
-#define ADD_REQUEST(REQUEST_CONTEXT, RPC, RPC_SERVICE, PROC_FUNC_PTR, SERVER_PTR) \
-    REQUEST_CONTEXT ctx;                                                          \
-    ctx.procService = this;                                                       \
-    ctx.fProcessPtr = (REQUEST_CONTEXT::fProcessPtrType)PROC_FUNC_PTR;            \
-    ctx.fRequestPtr = &RPC_SERVICE::AsyncService::Request##RPC;                   \
-    SERVER_PTR->AddRpcRequest<RPC_SERVICE>(this, ctx);                            \
-
-//
-// Generic macro to add processing for unary RPC call
-//
-#define ADD_UNARY(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, SERVER_PTR)         \
-    do {                                                                          \
-        typedef gen::RequestContextUnary<RPC_SERVICE, REQ, RESP> RequestContext;  \
-        ADD_REQUEST(RequestContext, RPC, RPC_SERVICE, PROC_FUNC_PTR, SERVER_PTR)  \
-    } while(false);                                                               \
-
-//
-// Generic macro to add processing for streaming RPC call
-//
-#define ADD_STREAM(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, SERVER_PTR)        \
-    do {                                                                          \
-        typedef gen::RequestContextStream<RPC_SERVICE, REQ, RESP> RequestContext; \
-        ADD_REQUEST(RequestContext, RPC, RPC_SERVICE, PROC_FUNC_PTR, SERVER_PTR)  \
-    } while(false);                                                               \
-
-
 } //namespace gen
 
 
-#endif // __GRPC_CONTEXT_H__
+#endif // __GRPC_CONTEXT_HPP__
 

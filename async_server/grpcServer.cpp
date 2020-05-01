@@ -5,6 +5,11 @@
 #include <signal.h>             // pthread_sigmask
 #include <unistd.h>             // sleep
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#pragma GCC diagnostic pop
+
 #include "grpcServer.h"
 
 namespace gen {
@@ -59,7 +64,7 @@ std::string RpcContext::Peer() const
 //
 // Class GrpcServer implementation
 //
-void GrpcServer::Run(unsigned short port, int threadCount)
+void GrpcServer::Run(unsigned short port, int threadCount, bool enableReflection /*=false*/)
 {
     // PR5044360: Handle SIGHUP and SIGINT in the main process,
     // but not in any of the threads that are spawned.
@@ -96,7 +101,7 @@ void GrpcServer::Run(unsigned short port, int threadCount)
     sigaction(SIGINT, &act, &oldactSIGINT);
 
     // Run the server
-    RunImpl(port, threadCount);
+    RunImpl(port, threadCount, enableReflection);
 
     // If SIGHUP was blocked but we have it unblocked, then block it back
     if(isBlockedSIGHUP)
@@ -121,7 +126,7 @@ void GrpcServer::Run(unsigned short port, int threadCount)
     sigaction(SIGINT, &oldactSIGINT, nullptr);
 }
 
-void GrpcServer::RunImpl(unsigned short port, int threadCount)
+void GrpcServer::RunImpl(unsigned short port, int threadCount, bool enableReflection /*=false*/)
 {
     // Get the number of contexts for the server threads.
     // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
@@ -155,6 +160,11 @@ void GrpcServer::RunImpl(unsigned short port, int threadCount)
         // Setup server
         std::string serverAddress = "0.0.0.0:" + std::to_string(port);
         OnInfo("serverAddress_ = " + serverAddress);
+
+        if(enableReflection)
+        {
+            ::grpc::reflection::InitProtoReflectionServerBuilderPlugin();
+        }
 
         ::grpc::ServerBuilder builder;
         builder.AddListeningPort(serverAddress, ::grpc::InsecureServerCredentials());
@@ -303,6 +313,7 @@ void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIn
 
     OnInfo("Thread " + std::to_string(threadIndex) + " is completed");
 }
+
 
 //void GrpcServer::ProcessRpcsProcAsync()
 //{

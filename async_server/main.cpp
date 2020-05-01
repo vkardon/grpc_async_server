@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 
     // Build & start gRpc server
     TestServer srv;
-    srv.Run(port, threadCount);
+    srv.Run(port, threadCount, true /*enableReflection*/);
 
     INFOMSG_MT("Grpc Server has stopped");
     return 0;
