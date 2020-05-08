@@ -1,8 +1,8 @@
-#ifndef __TEST_SERVER_H__
-#define __TEST_SERVER_H__
+#ifndef __TEST_SERVER_HPP__
+#define __TEST_SERVER_HPP__
 
-#include "grpcServer.h"    // gen::GrpcServer
-#include "testService.h"
+#include "grpcServer.hpp"    // gen::GrpcServer
+#include "testService.hpp"
 #include <atomic>
 
 class TestServer : public gen::GrpcServer
@@ -36,4 +36,4 @@ struct LoggerPrefix
     std::string mLoggerPrefix;
 };
 
-#endif // __TEST_SERVER_H__
+#endif // __TEST_SERVER_HPP__

@@ -1,8 +1,8 @@
 //
 // testServer.cpp
 //
-#include "testServer.h"
-#include "logger.h"
+#include "testServer.hpp"
+#include "logger.hpp"
 
 //
 // Helper LoggerPrefix class to set thread-specific logger prefix

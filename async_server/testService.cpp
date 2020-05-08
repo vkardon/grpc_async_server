@@ -1,9 +1,9 @@
 //
 // testService.cpp
 //
-#include "testService.h"
-#include "testServer.h"
-#include "logger.h"
+#include "testService.hpp"
+#include "testServer.hpp"
+#include "logger.hpp"
 #include "test.grpc.pb.h"
 
 //

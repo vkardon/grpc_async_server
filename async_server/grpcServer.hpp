@@ -1,5 +1,5 @@
 //
-// grpcServer.h
+// grpcServer.hpp
 //
 #ifndef __GRPC_SERVER_HPP__
 #define __GRPC_SERVER_HPP__
@@ -13,8 +13,8 @@
 #include <grpc++/grpc++.h>
 #pragma GCC diagnostic pop
 
-#include "grpcContext.h"  // RpcContext
-#include <sstream>        // stringstream
+#include "grpcContext.hpp"  // RpcContext
+#include <sstream>          // stringstream
 
 namespace gen {
 
@@ -98,7 +98,7 @@ public:
     GrpcServer& operator=(const GrpcServer&) = delete;
 
     // Run() is blocked. It doesn't return until OnRun() returns false.
-    void Run(unsigned short port, int threadCount, bool enableReflection=false);
+    void Run(unsigned short port, int threadCount);
 
     // Tell the system to process unary RPC request
     template<class RPC_SERVICE, class REQ, class RESP>
@@ -117,7 +117,7 @@ public:
     virtual void OnInfo(const std::string& /*info*/) const {}
 
 private:
-    void RunImpl(unsigned short port, int threadCount, bool enableReflection=false);
+    void RunImpl(unsigned short port, int threadCount);
     void ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIndex);
 
     // For derived class to override

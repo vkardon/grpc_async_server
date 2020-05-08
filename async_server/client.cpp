@@ -12,7 +12,7 @@
 #include <grpc++/grpc++.h>
 
 #include "test.grpc.pb.h"
-#include "logger.h"
+#include "logger.hpp"
 
 //
 // Helper CTimeElapsed class to measure elapsed time

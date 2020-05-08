@@ -1,5 +1,5 @@
-#ifndef __LOGGER__
-#define __LOGGER__
+#ifndef __LOGGER_HPP__
+#define __LOGGER_HPP__
 
 #include <iostream> // cout
 #include <sstream>  // ostringstream
@@ -48,5 +48,5 @@ do{                                                             \
 #define INFOMSG_MT(msg)   MSG_MT("INFO", msg)
 #define ERRORMSG_MT(msg)  MSG_MT("ERROR", msg)
 
-#endif // __LOGGER__
+#endif // __LOGGER_HPP__
 

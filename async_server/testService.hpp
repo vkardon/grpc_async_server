@@ -1,7 +1,7 @@
-#ifndef __TEST_SERVICE_H__
-#define __TEST_SERVICE_H__
+#ifndef __TEST_SERVICE_HPP__
+#define __TEST_SERVICE_HPP__
 
-#include "grpcContext.h"  // gen::GrpcService
+#include "grpcContext.hpp"  // gen::GrpcService
 
 //
 // Forward declaration of gRpc messages
@@ -44,5 +44,5 @@ private:
     TestServer* mServer = nullptr;
 };
 
-#endif // __TEST_SERVICE_H__
+#endif // __TEST_SERVICE_HPP__
 
