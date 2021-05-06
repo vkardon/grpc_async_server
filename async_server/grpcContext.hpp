@@ -1,3 +1,4 @@
+// *INDENT-OFF*
 //
 // grpcContext.hpp
 //
@@ -7,7 +8,7 @@
 #include <grpcpp/impl/codegen/status_code_enum.h>   // grpc::StatusCode
 #include <string>
 
-namespace grpc{ class ServerContext; }
+namespace grpc { class ServerContext; }
 
 namespace gen {
 
@@ -83,6 +84,6 @@ public:
 
 } //namespace gen
 
-
 #endif // __GRPC_CONTEXT_HPP__
+// *INDENT-ON*
 

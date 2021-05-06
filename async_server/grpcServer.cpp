@@ -1,3 +1,4 @@
+// *INDENT-OFF*
 //
 // grpcServer.cpp
 //
@@ -282,22 +283,22 @@ void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIn
         // Process the event
         switch(ctx->state)
         {
-            case RequestContext::REQUEST:  // Completion of fRequestPtr()
-            case RequestContext::WRITE:    // Completion of Write()
-                // Process request
-                ctx->Process();
-                break;
+        case RequestContext::REQUEST:  // Completion of fRequestPtr()
+        case RequestContext::WRITE:    // Completion of Write()
+            // Process request
+            ctx->Process();
+            break;
 
-            case RequestContext::FINISH:    // Completion of Finish()
-                // Process post-Finish() event
-                ctx->EndProcessing(this, cq, false /*isError*/);
-                break;
+        case RequestContext::FINISH:    // Completion of Finish()
+            // Process post-Finish() event
+            ctx->EndProcessing(this, cq, false /*isError*/);
+            break;
 
-            default:
-                std::stringstream ss;
-                ss << "Unknown Completion Queue event: ctx->state=" << ctx->state << ", tag='" << tag << "'";
-                OnError(ss.str());
-                break;
+        default:
+            std::stringstream ss;
+            ss << "Unknown Completion Queue event: ctx->state=" << ctx->state << ", tag='" << tag << "'";
+            OnError(ss.str());
+            break;
         } // end of switch
     } // end of while
 
@@ -371,3 +372,4 @@ void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIn
 
 } //namespace gen
 
+// *INDENT-ON*

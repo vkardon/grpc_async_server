@@ -7,7 +7,7 @@
 
 int main(int argc, char *argv[])
 {
-    unsigned short port = 50050;
+    unsigned short port = 50051;
     int threadCount = 8;
 
     // Build & start gRpc server

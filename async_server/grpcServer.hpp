@@ -1,3 +1,4 @@
+// *INDENT-OFF*
 //
 // grpcServer.hpp
 //
@@ -68,12 +69,12 @@ using ProcessStreamFunc = void (GrpcService::*)(const RpcStreamContext&, const R
 // Template pointer to function that *request* the system to start processing unary.strean requests
 //
 template<class RPC_SERVICE, class REQ, class RESP>
-using UnaryRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*, REQ*,
-        ::grpc::ServerAsyncResponseWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
+using UnaryRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
+        REQ*, ::grpc::ServerAsyncResponseWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
 template<class RPC_SERVICE, class REQ, class RESP>
-using StreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*, REQ*,
-        ::grpc::ServerAsyncWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
+using StreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
+        REQ*, ::grpc::ServerAsyncWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
 //
 // Class GrpcServer
@@ -103,14 +104,16 @@ public:
     // Tell the system to process unary RPC request
     template<class RPC_SERVICE, class REQ, class RESP>
     void AddUnaryRpcRequest(GrpcService* grpcService,
-            UnaryRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc, ProcessUnaryFunc<REQ, RESP> processFunc,
-            const void* processParam);
+                            UnaryRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                            ProcessUnaryFunc<REQ, RESP> processFunc,
+                            const void* processParam);
 
     // Tell the system to process stream RPC request
     template<class RPC_SERVICE, class REQ, class RESP>
     void AddStreamRpcRequest(GrpcService* grpcService,
-            StreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc, ProcessStreamFunc<REQ, RESP> processFunc,
-            const void* processParam);
+                             StreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                             ProcessStreamFunc<REQ, RESP> processFunc,
+                             const void* processParam);
 
     // For derived class to override (Error and Info reporting)
     virtual void OnError(const std::string& /*err*/) const {}
@@ -143,7 +146,7 @@ struct UnaryRequestContext : public RequestContext
     {
         UnaryRequestContext* ctx = new (std::nothrow) UnaryRequestContext;
         ctx->grpcService = grpcService;
-        ctx->processParam    = processParam;
+        ctx->processParam = processParam;
         ctx->processFunc = processFunc;
         ctx->requestFunc = requestFunc;
         return ctx;
@@ -361,8 +364,9 @@ struct StreamRequestContext : public RequestContext
 //
 template<class RPC_SERVICE, class REQ, class RESP>
 void GrpcServer::AddUnaryRpcRequest(GrpcService* grpcService,
-        UnaryRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc, ProcessUnaryFunc<REQ, RESP> processFunc,
-        const void* processParam)
+                                    UnaryRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                                    ProcessUnaryFunc<REQ, RESP> processFunc,
+                                    const void* processParam)
 {
     // Create RPC-specific grpc service (if not created yet) and
     // bind it with the corresponding processing function.
@@ -391,8 +395,9 @@ void GrpcServer::AddUnaryRpcRequest(GrpcService* grpcService,
 //
 template<class RPC_SERVICE, class REQ, class RESP>
 void GrpcServer::AddStreamRpcRequest(GrpcService* grpcService,
-        StreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc, ProcessStreamFunc<REQ, RESP> processFunc,
-        const void* processParam)
+                                     StreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                                     ProcessStreamFunc<REQ, RESP> processFunc,
+                                     const void* processParam)
 {
     // Create RPC-specific grpc service (if not created yet) and
     // bind it with the corresponding processing function.
@@ -435,4 +440,5 @@ void GrpcServer::AddStreamRpcRequest(GrpcService* grpcService,
             PROC_FUNC_PARAM);
 
 #endif // __GRPC_SERVER_HPP__
+// *INDENT-ON*
 
