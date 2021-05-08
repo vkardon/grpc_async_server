@@ -1,7 +1,8 @@
 #ifndef __TEST_SERVER_HPP__
 #define __TEST_SERVER_HPP__
 
-#include "grpcServer.hpp"    // gen::GrpcServer
+#include "logger.hpp"
+#include "grpcServer.hpp"
 #include "testService.hpp"
 #include <atomic>
 

@@ -14,6 +14,8 @@ namespace test
     class PingResponse;
     class StreamTestRequest;
     class StreamTestResponse;
+    class ClientStreamTestRequest;
+    class ClientStreamTestResponse;
 }
 
 // Forward declarations
@@ -38,8 +40,12 @@ protected:
     void Ping(const gen::RpcContext& ctx,
             const test::PingRequest& req, test::PingResponse& resp);
 
-    void StreamTest(const gen::RpcStreamContext ctx,
+    void StreamTest(const gen::RpcStreamContext& ctx,
             const test::StreamTestRequest& req, test::StreamTestResponse& resp);
+
+    void ClientStreamTest(const gen::RpcClientStreamContext& ctx,
+            const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp);
+
 private:
     TestServer* mServer = nullptr;
 };

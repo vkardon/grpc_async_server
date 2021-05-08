@@ -17,12 +17,20 @@
     RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
     &TestService::RPC, nullptr, srv)
 
+#define TEST_CLIENT_STREAM(RPC) ADD_CLIENT_STREAM( \
+    RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
+    &TestService::RPC, nullptr, srv)
+
+
 bool TestService::Init(gen::GrpcServer* srv)
 {
     // Add TestService RPCs
     TEST_UNARY(Shutdown)
     TEST_UNARY(Ping)
     TEST_STREAM(StreamTest)
+    TEST_CLIENT_STREAM(ClientStreamTest)
+
+    //TEST_CLIENT_STREAM(ClientStreamTest)
     return true;
 }
 
@@ -61,7 +69,7 @@ void TestService::Ping(const gen::RpcContext& ctx,
     ctx.SetStatus(::grpc::OK, "");
 }
 
-void TestService::StreamTest(const gen::RpcStreamContext ctx,
+void TestService::StreamTest(const gen::RpcStreamContext& ctx,
         const test::StreamTestRequest& req, test::StreamTestResponse& resp)
 {
     LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
@@ -137,6 +145,32 @@ void TestService::StreamTest(const gen::RpcStreamContext ctx,
 
     // Print statistics.
     OUTMSG_MT("opened_streams=" << opened_streams);
+
+    ctx.SetStatus(::grpc::OK, "");
+}
+
+void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
+        const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp)
+{
+//    static int count = 0;
+//    if(++count %12 == 0)
+//    {
+//        std::cout << ">>> " << __func__ << " cancel processing" << std::endl;
+//
+//        ctx.SetStatus(::grpc::CANCELLED, "");
+//        return;
+//    }
+
+    if(ctx.GetHasMore())
+    {
+        std::cout << ">>> " << __func__ << " req.msg='" << req.msg() << "'" << std::endl;
+    }
+    else
+    {
+        // Done with client-stream reading. Write response back
+        // ...
+        resp.mutable_result()->set_status(test::Result::SUCCESS);
+    }
 
     ctx.SetStatus(::grpc::OK, "");
 }

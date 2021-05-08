@@ -32,7 +32,7 @@ struct RequestContext
     virtual ~RequestContext() = default;
 
     std::unique_ptr<::grpc::ServerContext> srv_ctx;
-    enum : char { UNKNOWN=0, REQUEST, WRITE, FINISH } state = UNKNOWN;
+    enum : char { UNKNOWN=0, REQUEST, READ, READEND, WRITE, FINISH } state = UNKNOWN;
 
     virtual void Process() = 0;
     virtual void StartProcessing(::grpc::ServerCompletionQueue* cq) = 0;
@@ -65,6 +65,9 @@ using ProcessUnaryFunc = void (GrpcService::*)(const RpcContext&, const REQ&, RE
 template<class REQ, class RESP>
 using ProcessStreamFunc = void (GrpcService::*)(const RpcStreamContext&, const REQ&, RESP&);
 
+template<class REQ, class RESP>
+using ProcessClientStreamFunc = void (GrpcService::*)(const RpcClientStreamContext&, const REQ&, RESP&);
+
 //
 // Template pointer to function that *request* the system to start processing unary.strean requests
 //
@@ -75,6 +78,10 @@ using UnaryRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerCo
 template<class RPC_SERVICE, class REQ, class RESP>
 using StreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
         REQ*, ::grpc::ServerAsyncWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
+
+template<class RPC_SERVICE, class REQ, class RESP>
+using ClientStreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
+        ::grpc::ServerAsyncReader<RESP, REQ>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
 //
 // Class GrpcServer
@@ -114,6 +121,13 @@ public:
                              StreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
                              ProcessStreamFunc<REQ, RESP> processFunc,
                              const void* processParam);
+
+    // Tell the system to process client stream RPC request
+    template<class RPC_SERVICE, class REQ, class RESP>
+    void AddClientStreamRpcRequest(GrpcService* grpcService,
+                                   ClientStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                                   ProcessClientStreamFunc<REQ, RESP> processFunc,
+                                   const void* processParam);
 
     // For derived class to override (Error and Info reporting)
     virtual void OnError(const std::string& /*err*/) const {}
@@ -360,6 +374,132 @@ struct StreamRequestContext : public RequestContext
 };
 
 //
+// Template class to handle client streaming respone
+//
+template<class RPC_SERVICE, class REQ, class RESP>
+struct ClientStreamRequestContext : public RequestContext
+{
+    ClientStreamRequestContext() = default;
+    ~ClientStreamRequestContext() = default;
+
+    virtual RequestContext* CloneMe() const
+    {
+        ClientStreamRequestContext* ctx = new (std::nothrow) ClientStreamRequestContext;
+        ctx->grpcService  = grpcService;
+        ctx->processParam = processParam;
+        ctx->processFunc  = processFunc;
+        ctx->requestFunc  = requestFunc;
+        return ctx;
+    }
+
+    REQ req;
+    RESP resp;
+    std::unique_ptr<::grpc::ServerAsyncReader<RESP, REQ>> req_reader;
+    std::unique_ptr<RpcClientStreamContext> stream_ctx;
+    GrpcService* grpcService = nullptr;
+
+    // Any application-level data assigned by AddRpcRequest.
+    // It will be make available to RPC function through RpcContext.
+    const void* processParam = nullptr; // Any application-level data stored by AddRpcRequest
+
+    // Pointer to function that does actual processing
+    ProcessClientStreamFunc<REQ, RESP> processFunc = nullptr;
+
+    // Pointer to function that *request* the system to start processing given requests
+    ClientStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
+
+    void StartProcessing(::grpc::ServerCompletionQueue* cq)
+    {
+        state = RequestContext::REQUEST;
+        srv_ctx.reset(new ::grpc::ServerContext);
+        req_reader.reset(new ::grpc::ServerAsyncReader<RESP, REQ>(srv_ctx.get()));
+        stream_ctx.reset();
+
+        // *Request* that the system start processing given requests.
+        // In this request, "this" acts as the tag uniquely identifying
+        // the request (so that different context instances can serve
+        // different requests concurrently), in this case the memory address
+        // of this context instance.
+        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service->get();
+        (asyncService->*requestFunc)(srv_ctx.get(), req_reader.get(), cq, cq, this);
+    }
+
+    void Process()
+    {
+        if(state == RequestContext::REQUEST)
+        {
+            // This is very first Process call for the given request.
+            // Create new RpcStreamContext
+            stream_ctx.reset(new RpcClientStreamContext(srv_ctx.get(), processParam));
+            stream_ctx->streamHasMore = true;
+
+            // Start reading
+            //OUTMSG_MT("this=" << this << ", ASK TO READ");  // victor test
+
+            state = RequestContext::READ;
+            req.Clear();
+            req_reader->Read(&req, this);
+        }
+        else if(state == RequestContext::READ)
+        {
+            //OUTMSG_MT("this=" << this << ", READ COMPLETE");    // victor test
+
+            (grpcService->*processFunc)(*stream_ctx, req, resp);
+
+            // Is processing failed?
+            if(stream_ctx->GetStatus() != ::grpc::OK)
+            {
+                //OUTMSG_MT("this=" << this << ", Processing returned error " << stream_ctx->GetStatus());    // victor test
+
+                // Processing returned error
+                state = RequestContext::FINISH;
+                ::grpc::Status grpcStatus(stream_ctx->GetStatus(), stream_ctx->GetError());
+                req_reader->FinishWithError(grpcStatus, this);
+                return;
+            }
+
+            // Continue reading
+            //OUTMSG_MT("this=" << this << ", ASK TO READ");  // victor test
+
+            req.Clear();
+            req_reader->Read(&req, this);
+        }
+        else if(state == RequestContext::READEND)
+        {
+            //OUTMSG_MT("this=" << this << ", READ END");     // victor test
+
+            // And we are done!
+            req.Clear();
+            resp.Clear();
+            state = RequestContext::FINISH;
+            stream_ctx->streamHasMore = false;
+            (grpcService->*processFunc)(*stream_ctx, req, resp);
+
+            // Let the gRPC runtime know we've finished, using the
+            // memory address of this instance as the uniquely identifying tag for
+            // the event.
+            ::grpc::Status grpcStatus(stream_ctx->GetStatus(), stream_ctx->GetError());
+            req_reader->Finish(resp, grpcStatus, this);
+        }
+        else
+        {
+            //ERRORMSG_MT("Invalid ClientStreamRequestContext::Process state() " << state); // victor test
+
+//            // TODO - handle errors
+//            serv->OnError("Invalid ClientStreamRequestContext::Process state() " + std::to_string(state));
+        }
+    }
+
+    void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError)
+    {
+        //OUTMSG_MT("Done");  // victor test
+
+        // Ask the system start processing requests
+        StartProcessing(cq);
+    }
+};
+
+//
 // GrpcServer::AddUnaryRpcRequest implementation
 //
 template<class RPC_SERVICE, class REQ, class RESP>
@@ -421,6 +561,37 @@ void GrpcServer::AddStreamRpcRequest(GrpcService* grpcService,
     }
 }
 
+//
+// GrpcServer::AddClientStreamRpcRequest implementation
+//
+template<class RPC_SERVICE, class REQ, class RESP>
+void GrpcServer::AddClientStreamRpcRequest(GrpcService* grpcService,
+                                           ClientStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                                           ProcessClientStreamFunc<REQ, RESP> processFunc,
+                                           const void* processParam)
+{
+    // Create RPC-specific grpc service (if not created yet) and
+    // bind it with the corresponding processing function.
+    if(grpcService->service == nullptr)
+    {
+        grpcService->service = new (std::nothrow) ServiceWrapperImpl<RPC_SERVICE>;
+        serviceList_.push_back(grpcService);
+        //std::cout << ">>> " << __func__ << ": service=" << grpcService->service << std::endl;
+    }
+
+    ClientStreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
+    ctx.grpcService  = grpcService;
+    ctx.processParam = processParam;
+    ctx.processFunc  = processFunc;
+    ctx.requestFunc  = requestFunc;
+
+    // Add request contexts
+    for(int i = 0; i < contextCount_; i++)
+    {
+        requestContextList_.push_back(ctx.CloneMe());
+    }
+}
+
 } //namespace gen
 
 //
@@ -437,6 +608,12 @@ void GrpcServer::AddStreamRpcRequest(GrpcService* grpcService,
     SERVER_PTR->AddStreamRpcRequest<RPC_SERVICE, REQ, RESP>(this,                           \
             &RPC_SERVICE::AsyncService::Request##RPC,                                       \
             (gen::ProcessStreamFunc<REQ, RESP>)PROC_FUNC_PTR,                               \
+            PROC_FUNC_PARAM);
+
+#define ADD_CLIENT_STREAM(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, PROC_FUNC_PARAM, SERVER_PTR) \
+    SERVER_PTR->AddClientStreamRpcRequest<RPC_SERVICE, REQ, RESP>(this,                            \
+            &RPC_SERVICE::AsyncService::Request##RPC,                                              \
+            (gen::ProcessClientStreamFunc<REQ, RESP>)PROC_FUNC_PTR,                                \
             PROC_FUNC_PARAM);
 
 #endif // __GRPC_SERVER_HPP__

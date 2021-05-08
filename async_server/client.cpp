@@ -158,6 +158,50 @@ public:
         return true;
     }
 
+    bool ClientStreamTest()
+    {
+        // Set random sessionId and requestId
+        grpc::ClientContext context;
+        context.AddMetadata("sessionid", std::to_string(rand() % 1000));
+        context.AddMetadata("requestid", std::to_string(rand() % 1000));
+
+        test::ClientStreamTestResponse resp;
+        std::unique_ptr<grpc::ClientWriter<test::ClientStreamTestRequest>> writer(stub_->ClientStreamTest(&context, &resp));
+
+        for(int i = 0; i < 20; i++)
+        {
+            INFOMSG_MT("Client-side streaming message " + std::to_string(i + 1));
+
+            test::ClientStreamTestRequest req;
+            req.set_msg("ClientStreamTestRequest " + std::to_string(i + 1));
+
+            if(!writer->Write(req))
+            {
+                // Broken stream
+                ERRORMSG_MT("Client-side streaming failed");
+                return false;
+            }
+
+            //usleep(100000);
+        }
+        writer->WritesDone();
+        grpc::Status s = writer->Finish();
+
+        if(!s.ok())
+        {
+            std::string err = s.error_message();
+            if(err.empty())
+                err = StatusToStr(s.error_code());
+
+            ERRORMSG_MT("Failed with error " << s.error_code() << ": " << err);
+            return false;
+        }
+
+        const char* result = (resp.result().status() == test::Result::SUCCESS ? "success" : resp.result().message().c_str());
+        INFOMSG_MT(result);
+        return true;
+    }
+
     bool Shutdown()
     {
         // Set random sessionId and requestId
@@ -198,15 +242,23 @@ int main(int argc, char** argv)
     // (use of InsecureChannelCredentials()).
     GrpcClient client(grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials()));
 
-    if(argc > 1 && !strcmp(argv[1], "ping"))
+    if(argc > 1)
     {
-       client.Ping();
-       return 0;
-    }
-    else if(argc > 1 && !strcmp(argv[1], "shutdown"))
-    {
-       client.Shutdown();
-       return 0;
+        if(!strcmp(argv[1], "ping"))
+        {
+           client.Ping();
+           return 0;
+        }
+        else if(!strcmp(argv[1], "clientstream"))
+        {
+           client.ClientStreamTest();
+           return 0;
+        }
+        else if(!strcmp(argv[1], "shutdown"))
+        {
+           client.Shutdown();
+           return 0;
+        }
     }
 
     // If not arguments sent, then run stream test by default

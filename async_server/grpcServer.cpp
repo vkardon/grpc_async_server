@@ -5,6 +5,7 @@
 #include <thread>
 #include <signal.h>             // pthread_sigmask
 #include <unistd.h>             // sleep
+#include "logger.hpp"
 
 #include "grpcServer.hpp"
 
@@ -251,6 +252,8 @@ void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIn
     {
         if(tag == nullptr)
         {
+            std::cout << "#### tag=NULL" << std::endl;
+
             OnError("Server Completion Queue returned empty tag");
             continue;
         }
@@ -261,14 +264,24 @@ void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIn
 //        // victor test
 //        OUTMSG_MT("Next Event: tag='" << tag << "', eventReadSuccess=" << eventReadSuccess << ", "
 //                << "state=" << (ctx->state == RequestContext::REQUEST ? "REQUEST" :
+//                                ctx->state == RequestContext::READ    ? "READ"    :
 //                                ctx->state == RequestContext::WRITE   ? "WRITE"   :
 //                                ctx->state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
 
         // Have we successfully read event?
         if(!eventReadSuccess)
         {
+            // If we are reading from the client stream, then
+            // this means we don't have any more messsges to read
+            if(ctx->state == RequestContext::READ)
+            {
+                // Done reading client-streaming messages
+                ctx->state = RequestContext::READEND;
+                ctx->Process();
+                continue;
+            }
             // Ignore events that failed to read due to shutting down
-            if(ctx->state != RequestContext::REQUEST)
+            else if(ctx->state != RequestContext::REQUEST)
             {
                 std::stringstream ss;
                 ss << "Server Completion Queue failed to read event for tag '" << tag << "'";
@@ -284,6 +297,7 @@ void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIn
         switch(ctx->state)
         {
         case RequestContext::REQUEST:  // Completion of fRequestPtr()
+        case RequestContext::READ:     // Completion of Read()
         case RequestContext::WRITE:    // Completion of Write()
             // Process request
             ctx->Process();

@@ -53,7 +53,6 @@ public:
     StreamStatus GetStreamStatus() const { return streamStatus; }
 
     void  SetHasMore(bool hasMore) const { streamHasMore = hasMore; }
-    bool  GetHasMore() const { return streamHasMore; }
 
     void  SetParam(void* param) const { streamParam = param; }
     void* GetParam() const { return streamParam; }
@@ -66,6 +65,29 @@ private:
     template<class RPC_SERVICE, class REQ, class RESP>
     friend struct StreamRequestContext;
 };
+
+//
+// Class RpcClientStreamContext is sent to client stream process function
+//
+class RpcClientStreamContext : public RpcContext
+{
+public:
+    RpcClientStreamContext(::grpc::ServerContext* ctx, const void* param) : RpcContext(ctx, param) {}
+    ~RpcClientStreamContext() = default;
+
+    bool GetHasMore() const { return streamHasMore; }
+
+    void  SetParam(void* param) const { streamParam = param; }
+    void* GetParam() const { return streamParam; }
+
+private:
+    bool streamHasMore = false;           // Are there more request to read?
+    mutable void* streamParam = nullptr;  // Request-specific stream data (for derived class to use)
+
+    template<class RPC_SERVICE, class REQ, class RESP>
+    friend struct ClientStreamRequestContext;
+};
+
 
 //
 // This is the base class for service-specific RPC-processing classes

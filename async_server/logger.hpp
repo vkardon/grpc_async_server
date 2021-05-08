@@ -5,6 +5,10 @@
 #include <sstream>  // ostringstream
 #include <mutex>    // mutex, unique_lock
 
+#include <unistd.h>
+#include <sys/syscall.h>
+
+
 //
 // Multi-threaded logger access methods
 //
@@ -33,6 +37,12 @@ namespace Logger
     inline const char* GetThreadPrefix() { return SetThreadPrefix(nullptr); }
 }
 
+#ifdef __APPLE__
+        static __thread     const pid_t threadId = syscall(__NR_gettid);
+#else
+        static thread_local const pid_t threadId = syscall(__NR_gettid);
+#endif
+
 //
 // Thread-safe logging
 //
@@ -40,8 +50,8 @@ namespace Logger
 do{                                                             \
     std::unique_lock<std::mutex> lock(Logger::GetMutex());      \
     std::cout << (*msg_type == '\0' ? "" : "[" msg_type "] ")   \
-              << __func__ << ": " << Logger::GetThreadPrefix()  \
-              << msg << std::endl;                              \
+              << "[" << threadId << "] " << __func__ << ": "    \
+              << Logger::GetThreadPrefix() << msg << std::endl; \
 }while(0)                                                       
 
 #define OUTMSG_MT(msg)    MSG_MT("", msg)
