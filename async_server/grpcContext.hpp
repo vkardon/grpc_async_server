@@ -44,11 +44,11 @@ private:
 //
 enum StreamStatus : char { STREAMING=1, SUCCESS, ERROR };
 
-class RpcStreamContext : public RpcContext
+class RpcServerStreamContext : public RpcContext
 {
 public:
-    RpcStreamContext(::grpc::ServerContext* ctx, const void* param) : RpcContext(ctx, param) {}
-    ~RpcStreamContext() = default;
+    RpcServerStreamContext(::grpc::ServerContext* ctx, const void* param) : RpcContext(ctx, param) {}
+    ~RpcServerStreamContext() = default;
 
     StreamStatus GetStreamStatus() const { return streamStatus; }
 
@@ -63,7 +63,7 @@ private:
     mutable void* streamParam = nullptr;  // Request-specific stream data (for derived class to use)
 
     template<class RPC_SERVICE, class REQ, class RESP>
-    friend struct StreamRequestContext;
+    friend struct ServerStreamRequestContext;
 };
 
 //
@@ -87,7 +87,6 @@ private:
     template<class RPC_SERVICE, class REQ, class RESP>
     friend struct ClientStreamRequestContext;
 };
-
 
 //
 // This is the base class for service-specific RPC-processing classes

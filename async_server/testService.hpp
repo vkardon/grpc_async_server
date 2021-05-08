@@ -40,7 +40,7 @@ protected:
     void Ping(const gen::RpcContext& ctx,
             const test::PingRequest& req, test::PingResponse& resp);
 
-    void StreamTest(const gen::RpcStreamContext& ctx,
+    void StreamTest(const gen::RpcServerStreamContext& ctx,
             const test::StreamTestRequest& req, test::StreamTestResponse& resp);
 
     void ClientStreamTest(const gen::RpcClientStreamContext& ctx,

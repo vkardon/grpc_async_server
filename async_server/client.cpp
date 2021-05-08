@@ -289,6 +289,10 @@ int main(int argc, char** argv)
                     sprintf(reqMsg, "Req: %d, Thread Indx: %d", i+1, threadIndex);
                     if(!client.StreamTest(reqMsg))
                         break;
+
+//                    // Client-streaming test
+//                    if(!client.ClientStreamTest())
+//                        break;
                 }
             });
         threadIndex++;

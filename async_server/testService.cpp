@@ -13,7 +13,7 @@
     RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
     &TestService::RPC, nullptr, srv)
 
-#define TEST_STREAM(RPC) ADD_STREAM( \
+#define TEST_SERVER_STREAM(RPC) ADD_SERVER_STREAM( \
     RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
     &TestService::RPC, nullptr, srv)
 
@@ -27,7 +27,7 @@ bool TestService::Init(gen::GrpcServer* srv)
     // Add TestService RPCs
     TEST_UNARY(Shutdown)
     TEST_UNARY(Ping)
-    TEST_STREAM(StreamTest)
+    TEST_SERVER_STREAM(StreamTest)
     TEST_CLIENT_STREAM(ClientStreamTest)
 
     //TEST_CLIENT_STREAM(ClientStreamTest)
@@ -69,7 +69,7 @@ void TestService::Ping(const gen::RpcContext& ctx,
     ctx.SetStatus(::grpc::OK, "");
 }
 
-void TestService::StreamTest(const gen::RpcStreamContext& ctx,
+void TestService::StreamTest(const gen::RpcServerStreamContext& ctx,
         const test::StreamTestRequest& req, test::StreamTestResponse& resp)
 {
     LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
@@ -163,7 +163,7 @@ void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
 
     if(ctx.GetHasMore())
     {
-        std::cout << ">>> " << __func__ << " req.msg='" << req.msg() << "'" << std::endl;
+        INFOMSG_MT("req.msg='" << req.msg() << "'");
     }
     else
     {

@@ -63,7 +63,7 @@ template<class REQ, class RESP>
 using ProcessUnaryFunc = void (GrpcService::*)(const RpcContext&, const REQ&, RESP&);
 
 template<class REQ, class RESP>
-using ProcessStreamFunc = void (GrpcService::*)(const RpcStreamContext&, const REQ&, RESP&);
+using ProcessServerStreamFunc = void (GrpcService::*)(const RpcServerStreamContext&, const REQ&, RESP&);
 
 template<class REQ, class RESP>
 using ProcessClientStreamFunc = void (GrpcService::*)(const RpcClientStreamContext&, const REQ&, RESP&);
@@ -76,7 +76,7 @@ using UnaryRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerCo
         REQ*, ::grpc::ServerAsyncResponseWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
 template<class RPC_SERVICE, class REQ, class RESP>
-using StreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
+using ServerStreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
         REQ*, ::grpc::ServerAsyncWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
 template<class RPC_SERVICE, class REQ, class RESP>
@@ -117,9 +117,9 @@ public:
 
     // Tell the system to process stream RPC request
     template<class RPC_SERVICE, class REQ, class RESP>
-    void AddStreamRpcRequest(GrpcService* grpcService,
-                             StreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                             ProcessStreamFunc<REQ, RESP> processFunc,
+    void AddServerStreamRpcRequest(GrpcService* grpcService,
+                             ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                             ProcessServerStreamFunc<REQ, RESP> processFunc,
                              const void* processParam);
 
     // Tell the system to process client stream RPC request
@@ -228,14 +228,14 @@ struct UnaryRequestContext : public RequestContext
 // Template class to handle streaming respone
 //
 template<class RPC_SERVICE, class REQ, class RESP>
-struct StreamRequestContext : public RequestContext
+struct ServerStreamRequestContext : public RequestContext
 {
-    StreamRequestContext() = default;
-    ~StreamRequestContext() = default;
+    ServerStreamRequestContext() = default;
+    ~ServerStreamRequestContext() = default;
 
     virtual RequestContext* CloneMe() const
     {
-        StreamRequestContext* ctx = new (std::nothrow) StreamRequestContext;
+        ServerStreamRequestContext* ctx = new (std::nothrow) ServerStreamRequestContext;
         ctx->grpcService  = grpcService;
         ctx->processParam = processParam;
         ctx->processFunc  = processFunc;
@@ -245,7 +245,7 @@ struct StreamRequestContext : public RequestContext
 
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncWriter<RESP>> resp_writer;
-    std::unique_ptr<RpcStreamContext> stream_ctx;
+    std::unique_ptr<RpcServerStreamContext> stream_ctx;
     GrpcService* grpcService = nullptr;
 
     // Any application-level data assigned by AddRpcRequest.
@@ -253,10 +253,10 @@ struct StreamRequestContext : public RequestContext
     const void* processParam = nullptr; // Any application-level data stored by AddRpcRequest
 
     // Pointer to function that does actual processing
-    ProcessStreamFunc<REQ, RESP> processFunc = nullptr;
+    ProcessServerStreamFunc<REQ, RESP> processFunc = nullptr;
 
     // Pointer to function that *request* the system to start processing given requests
-    StreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
+    ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq)
     {
@@ -289,7 +289,7 @@ struct StreamRequestContext : public RequestContext
             state = RequestContext::WRITE;
 
             // Create new RpcStreamContext
-            stream_ctx.reset(new RpcStreamContext(srv_ctx.get(), processParam));
+            stream_ctx.reset(new RpcServerStreamContext(srv_ctx.get(), processParam));
         }
 
         // The actual processing
@@ -534,10 +534,10 @@ void GrpcServer::AddUnaryRpcRequest(GrpcService* grpcService,
 // GrpcServer::AddStreamRpcRequest implementation
 //
 template<class RPC_SERVICE, class REQ, class RESP>
-void GrpcServer::AddStreamRpcRequest(GrpcService* grpcService,
-                                     StreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                                     ProcessStreamFunc<REQ, RESP> processFunc,
-                                     const void* processParam)
+void GrpcServer::AddServerStreamRpcRequest(GrpcService* grpcService,
+                                           ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                                           ProcessServerStreamFunc<REQ, RESP> processFunc,
+                                           const void* processParam)
 {
     // Create RPC-specific grpc service (if not created yet) and
     // bind it with the corresponding processing function.
@@ -548,7 +548,7 @@ void GrpcServer::AddStreamRpcRequest(GrpcService* grpcService,
         //std::cout << ">>> " << __func__ << ": service=" << grpcService->service << std::endl;
     }
 
-    StreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
+    ServerStreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
     ctx.grpcService  = grpcService;
     ctx.processParam = processParam;
     ctx.processFunc  = processFunc;
@@ -604,10 +604,10 @@ void GrpcServer::AddClientStreamRpcRequest(GrpcService* grpcService,
             (gen::ProcessUnaryFunc<REQ, RESP>)PROC_FUNC_PTR,                                \
             PROC_FUNC_PARAM);
 
-#define ADD_STREAM(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, PROC_FUNC_PARAM, SERVER_PTR) \
-    SERVER_PTR->AddStreamRpcRequest<RPC_SERVICE, REQ, RESP>(this,                           \
-            &RPC_SERVICE::AsyncService::Request##RPC,                                       \
-            (gen::ProcessStreamFunc<REQ, RESP>)PROC_FUNC_PTR,                               \
+#define ADD_SERVER_STREAM(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, PROC_FUNC_PARAM, SERVER_PTR) \
+    SERVER_PTR->AddServerStreamRpcRequest<RPC_SERVICE, REQ, RESP>(this,                            \
+            &RPC_SERVICE::AsyncService::Request##RPC,                                              \
+            (gen::ProcessServerStreamFunc<REQ, RESP>)PROC_FUNC_PTR,                                \
             PROC_FUNC_PARAM);
 
 #define ADD_CLIENT_STREAM(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, PROC_FUNC_PARAM, SERVER_PTR) \
