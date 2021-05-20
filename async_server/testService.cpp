@@ -27,7 +27,7 @@ bool TestService::Init(gen::GrpcServer* srv)
     // Add TestService RPCs
     TEST_UNARY(Shutdown)
     TEST_UNARY(Ping)
-    TEST_SERVER_STREAM(StreamTest)
+    TEST_SERVER_STREAM(ServerStreamTest)
     TEST_CLIENT_STREAM(ClientStreamTest)
 
     //TEST_CLIENT_STREAM(ClientStreamTest)
@@ -69,8 +69,8 @@ void TestService::Ping(const gen::RpcContext& ctx,
     ctx.SetStatus(::grpc::OK, "");
 }
 
-void TestService::StreamTest(const gen::RpcServerStreamContext& ctx,
-        const test::StreamTestRequest& req, test::StreamTestResponse& resp)
+void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
+        const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp)
 {
     LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
 
@@ -111,6 +111,8 @@ void TestService::StreamTest(const gen::RpcServerStreamContext& ctx,
         if(!respList)
         {
             // This is very first response, create list of empty responses to be streammed
+            OUTMSG_MT("Req = '" << req.msg() << "'");
+
             respList = new ResponseList;
             respList->totalRows = 10; // Stream 10 messages
             ctx.SetParam(respList);
@@ -119,7 +121,7 @@ void TestService::StreamTest(const gen::RpcServerStreamContext& ctx,
             // Initialize responses with some data
             respList->rows.resize(respList->totalRows);
             for(size_t i = 0; i < respList->rows.size(); ++i)
-                respList->rows[i] = "Row" + std::to_string(i+1) + " Hello From Grpc Server";
+                respList->rows[i] = "ServerStreamTestResponse #" + std::to_string(i+1);
         }
 
         // Get rows to send
@@ -130,8 +132,7 @@ void TestService::StreamTest(const gen::RpcServerStreamContext& ctx,
         {
             // Get the next row to send
             std::stringstream ss;
-            ss << "[" << req.msg() << "] Resp Order: " << (respList->sentRows + 1) << ", "
-               << "Data: '" << respList->rows[respList->sentRows] << "'";
+            ss << "Resp[" << (respList->sentRows + 1) << "]: '" << respList->rows[respList->sentRows] << "'";
             resp.set_msg(ss.str());
             respList->pendingRows = 1;
         }

@@ -13,7 +13,7 @@ service GrpcService
     rpc Ping (PingRequest) returns (PingResponse) {}
 
     // Test server-side streaming
-    rpc StreamTest (StreamTestRequest) returns (stream StreamTestResponse) {}
+    rpc ServerStreamTest (ServerStreamTestRequest) returns (stream ServerStreamTestResponse) {}
 
     // Test client-side streaming
     rpc ClientStreamTest (stream ClientStreamTestRequest) returns (ClientStreamTestResponse) {}
@@ -53,12 +53,12 @@ message PingResponse
     Result result = 1;
 }
 
-message StreamTestRequest 
+message ServerStreamTestRequest
 {
     string msg = 1; // The string to be included in every response message
 }
 
-message StreamTestResponse
+message ServerStreamTestResponse
 {
     string msg = 1; 
 }

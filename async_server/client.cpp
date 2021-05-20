@@ -87,51 +87,7 @@ public:
         stub_ = test::GrpcService::NewStub(channel);
     }
 
-    bool StreamTest(const std::string& reqMsg)
-    {
-        test::StreamTestRequest req;
-        req.set_msg(reqMsg);
-
-        // Set random sessionId and requestId
-        grpc::ClientContext context;
-        context.AddMetadata("sessionid", std::to_string(rand() % 1000));
-        context.AddMetadata("requestid", std::to_string(rand() % 1000));
-
-        // Send request and read responses
-        std::list<test::StreamTestResponse> respList;
-
-        test::StreamTestResponse resp;
-        std::unique_ptr<grpc::ClientReader<test::StreamTestResponse> > reader(stub_->StreamTest(&context, req));
-        while(reader->Read(&resp))
-        {
-            //INFOMSG_MT("Got Record: " << resp.msg());
-            respList.push_back(resp);
-        }
-        grpc::Status s = reader->Finish();
-
-        if(!s.ok())
-        {
-            std::string err = s.error_message();
-            if(err.empty())
-                err = StatusToStr(s.error_code());
-
-            ERRORMSG_MT("Failed with error " << s.error_code() << ": " << err);
-            return false;
-        }
-
-        // Dump all collected responses
-        std::unique_lock<std::mutex> lock(Logger::GetMutex());
-        std::cout << "BEGIN" << std::endl;
-        for(const test::StreamTestResponse& resp : respList)
-        {
-            std::cout << resp.msg() << std::endl;
-        }
-        std::cout << "END: " << respList.size() << " responses" << std::endl;
-
-        return true;
-    }
-
-    bool Ping()
+    bool PingTest()
     {
         // Set random sessionId and requestId
         grpc::ClientContext context;
@@ -155,6 +111,50 @@ public:
 
         const char* result = (resp.result().status() == test::Result::SUCCESS ? "success" : resp.result().message().c_str());
         INFOMSG_MT(result);
+        return true;
+    }
+
+    bool ServerStreamTest(const char* msg = nullptr)
+    {
+        test::ServerStreamTestRequest req;
+        req.set_msg(msg ? msg : "ServerStreamTestRequest");
+
+        // Set random sessionId and requestId
+        grpc::ClientContext context;
+        context.AddMetadata("sessionid", std::to_string(rand() % 1000));
+        context.AddMetadata("requestid", std::to_string(rand() % 1000));
+
+        // Send request and read responses
+        std::list<test::ServerStreamTestResponse> respList;
+
+        test::ServerStreamTestResponse resp;
+        std::unique_ptr<grpc::ClientReader<test::ServerStreamTestResponse> > reader(stub_->ServerStreamTest(&context, req));
+        while(reader->Read(&resp))
+        {
+            //INFOMSG_MT("Got Record: " << resp.msg());
+            respList.push_back(resp);
+        }
+        grpc::Status s = reader->Finish();
+
+        if(!s.ok())
+        {
+            std::string err = s.error_message();
+            if(err.empty())
+                err = StatusToStr(s.error_code());
+
+            ERRORMSG_MT("Failed with error " << s.error_code() << ": " << err);
+            return false;
+        }
+
+        // Dump all collected responses
+        std::unique_lock<std::mutex> lock(Logger::GetMutex());
+        std::cout << "BEGIN" << std::endl;
+        for(const test::ServerStreamTestResponse& resp : respList)
+        {
+            std::cout << resp.msg() << std::endl;
+        }
+        std::cout << "END: " << respList.size() << " responses" << std::endl;
+
         return true;
     }
 
@@ -202,7 +202,7 @@ public:
         return true;
     }
 
-    bool Shutdown()
+    bool ShutdownTest()
     {
         // Set random sessionId and requestId
         grpc::ClientContext context;
@@ -230,9 +230,66 @@ public:
         return true;
      }
 
+    void LoadTest()
+    {
+        const int numClientThreads = 100;  // Number of threads
+        const int numRpcs = 50;            // Number of RPCs per thread
+
+        // Start threads
+        INFOMSG_MT("Sending requests using " << numClientThreads
+                  << " threads with " << numRpcs << " RPC requests per thread");
+
+        CTimeElapsed elapsed(("Elapsed time [" + std::to_string(numClientThreads * numRpcs) + " calls]: ").c_str());
+
+        std::vector<std::thread> threads(numClientThreads);
+
+        int threadIndex = 0;
+        for(std::thread& thread : threads)
+        {
+            // Capture threadIndex by value, capture other variables by reference
+            thread = std::thread([&, threadIndex]()
+            {
+                char reqMsg[64]{};
+                for(int i = 0; i < numRpcs; ++i)
+                {
+                    // Format request message and call RPC
+                    sprintf(reqMsg, "Req: %d, Thread Indx: %d", i+1, threadIndex);
+                    if(!ServerStreamTest(reqMsg))
+                        break;
+
+    //                // Client-streaming test
+    //                if(!client.ClientStreamTest())
+    //                    break;
+                }
+            });
+            threadIndex++;
+        }
+
+        // Wait for all threads to complete
+        for(std::thread& thread : threads)
+        {
+            thread.join();
+        }
+
+        INFOMSG_MT("All client threads are completed");
+    }
+
 private:
     std::unique_ptr<test::GrpcService::Stub> stub_;
 };
+
+void PrintUsage(const char* arg = nullptr)
+{
+    if(arg)
+        printf("Unwknown test name '%s'\n", arg);
+
+    printf("Usage: client <test name>\n");
+    printf("       client ping\n");
+    printf("       client serverstream\n");
+    printf("       client clientstream\n");
+    printf("       client shutdown\n");
+    printf("       client load\n");
+}
 
 int main(int argc, char** argv)
 {
@@ -246,65 +303,34 @@ int main(int argc, char** argv)
     {
         if(!strcmp(argv[1], "ping"))
         {
-           client.Ping();
-           return 0;
+            client.PingTest();
+        }
+        else if(!strcmp(argv[1], "serverstream"))
+        {
+            client.ServerStreamTest();
         }
         else if(!strcmp(argv[1], "clientstream"))
         {
-           client.ClientStreamTest();
-           return 0;
+            client.ClientStreamTest();
         }
         else if(!strcmp(argv[1], "shutdown"))
         {
-           client.Shutdown();
-           return 0;
+            client.ShutdownTest();
+        }
+        else if(!strcmp(argv[1], "load"))
+        {
+            client.LoadTest();
+        }
+        else
+        {
+            PrintUsage(argv[1]);
         }
     }
-
-    // If not arguments sent, then run stream test by default
-    const int numClientThreads = 100;  // Number of threads
-    const int numRpcs = 50;            // Number of RPCs per thread
-
-//    const int numClientThreads = 1;  // Number of threads
-//    const int numRpcs = 1;           // Number of RPCs per thread
-
-    // Start threads
-    INFOMSG_MT("Sending requests using " << numClientThreads 
-              << " threads with " << numRpcs << " RPC requests per thread");
-
-    CTimeElapsed elapsed(("Elapsed time [" + std::to_string(numClientThreads * numRpcs) + " calls]: ").c_str());
-
-    std::vector<std::thread> threads(numClientThreads);
-
-    int threadIndex = 0;
-    for(std::thread& thread : threads)
+    else
     {
-        // Capture threadIndex by value, capture other variables by reference
-        thread = std::thread([&, threadIndex]()
-            {
-                char reqMsg[64]{};
-                for(int i = 0; i < numRpcs; ++i)
-                {
-                    // Format request message and call RPC
-                    sprintf(reqMsg, "Req: %d, Thread Indx: %d", i+1, threadIndex);
-                    if(!client.StreamTest(reqMsg))
-                        break;
-
-//                    // Client-streaming test
-//                    if(!client.ClientStreamTest())
-//                        break;
-                }
-            });
-        threadIndex++;
+        PrintUsage();
     }
 
-    // Wait for all threads to complete
-    for(std::thread& thread : threads)
-    {
-        thread.join();
-    }
-
-    INFOMSG_MT("All client threads are completed");
     return 0;
 }
 

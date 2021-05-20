@@ -12,8 +12,8 @@ namespace test
     class ShutdownResponse;
     class PingRequest;
     class PingResponse;
-    class StreamTestRequest;
-    class StreamTestResponse;
+    class ServerStreamTestRequest;
+    class ServerStreamTestResponse;
     class ClientStreamTestRequest;
     class ClientStreamTestResponse;
 }
@@ -40,8 +40,8 @@ protected:
     void Ping(const gen::RpcContext& ctx,
             const test::PingRequest& req, test::PingResponse& resp);
 
-    void StreamTest(const gen::RpcServerStreamContext& ctx,
-            const test::StreamTestRequest& req, test::StreamTestResponse& resp);
+    void ServerStreamTest(const gen::RpcServerStreamContext& ctx,
+            const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp);
 
     void ClientStreamTest(const gen::RpcClientStreamContext& ctx,
             const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp);
