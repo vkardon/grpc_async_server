@@ -21,7 +21,6 @@ public:
 
     bool Shutdown(const gen::RpcContext& ctx, std::string& errMsg);
 
-
 private:
     std::atomic<bool> mStop{false};
     TestService testService;

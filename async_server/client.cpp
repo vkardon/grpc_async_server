@@ -8,6 +8,7 @@
 #include <sys/time.h>   // gettimeofday()
 #include <sstream>      // std::stringstream
 #include <thread>
+#include "testServerConfig.hpp"
 
 #include <grpc++/grpc++.h>
 
@@ -293,11 +294,29 @@ void PrintUsage(const char* arg = nullptr)
 
 int main(int argc, char** argv)
 {
+    char addressUri[256]{};
+
+    if(!strcmp(URI, "domain_socket"))
+    {
+        // Unix domain socket
+        sprintf(addressUri, "unix://%s", UNIX_DOMAIN_SOCKET_PATH);
+    }
+    else if(!strcmp(URI, "domain_abstract_socket"))
+    {
+        // Unix domain socket in abstract namespace
+        sprintf(addressUri, "unix-abstract:%s", UNIX_DOMAIN_ABSTRACT_SOCKET_PATH);
+    }
+    else //(!strcmp(URI, "dns"))
+    {
+        // Net socket
+        sprintf(addressUri, "localhost:%d", PORT_NUMBER);
+    }
+
     // Instantiate the client. It requires a channel, out of which the actual RPCs
     // are created. This channel models a connection to an endpoint (in this case,
     // localhost at port 50051). We indicate that the channel isn't authenticated
     // (use of InsecureChannelCredentials()).
-    GrpcClient client(grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials()));
+    GrpcClient client(grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials()));
 
     if(argc > 1)
     {
