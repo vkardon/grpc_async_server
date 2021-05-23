@@ -220,7 +220,7 @@ void GrpcServer::BuildAndRun(const std::string& addressUri, int threadCount)
         int threadIndx = 0;
         for(std::thread& thread : threads)
         {
-            thread = std::thread(&GrpcServer::ProcessRpcsProc, this, cq.get(), threadIndx++);
+            thread = std::thread(&GrpcServer::ProcessEvents, this, cq.get(), threadIndx++);
         }
 
         OnInfo("GrpcServer is running with " + std::to_string(threads.size()) + " threads");
@@ -273,7 +273,7 @@ void GrpcServer::BuildAndRun(const std::string& addressUri, int threadCount)
     contextCount_ = 0;
 }
 
-void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIndex)
+void GrpcServer::ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex)
 {
     // PR5044360: Don't handle SIGHUP or SIGINT in the spawned threads -
     // let the main thread handle them.
@@ -290,8 +290,6 @@ void GrpcServer::ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIn
     {
         if(tag == nullptr)
         {
-            std::cout << "#### tag=NULL" << std::endl;
-
             OnError("Server Completion Queue returned empty tag");
             continue;
         }

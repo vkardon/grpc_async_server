@@ -137,7 +137,7 @@ public:
 private:
     void RunImpl(const std::string& addressUri, int threadCount);
     void BuildAndRun(const std::string& addressUri, int threadCount);
-    void ProcessRpcsProc(::grpc::ServerCompletionQueue* cq, int threadIndex);
+    void ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex);
 
     // For derived class to override
     virtual bool OnInit() = 0;
