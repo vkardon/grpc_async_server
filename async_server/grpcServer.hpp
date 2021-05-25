@@ -108,6 +108,7 @@ public:
     // Run() is blocked. It doesn't return until OnRun() returns false.
     void Run(unsigned short port, int threadCount);
     void Run(const char* domainSocketPath, int threadCount);
+    void Run(const std::vector<std::string>& addressUriArr, int threadCount);
 
     // Tell the system to process unary RPC request
     template<class RPC_SERVICE, class REQ, class RESP>
@@ -135,8 +136,8 @@ public:
     virtual void OnInfo(const std::string& /*info*/) const {}
 
 private:
-    void RunImpl(const std::string& addressUri, int threadCount);
-    void BuildAndRun(const std::string& addressUri, int threadCount);
+    void RunImpl(const std::vector<std::string>& addressUriArr, int threadCount);
+    void BuildAndRun(const std::vector<std::string>& addressUriArr, int threadCount);
     void ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex);
 
     // For derived class to override

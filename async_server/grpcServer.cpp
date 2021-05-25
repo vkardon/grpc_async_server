@@ -8,6 +8,7 @@
 #include "logger.hpp"
 
 #include "grpcServer.hpp"
+#include "grpcUtils.hpp"
 
 namespace gen {
 
@@ -63,45 +64,24 @@ std::string RpcContext::Peer() const
 //
 void GrpcServer::Run(unsigned short port, int threadCount)
 {
-    std::string addressUri = "0.0.0.0:" + std::to_string(port);
-    RunImpl(addressUri, threadCount);
+    std::vector<std::string> addressUriArr;
+    addressUriArr.push_back(FormatDnsAddressUri("0.0.0.0", port));
+    RunImpl(addressUriArr, threadCount);
 }
 
 void GrpcServer::Run(const char* domainSocketPath, int threadCount)
 {
-    std::string addressUri;
-
-    if(domainSocketPath[0] == '\0')
-    {
-        // NOTE: Supported since GRPC 1.37.0
-
-        // For Unix domain socket in abstract namespace (Unix systems only)
-        // unix-abstract:abstract_path
-        //    abstract_path indicates a name in the abstract namespace.
-        //    The name has no connection with filesystem pathnames.
-        //    No permissions will apply to the socket - any process/user may access the socket.
-        //    The underlying implementation of Abstract sockets uses a null byte ('\0') as the first character.
-        //    The implementation will prepend this null. Do not include the null in abstract_path.
-        //    abstract_path cannot contain null bytes.
-        addressUri = "unix-abstract:" + std::string(domainSocketPath + 1);
-    }
-    else
-    {
-        // For Unix domain sockets (Unix systems only)
-        // unix:path
-        // unix://absolute_path
-        //    path indicates the location of the desired socket.
-        //    In the first form, the path may be relative or absolute;
-        //    In the second form, the path must be absolute
-        //    (i.e., there will actually be three slashes, two prior to the path and another to begin the absolute path).
-        //
-        addressUri = "unix://" + std::string(domainSocketPath);
-    }
-
-    RunImpl(addressUri, threadCount);
+    std::vector<std::string> addressUriArr;
+    addressUriArr.push_back(FormatUnixDomainSocketAddressUri(domainSocketPath));
+    RunImpl(addressUriArr, threadCount);
 }
 
-void GrpcServer::RunImpl(const std::string& addressUri, int threadCount)
+void GrpcServer::Run(const std::vector<std::string>& addressUriArr, int threadCount)
+{
+    RunImpl(addressUriArr, threadCount);
+}
+
+void GrpcServer::RunImpl(const std::vector<std::string>& addressUriArr, int threadCount)
 {
     // PR5044360: Handle SIGHUP and SIGINT in the main process,
     // but not in any of the threads that are spawned.
@@ -138,7 +118,7 @@ void GrpcServer::RunImpl(const std::string& addressUri, int threadCount)
     sigaction(SIGINT, &act, &oldactSIGINT);
 
     // Run the server
-    BuildAndRun(addressUri, threadCount);
+    BuildAndRun(addressUriArr, threadCount);
 
     // If SIGHUP was blocked but we have it unblocked, then block it back
     if(isBlockedSIGHUP)
@@ -163,7 +143,7 @@ void GrpcServer::RunImpl(const std::string& addressUri, int threadCount)
     sigaction(SIGINT, &oldactSIGINT, nullptr);
 }
 
-void GrpcServer::BuildAndRun(const std::string& addressUri, int threadCount)
+void GrpcServer::BuildAndRun(const std::vector<std::string>& addressUriArr, int threadCount)
 {
     // Get the number of contexts for the server threads.
     // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
@@ -195,9 +175,12 @@ void GrpcServer::BuildAndRun(const std::string& addressUri, int threadCount)
         }
 
         // Setup server
-        OnInfo("addressUri = '" + addressUri + "'");
         ::grpc::ServerBuilder builder;
-        builder.AddListeningPort(addressUri, ::grpc::InsecureServerCredentials());
+        for(const std::string& addressUri : addressUriArr)
+        {
+            OnInfo("addressUri = '" + addressUri + "'");
+            builder.AddListeningPort(addressUri, ::grpc::InsecureServerCredentials());
+        }
 
         // Register services
         for(GrpcService* srv : serviceList_)
