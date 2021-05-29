@@ -38,9 +38,15 @@ namespace Logger
 }
 
 #ifdef __APPLE__
-        static __thread     const pid_t threadId = syscall(__NR_gettid);
+    static uint64_t GetThreadId()
+    {
+        uint64_t tid;
+        pthread_threadid_np(NULL, &tid);
+        return tid;
+    }
+    static thread_local const pid_t threadId = GetThreadId();
 #else
-        static thread_local const pid_t threadId = syscall(__NR_gettid);
+    static thread_local const pid_t threadId = syscall(__NR_gettid);
 #endif
 
 //

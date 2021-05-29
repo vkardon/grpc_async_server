@@ -92,7 +92,7 @@ private:
 // This is the base class for service-specific RPC-processing classes
 //
 class GrpcServer;
-class ServiceWrapper;
+struct ServiceWrapper;
 
 class GrpcService
 {

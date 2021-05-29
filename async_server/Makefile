@@ -42,16 +42,19 @@ INCS = -I$(PROJECT_HOME) \
        -I$(GRPC_INC) \
        -I$(PROTO_OUT)
 
+
 # Libraries
 LIBS = -lpthread \
        -L$(GRPC_LIB) \
-       -Wl,--whole-archive -lgrpc++_reflection -Wl,--no-whole-archive \
-       -lprotobuf -lcrypto -lssl -lgrpc -lgrpc++ \
+       -lgrpc -lgrpc++ -lgrpc++_reflection \
        -lgrpc_unsecure -lgrpc++_unsecure \
+       -lprotobuf -lcrypto -lssl \
        -lgpr -lz -laddress_sorting -lcares
 
 # For gRpc reflection, use --no-as-needed flag for dynamic linking:
 #       -Wl,--no-as-needed -lgrpc++_reflection -Wl,--as-needed
+# or you might need to use --whole-archive
+#       -Wl,--whole-archive -lgrpc++_reflection -Wl,--no-whole-archive
 
 # gRpc files to generate from *.proto files 
 PROTO_NAMES   = $(basename $(notdir $(PROTO_SRCS)))
