@@ -80,9 +80,7 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
     struct ResponseList
     {
         std::vector<std::string> rows;
-        size_t totalRows = 0;   // Only used for logging
-        size_t sentRows = 0;    // Only used for logging
-        size_t pendingRows = 0; // Only used for logging
+        size_t sentRows = 0;
     };
 
     ResponseList* respList = (ResponseList*)ctx.GetParam();
@@ -94,7 +92,7 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
         OUTMSG_MT((ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ? "SUCCESS" : "ERROR")
                 << ", stream=" << ctx.GetParam()
                 << ", sent "  << (respList ? respList->sentRows  : 0)
-                << " out of " << (respList ? respList->totalRows : 0) << " rows");
+                << " out of " << (respList ? respList->rows.size() : 0) << " rows");
 
         // Clean up...
         if(respList)
@@ -114,31 +112,28 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
             OUTMSG_MT("Req = '" << req.msg() << "'");
 
             respList = new ResponseList;
-            respList->totalRows = 10; // Stream 10 messages
             ctx.SetParam(respList);
             opened_streams++;   // The total number of opened streams
 
             // Initialize responses with some data
-            respList->rows.resize(respList->totalRows);
-            for(size_t i = 0; i < respList->rows.size(); ++i)
-                respList->rows[i] = "ServerStreamTestResponse #" + std::to_string(i+1);
+            for(size_t i = 0; i < 10; ++i)
+                respList->rows.push_back("ServerStreamTestResponse #" + std::to_string(i+1));
         }
 
         // Get rows to send
-        respList->sentRows += respList->pendingRows; // From the previous send
-        respList->pendingRows = 0;
-
         if(respList->sentRows < respList->rows.size())
         {
             // Get the next row to send
             std::stringstream ss;
             ss << "Resp[" << (respList->sentRows + 1) << "]: '" << respList->rows[respList->sentRows] << "'";
             resp.set_msg(ss.str());
-            respList->pendingRows = 1;
+            respList->sentRows++;
+            ctx.SetHasMore(true); // Ask for more data to send
         }
-
-        // Do we have any rows to send?
-        ctx.SetHasMore(respList->pendingRows > 0 ? true : false);
+        else
+        {
+            ctx.SetHasMore(false); // No more rows to send
+        }
     }
 
     //usleep(500000);   // sleep for half second to simulate processing
