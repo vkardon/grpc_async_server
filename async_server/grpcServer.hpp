@@ -137,7 +137,6 @@ public:
 
 private:
     void RunImpl(const std::vector<std::string>& addressUriArr, int threadCount);
-    void BuildAndRun(const std::vector<std::string>& addressUriArr, int threadCount);
     void ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex);
 
     // For derived class to override

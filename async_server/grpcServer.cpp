@@ -13,19 +13,6 @@
 namespace gen {
 
 //
-//  Signal handler for SIGHUP & SIGINT signals
-//
-extern "C"
-{
-    static void HandleHangupSignal(int /*signalNumber*/)
-    {
-//        INFOMSG(Con(), strsignal(signalNumber)
-//            << " signal (" << signalNumber << ") received, exiting...");
-        exit(1); // TODO
-    }
-}
-
-//
 // Class RpcContext implementation
 //
 void RpcContext::SetStatus(::grpc::StatusCode statusCode, const std::string& err) const
@@ -82,68 +69,6 @@ void GrpcServer::Run(const std::vector<std::string>& addressUriArr, int threadCo
 }
 
 void GrpcServer::RunImpl(const std::vector<std::string>& addressUriArr, int threadCount)
-{
-    // PR5044360: Handle SIGHUP and SIGINT in the main process,
-    // but not in any of the threads that are spawned.
-
-    // Examine the current set of the blocked signals
-    sigset_t curset;
-    pthread_sigmask(0, nullptr, &curset);
-
-    // Is either SIGHUP or SIGINT blocked?
-    bool isBlockedSIGHUP = (sigismember(&curset, SIGHUP) == 1);
-    bool isBlockedSIGINT = (sigismember(&curset, SIGINT) == 1);
-
-    // Unblock SIGHUP & SIGINT if either is blocked
-    if(isBlockedSIGHUP || isBlockedSIGINT)
-    {
-        // Note: It is permissible to unblock a signal which is not blocked.
-        sigset_t set;
-        sigemptyset(&set);
-        sigaddset(&set, SIGHUP);
-        sigaddset(&set, SIGINT);
-        pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
-    }
-
-    // Set SIGHUP & SIGINT signal handler
-    struct sigaction act;
-    sigemptyset(&act.sa_mask);
-    act.sa_flags = 0;
-    act.sa_handler = HandleHangupSignal;
-
-    struct sigaction oldactSIGHUP;
-    sigaction(SIGHUP, &act, &oldactSIGHUP);
-
-    struct sigaction oldactSIGINT;
-    sigaction(SIGINT, &act, &oldactSIGINT);
-
-    // Run the server
-    BuildAndRun(addressUriArr, threadCount);
-
-    // If SIGHUP was blocked but we have it unblocked, then block it back
-    if(isBlockedSIGHUP)
-    {
-        sigset_t set;
-        sigemptyset(&set);
-        sigaddset(&set, SIGHUP);
-        pthread_sigmask(SIG_BLOCK, &set, nullptr);
-    }
-
-    // If SIGINT was blocked but we have it unblocked, then block it back
-    if(isBlockedSIGINT)
-    {
-        sigset_t set;
-        sigemptyset(&set);
-        sigaddset(&set, SIGINT);
-        pthread_sigmask(SIG_BLOCK, &set, nullptr);
-    }
-
-    // Restore sigactions for SIGHUP and SIGINT
-    sigaction(SIGHUP, &oldactSIGHUP, nullptr);
-    sigaction(SIGINT, &oldactSIGINT, nullptr);
-}
-
-void GrpcServer::BuildAndRun(const std::vector<std::string>& addressUriArr, int threadCount)
 {
     // Get the number of contexts for the server threads.
     // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
