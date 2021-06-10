@@ -99,7 +99,22 @@ class GrpcService
 public:
     virtual ~GrpcService() = default;
     virtual bool Init(GrpcServer* srv) = 0;
+    const char* GetName() { return serviceName; }
+
+private:
     ServiceWrapper* service = nullptr;
+    const char* serviceName = "";
+
+    friend class GrpcServer;
+
+    template<class RPC_SERVICE, class REQ, class RESP>
+    friend struct UnaryRequestContext;
+
+    template<class RPC_SERVICE, class REQ, class RESP>
+    friend struct ServerStreamRequestContext;
+
+    template<class RPC_SERVICE, class REQ, class RESP>
+    friend struct ClientStreamRequestContext;
 };
 
 

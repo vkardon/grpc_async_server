@@ -139,6 +139,10 @@ private:
     void RunImpl(const std::vector<std::string>& addressUriArr, int threadCount);
     void ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex);
 
+    // Helpers
+    template<class RPC_SERVICE>
+    void AddService(GrpcService* grpcService);
+
     // For derived class to override
     virtual bool OnInit() = 0;
     virtual bool OnRun() = 0;
@@ -502,6 +506,25 @@ struct ClientStreamRequestContext : public RequestContext
 };
 
 //
+// Helper method to add service to the list
+//
+template<class RPC_SERVICE>
+void GrpcServer::AddService(GrpcService* grpcService)
+{
+    // Create RPC-specific grpc service (if not created yet) and
+    // bind it with the corresponding processing function.
+    if(grpcService->service == nullptr)
+    {
+        grpcService->service = new (std::nothrow) ServiceWrapperImpl<RPC_SERVICE>;
+        grpcService->serviceName = RPC_SERVICE::service_full_name();
+        serviceList_.push_back(grpcService);
+//        std::cout << ">>> " << __func__ << ":"
+//                << " name='" << grpcService->serviceName << "',"
+//                << " service=" << grpcService->service << std::endl;
+    }
+}
+
+//
 // GrpcServer::AddUnaryRpcRequest implementation
 //
 template<class RPC_SERVICE, class REQ, class RESP>
@@ -512,12 +535,7 @@ void GrpcServer::AddUnaryRpcRequest(GrpcService* grpcService,
 {
     // Create RPC-specific grpc service (if not created yet) and
     // bind it with the corresponding processing function.
-    if(grpcService->service == nullptr)
-    {
-        grpcService->service = new (std::nothrow) ServiceWrapperImpl<RPC_SERVICE>;
-        serviceList_.push_back(grpcService);
-        //std::cout << ">>> " << __func__ << ": service=" << grpcService->service << std::endl;
-    }
+    AddService<RPC_SERVICE>(grpcService);
 
     UnaryRequestContext<RPC_SERVICE, REQ, RESP> ctx;
     ctx.grpcService  = grpcService;
@@ -543,12 +561,7 @@ void GrpcServer::AddServerStreamRpcRequest(GrpcService* grpcService,
 {
     // Create RPC-specific grpc service (if not created yet) and
     // bind it with the corresponding processing function.
-    if(grpcService->service == nullptr)
-    {
-        grpcService->service = new (std::nothrow) ServiceWrapperImpl<RPC_SERVICE>;
-        serviceList_.push_back(grpcService);
-        //std::cout << ">>> " << __func__ << ": service=" << grpcService->service << std::endl;
-    }
+    AddService<RPC_SERVICE>(grpcService);
 
     ServerStreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
     ctx.grpcService  = grpcService;
@@ -574,12 +587,7 @@ void GrpcServer::AddClientStreamRpcRequest(GrpcService* grpcService,
 {
     // Create RPC-specific grpc service (if not created yet) and
     // bind it with the corresponding processing function.
-    if(grpcService->service == nullptr)
-    {
-        grpcService->service = new (std::nothrow) ServiceWrapperImpl<RPC_SERVICE>;
-        serviceList_.push_back(grpcService);
-        //std::cout << ">>> " << __func__ << ": service=" << grpcService->service << std::endl;
-    }
+    AddService<RPC_SERVICE>(grpcService);
 
     ClientStreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
     ctx.grpcService  = grpcService;
