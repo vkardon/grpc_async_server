@@ -40,7 +40,7 @@ private:
 };
 
 //
-// Class RpcStreamContext is sent to stream process function
+// Class RpcServerStreamContext is sent to stream process function
 //
 enum StreamStatus : char { STREAMING=1, SUCCESS, ERROR };
 

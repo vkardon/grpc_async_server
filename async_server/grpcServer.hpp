@@ -515,6 +515,9 @@ void GrpcServer::AddService(GrpcService* grpcService)
     // bind it with the corresponding processing function.
     if(grpcService->service == nullptr)
     {
+        // Note: service_full_name() is not well documented, but
+        // is generated for every service class. It might need to
+        // be replaced if/when it's no longer generated.
         grpcService->service = new (std::nothrow) ServiceWrapperImpl<RPC_SERVICE>;
         grpcService->serviceName = RPC_SERVICE::service_full_name();
         serviceList_.push_back(grpcService);
