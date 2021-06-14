@@ -9,6 +9,7 @@
 #include <string>
 
 namespace grpc { class ServerContext; }
+namespace grpc { class Service; }
 
 namespace gen {
 
@@ -53,6 +54,7 @@ public:
     StreamStatus GetStreamStatus() const { return streamStatus; }
 
     void  SetHasMore(bool hasMore) const { streamHasMore = hasMore; }
+    bool  GetHasMore() const { return streamHasMore; }
 
     void  SetParam(void* param) const { streamParam = param; }
     void* GetParam() const { return streamParam; }
@@ -92,7 +94,6 @@ private:
 // This is the base class for service-specific RPC-processing classes
 //
 class GrpcServer;
-struct ServiceWrapper;
 
 class GrpcService
 {
@@ -102,7 +103,7 @@ public:
     const char* GetName() { return serviceName; }
 
 private:
-    ServiceWrapper* service = nullptr;
+    ::grpc::Service* service = nullptr;
     const char* serviceName = "";
 
     friend class GrpcServer;

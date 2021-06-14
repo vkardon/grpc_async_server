@@ -11,7 +11,8 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
+#include <grpcpp/impl/service_type.h>
 #pragma GCC diagnostic pop
 
 #include "grpcContext.hpp"  // RpcContext
@@ -39,15 +40,6 @@ struct RequestContext
     virtual void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) = 0;
 
     virtual RequestContext* CloneMe() const = 0;
-};
-
-// Note: the only reason we use ServiceWrapper is because grpc::Service
-// is not fully declared when we delete all services from serviceList_
-// at the end of Run(). Wrapping it into this helper class solves the issue.
-struct ServiceWrapper
-{
-    virtual ~ServiceWrapper() = default;
-    virtual ::grpc::Service* get() = 0;
 };
 
 //
@@ -88,15 +80,6 @@ using ClientStreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::S
 //
 class GrpcServer
 {
-    // Helper class to instantiate RPC-specific service
-    template<class RPC_SERVICE>
-    struct ServiceWrapperImpl : public ServiceWrapper, public RPC_SERVICE::AsyncService
-    {
-        //virtual ~ServiceWrapperImpl() { std::cout << ">>> " << __func__ << ": this=" << this << std::endl; }
-        virtual ~ServiceWrapperImpl() = default;
-        ::grpc::Service* get() { return this; } // Because AsyncService is derived from Service
-    };
-
 public:
     GrpcServer() = default;
     virtual ~GrpcServer() = default;
@@ -198,7 +181,7 @@ struct UnaryRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service->get();
+        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service;
         (asyncService->*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
@@ -283,7 +266,7 @@ struct ServerStreamRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service->get();
+        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service;
         (asyncService->*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
@@ -426,7 +409,7 @@ struct ClientStreamRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service->get();
+        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service;
         (asyncService->*requestFunc)(srv_ctx.get(), req_reader.get(), cq, cq, this);
     }
 
@@ -518,7 +501,7 @@ void GrpcServer::AddService(GrpcService* grpcService)
         // Note: service_full_name() is not well documented, but
         // is generated for every service class. It might need to
         // be replaced if/when it's no longer generated.
-        grpcService->service = new (std::nothrow) ServiceWrapperImpl<RPC_SERVICE>;
+        grpcService->service = new (std::nothrow) typename RPC_SERVICE::AsyncService;
         grpcService->serviceName = RPC_SERVICE::service_full_name();
         serviceList_.push_back(grpcService);
 //        std::cout << ">>> " << __func__ << ":"

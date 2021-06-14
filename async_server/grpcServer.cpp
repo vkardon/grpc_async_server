@@ -3,9 +3,8 @@
 // grpcServer.cpp
 //
 #include <thread>
-#include <signal.h>             // pthread_sigmask
-#include <unistd.h>             // sleep
-#include "logger.hpp"
+#include <signal.h>     // pthread_sigmask
+#include <unistd.h>     // sleep
 
 #include "grpcServer.hpp"
 #include "grpcUtils.hpp"
@@ -110,7 +109,7 @@ void GrpcServer::RunImpl(const std::vector<std::string>& addressUriArr, int thre
         // Register services
         for(GrpcService* srv : serviceList_)
         {
-            builder.RegisterService(srv->service->get());
+            builder.RegisterService(srv->service);
         }
 
         std::unique_ptr<::grpc::ServerCompletionQueue> cq = builder.AddCompletionQueue();

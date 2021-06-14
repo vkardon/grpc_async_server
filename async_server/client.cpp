@@ -10,7 +10,7 @@
 #include <thread>
 #include "testServerConfig.hpp"
 
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "test.grpc.pb.h"
 #include "logger.hpp"
