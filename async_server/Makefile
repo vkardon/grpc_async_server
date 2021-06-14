@@ -24,9 +24,9 @@ OS = $(shell uname -s)
 
 # gRPC support
 ifeq "$(OS)" "Linux"
-  GRPC_HOME = ../grpc_1.11.0_install/linux
+  GRPC_HOME = ../grpc_1.38.0_install/linux
 else
-  GRPC_HOME = ../grpc_1.11.0_install/mac
+  GRPC_HOME = ../grpc_1.38.0_install/mac
 endif
 
 GRPC_INC = $(GRPC_HOME)/include
@@ -49,7 +49,16 @@ LIBS = -lpthread \
        -lgrpc -lgrpc++ -lgrpc++_reflection \
        -lgrpc_unsecure -lgrpc++_unsecure \
        -lprotobuf -lcrypto -lssl \
-       -lgpr -lz -laddress_sorting -lcares
+       -lgpr -lz -laddress_sorting -lcares \
+       -lupb -lre2 -labsl_status -labsl_cord -labsl_strings \
+       -labsl_str_format_internal -labsl_raw_logging_internal \
+       -labsl_int128 -labsl_bad_optional_access -labsl_statusor \
+       -labsl_base -labsl_throw_delegate -labsl_spinlock_wait \
+       -labsl_strings_internal -labsl_time_zone -labsl_time 
+
+ifeq "$(OS)" "Darwin"
+  LIBS += -framework CoreFoundation
+endif
 
 # For gRpc reflection, use --no-as-needed flag for dynamic linking:
 #       -Wl,--no-as-needed -lgrpc++_reflection -Wl,--as-needed
