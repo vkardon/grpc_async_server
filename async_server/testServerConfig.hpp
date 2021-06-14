@@ -7,10 +7,6 @@
 
 #define URI "dns"
 //#define URI "domain_socket"
-
-// Abstract socket is linux-specific
-#ifdef __linux__
-#define URI "domain_abstract_socket"
-#endif __linux
+//#define URI "domain_abstract_socket"
 
 #endif // __TEST_SERVER_CONFIG_HPP__
