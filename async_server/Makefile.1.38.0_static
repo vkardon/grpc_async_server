@@ -32,16 +32,15 @@ PROTO_OUT  = $(PROJECT_HOME)/_generate
 OS = $(shell uname -s)
 
 # gRPC support
-ifeq "$(OS)" "Linux"
-  GRPC_HOME = ../grpc_1.38.0_install/linux
-else
-  GRPC_HOME = ../grpc_1.38.0_install/mac
-endif
-
+GRPC_HOME = ../grpc_1.38.0_install
 GRPC_INC = $(GRPC_HOME)/include
 GRPC_BIN = $(GRPC_HOME)/bin
-GRPC_LIB = $(GRPC_HOME)/lib
-GRPC_LIB64 = $(GRPC_HOME)/lib64
+
+ifeq "$(OS)" "Linux"
+  GRPC_LIB = $(GRPC_HOME)/linux/lib
+else
+  GRPC_LIB = $(GRPC_HOME)/mac/lib
+endif
 
 PROTOC          = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
@@ -54,7 +53,6 @@ INCS = -I$(PROJECT_HOME) \
 
 # Libraries
 LIBS = -lpthread \
-       -L$(GRPC_LIB64) \
        -L$(GRPC_LIB) \
        -lgrpc -lgrpc++ -lgrpc++_reflection \
        -lgrpc_unsecure -lgrpc++_unsecure \

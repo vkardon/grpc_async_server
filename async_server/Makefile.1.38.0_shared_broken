@@ -7,7 +7,7 @@ TARGET_CLN = client
 CC = /usr/local/geneva/packages/devtoolset-7/root/usr/bin/g++
 CFLAGS = -std=c++11 -Wall -pthread
 LD = $(CC) 
-LDFLAGS = -Wl,-rpath=$(GRPC_LIB64),-rpath=$(GRPC_LIB)
+LDFLAGS = -Wl,-rpath=$(GRPC_LIB)
 
 # Add g++ libs to LD_LIBRARY_ATH
 CC_LIB_PATH = $(LD_LIBRARY_PATH):/usr/local-rhel7/geneva/packages/devtoolset-7/root/lib64
@@ -32,22 +32,21 @@ PROTO_OUT  = $(PROJECT_HOME)/_generate
 OS = $(shell uname -s)
 
 # gRPC support
-ifeq "$(OS)" "Linux"
-  GRPC_HOME = ../grpc_1.38.0_install/linux_shared
-else
-  GRPC_HOME = ../grpc_1.38.0_install/mac_shared
-endif
-
+GRPC_HOME = ../grpc_1.38.0_install
 GRPC_INC = $(GRPC_HOME)/include
 GRPC_BIN = $(GRPC_HOME)/bin
-GRPC_LIB = $(GRPC_HOME)/lib
-GRPC_LIB64 = $(GRPC_HOME)/lib64
+
+ifeq "$(OS)" "Linux"
+  GRPC_LIB = $(GRPC_HOME)/linux_shared/lib
+else
+  GRPC_LIB = $(GRPC_HOME)/mac_shared/lib
+endif
 
 PROTOC          = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
 # Add protoc libs to LD_LIBRARY_ATH
-PROTOC_LIB_PATH = $(LD_LIBRARY_PATH):$(GRPC_LIB):$(GRPC_LIB64)
+PROTOC_LIB_PATH = $(LD_LIBRARY_PATH):$(GRPC_LIB)
 
 # Include directories
 INCS = -I$(PROJECT_HOME) \
@@ -57,7 +56,6 @@ INCS = -I$(PROJECT_HOME) \
 
 # Libraries
 LIBS = -lpthread \
-       -L$(GRPC_LIB64) \
        -L$(GRPC_LIB) \
        -lgrpc -lgrpc++ -lgrpc++_reflection \
        -lgrpc_unsecure -lgrpc++_unsecure \
@@ -136,13 +134,13 @@ $(OBJ_DIR)/%.o: $(PROTO_OUT)/%.cc Makefile
 $(PROTO_OUT)/%.grpc.pb.cc: $(PROTO_HOME)/%.proto Makefile
 	@echo ">>> Generating grpc files..."
 	-mkdir -p $(PROTO_OUT)
-	export LD_LIBRARY_PATH=$(PROTOC_LIB_PATH); $(PROTOC) --grpc_out=$(PROTO_OUT) -I $(PROTO_HOME) --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN) $<
+	$(PROTOC) --grpc_out=$(PROTO_OUT) -I $(PROTO_HOME) --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN) $<
 
 # Generate protobuf files
 $(PROTO_OUT)/%.pb.cc: $(PROTO_HOME)/%.proto Makefile
 	@echo ">>> Generating proto files..."
 	-mkdir -p $(PROTO_OUT)
-	export LD_LIBRARY_PATH=$(PROTOC_LIB_PATH); $(PROTOC) --cpp_out=$(PROTO_OUT) --proto_path=$(PROTO_HOME) $<
+	$(PROTOC) --cpp_out=$(PROTO_OUT) --proto_path=$(PROTO_HOME) $<
 
 # Delete all intermediate files
 clean: 
