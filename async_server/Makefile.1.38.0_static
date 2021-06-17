@@ -3,14 +3,22 @@
 TARGET_SRV = server
 TARGET_CLN = client
 
+# Detect operating system
+OS = $(shell uname -s)
+
 # Compiler and linker to use
-CC = /usr/local/geneva/packages/devtoolset-7/root/usr/bin/g++
+# Note: We have to add g++ libs to LD_LIBRARY_ATH
+ifeq "$(OS)" "Linux"
+  CC = /usr/local/geneva/packages/devtoolset-7/root/usr/bin/g++
+  CC_LIB_PATH = $(LD_LIBRARY_PATH):/usr/local-rhel7/geneva/packages/devtoolset-7/root/lib64
+else
+  CC = g++
+  CC_LIB_PATH = $(LD_LIBRARY_PATH)
+endif
+
 CFLAGS = -std=c++11 -Wall -pthread
 LD = $(CC) 
 LDFLAGS = 
-
-# Add g++ libs to LD_LIBRARY_ATH
-CC_LIB_PATH = $(LD_LIBRARY_PATH):/usr/local-rhel7/geneva/packages/devtoolset-7/root/lib64
 
 # Sources
 PROJECT_HOME = .
@@ -28,17 +36,15 @@ PROTO_HOME = $(PROJECT_HOME)
 PROTO_SRCS = $(PROTO_HOME)/test.proto 
 PROTO_OUT  = $(PROJECT_HOME)/_generate
 
-# Detect operating system
-OS = $(shell uname -s)
-
 # gRPC support
 GRPC_HOME = ../grpc_1.38.0_install
 GRPC_INC = $(GRPC_HOME)/include
-GRPC_BIN = $(GRPC_HOME)/bin
 
 ifeq "$(OS)" "Linux"
+  GRPC_BIN = $(GRPC_HOME)/linux/bin
   GRPC_LIB = $(GRPC_HOME)/linux/lib
 else
+  GRPC_BIN = $(GRPC_HOME)/mac/bin
   GRPC_LIB = $(GRPC_HOME)/mac/lib
 endif
 
@@ -58,6 +64,7 @@ LIBS = -lpthread \
        -lgrpc_unsecure -lgrpc++_unsecure \
        -lprotobuf -lcrypto -lssl \
        -lgpr -lz -laddress_sorting -lcares \
+       -lre2 \
        -lupb \
        -labsl_synchronization \
        -labsl_raw_logging_internal \
