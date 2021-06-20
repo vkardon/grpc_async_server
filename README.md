@@ -1,2 +1,4 @@
 # grpc_async_server
-Asynchronous GRPC server with server-side streaming in C++.
+Headers-only c++ library to help building asynchronous grpc server that supports unary,
+server-side streaming and client-side striming rpcs. 
+
