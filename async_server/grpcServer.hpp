@@ -16,7 +16,11 @@
 #pragma GCC diagnostic pop
 
 #include "grpcContext.hpp"  // RpcContext
+#include "grpcUtils.hpp"
 #include <sstream>          // stringstream
+#include <thread>
+#include <signal.h>         // pthread_sigmask
+#include <unistd.h>         // sleep
 
 namespace gen {
 
@@ -89,9 +93,24 @@ public:
     GrpcServer& operator=(const GrpcServer&) = delete;
 
     // Run() is blocked. It doesn't return until OnRun() returns false.
-    void Run(unsigned short port, int threadCount);
-    void Run(const char* domainSocketPath, int threadCount);
-    void Run(const std::vector<std::string>& addressUriArr, int threadCount);
+    void Run(unsigned short port, int threadCount)
+    {
+        std::vector<std::string> addressUriArr;
+        addressUriArr.push_back(FormatDnsAddressUri("0.0.0.0", port));
+        RunImpl(addressUriArr, threadCount);
+    }
+
+    void Run(const char* domainSocketPath, int threadCount)
+    {
+        std::vector<std::string> addressUriArr;
+        addressUriArr.push_back(FormatUnixDomainSocketAddressUri(domainSocketPath));
+        RunImpl(addressUriArr, threadCount);
+    }
+
+    void Run(const std::vector<std::string>& addressUriArr, int threadCount)
+    {
+        RunImpl(addressUriArr, threadCount);
+    }
 
     GrpcService* GetService(const std::string& serviceName)
     {
@@ -125,8 +144,202 @@ public:
     virtual void OnInfo(const std::string& /*info*/) const {}
 
 private:
-    void RunImpl(const std::vector<std::string>& addressUriArr, int threadCount);
-    void ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex);
+    void RunImpl(const std::vector<std::string>& addressUriArr, int threadCount)
+    {
+        // Get the number of contexts for the server threads.
+        // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
+        // the number of contexts are multiple to 100 to the number of threads.
+        // This defines the number of simultaneous completion queue requests
+        // of the same type (through SessionManagerService::AsyncService::RequestXXX).
+        // Presuming fast application response (through genGrpcServer::XXX),
+        // this approach should be sufficient.
+        //int context_count = threadCount * 100;
+        contextCount_ = threadCount * 10;
+
+        while(true)
+        {
+            // Call derived class initialization
+            if(!OnInit())
+            {
+                OnError("Server inialization failed");
+                break;
+            }
+            else if(serviceMap_.empty())
+            {
+                OnError("Server inialization failed: no services registered");
+                break;
+            }
+            else if(requestContextList_.empty())
+            {
+                OnError("Server inialization failed: no RPC request registered");
+                break;
+            }
+
+            // Setup server
+            ::grpc::ServerBuilder builder;
+            for(const std::string& addressUri : addressUriArr)
+            {
+                OnInfo("addressUri = '" + addressUri + "'");
+                builder.AddListeningPort(addressUri, ::grpc::InsecureServerCredentials());
+            }
+
+            // Register services
+            for(auto& pair : serviceMap_)
+            {
+                GrpcService* srv = pair.second;
+                builder.RegisterService(srv->service);
+            }
+
+            std::unique_ptr<::grpc::ServerCompletionQueue> cq = builder.AddCompletionQueue();
+            std::unique_ptr<::grpc::Server> server = builder.BuildAndStart();
+
+            // Ask the system start processing requests
+            for(RequestContext* ctx : requestContextList_)
+            {
+                ctx->StartProcessing(cq.get());
+            }
+
+            // Start threads
+            std::vector<std::thread> threads(threadCount);
+
+            int threadIndx = 0;
+            for(std::thread& thread : threads)
+            {
+                thread = std::thread(&GrpcServer::ProcessEvents, this, cq.get(), threadIndx++);
+            }
+
+            OnInfo("GrpcServer is running with " + std::to_string(threads.size()) + " threads");
+
+            // Loop until OnRun()returns
+            while(OnRun())
+            {
+                sleep(2); // Sleep for 2 seconds and continue
+            }
+
+            OnInfo("Stopping Session GrpcServer Server...");
+
+            server->Shutdown();
+            cq->Shutdown();
+
+            OnInfo("Waiting for server threads to complete...");
+
+            for(std::thread& thread : threads)
+            {
+                thread.join();
+            }
+            threads.clear();
+
+            OnInfo("All server threads are completed");
+
+            // Ignore all remaining events
+            void* ignored_tag = nullptr;
+            bool ignored_ok = false;
+            while (cq->Next(&ignored_tag, &ignored_ok))
+                ;
+
+            // We are done
+            break;
+        }
+
+        // Clean up...
+        for(auto& pair : serviceMap_)
+        {
+            GrpcService* srv = pair.second;
+            delete srv->service;
+            srv->service = nullptr;
+        }
+        serviceMap_.clear();
+
+        for(RequestContext* ctx : requestContextList_)
+        {
+            delete ctx;
+        }
+        requestContextList_.clear();
+
+        contextCount_ = 0;
+    }
+
+    void ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex)
+    {
+        // PR5044360: Don't handle SIGHUP or SIGINT in the spawned threads -
+        // let the main thread handle them.
+        sigset_t set;
+        sigemptyset(&set);
+        sigaddset(&set, SIGHUP);
+        sigaddset(&set, SIGINT);
+        pthread_sigmask(SIG_BLOCK, &set, nullptr);
+
+        void* tag = nullptr;
+        bool eventReadSuccess = false;
+
+        while(cq->Next(&tag, &eventReadSuccess))
+        {
+            if(tag == nullptr)
+            {
+                OnError("Server Completion Queue returned empty tag");
+                continue;
+            }
+
+            // Get the request context for the specific tag
+            RequestContext* ctx = static_cast<RequestContext*>(tag);
+
+    //        // victor test
+    //        OUTMSG_MT("Next Event: tag='" << tag << "', eventReadSuccess=" << eventReadSuccess << ", "
+    //                << "state=" << (ctx->state == RequestContext::REQUEST ? "REQUEST" :
+    //                                ctx->state == RequestContext::READ    ? "READ"    :
+    //                                ctx->state == RequestContext::WRITE   ? "WRITE"   :
+    //                                ctx->state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
+
+            // Have we successfully read event?
+            if(!eventReadSuccess)
+            {
+                // If we are reading from the client stream, then
+                // this means we don't have any more messsges to read
+                if(ctx->state == RequestContext::READ)
+                {
+                    // Done reading client-streaming messages
+                    ctx->state = RequestContext::READEND;
+                    ctx->Process();
+                    continue;
+                }
+                // Ignore events that failed to read due to shutting down
+                else if(ctx->state != RequestContext::REQUEST)
+                {
+                    std::stringstream ss;
+                    ss << "Server Completion Queue failed to read event for tag '" << tag << "'";
+                    OnError(ss.str());
+
+                    // Abort processing if we failed reading event
+                    ctx->EndProcessing(this, cq, true /*isError*/);
+                }
+                continue;
+            }
+
+            // Process the event
+            switch(ctx->state)
+            {
+            case RequestContext::REQUEST:  // Completion of fRequestPtr()
+            case RequestContext::READ:     // Completion of Read()
+            case RequestContext::WRITE:    // Completion of Write()
+                // Process request
+                ctx->Process();
+                break;
+
+            case RequestContext::FINISH:    // Completion of Finish()
+                // Process post-Finish() event
+                ctx->EndProcessing(this, cq, false /*isError*/);
+                break;
+
+            default:
+                std::stringstream ss;
+                ss << "Unknown Completion Queue event: ctx->state=" << ctx->state << ", tag='" << tag << "'";
+                OnError(ss.str());
+                break;
+            } // end of switch
+        } // end of while
+
+        OnInfo("Thread " + std::to_string(threadIndex) + " is completed");
+    }
 
     // Helpers
     template<class RPC_SERVICE>
@@ -593,6 +806,38 @@ void GrpcServer::AddClientStreamRpcRequest(GrpcService* grpcService,
     {
         requestContextList_.push_back(ctx.CloneMe());
     }
+}
+
+//
+// Class RpcContext implementation
+//
+inline void RpcContext::SetStatus(::grpc::StatusCode statusCode, const std::string& err) const
+{
+    // Note: Ignore err if status is grpc::OK. Otherwise, it will be
+    // an error to construct gen::Status::OK with non-empty error_message.
+    if((grpcStatusCode = statusCode) != grpc::OK)
+        grpcErr = err;
+}
+
+inline void RpcContext::GetMetadata(const char* key, std::string& value) const
+{
+    assert(srvCtx);
+    const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = srvCtx->client_metadata();
+    auto itr = client_metadata.find(key);
+    if(itr != client_metadata.end())
+        value.assign(itr->second.data(), itr->second.size());
+}
+
+inline void RpcContext::SetMetadata(const char* key, const std::string& value) const
+{
+    assert(srvCtx);
+    srvCtx->AddTrailingMetadata(key, value);
+}
+
+inline std::string RpcContext::Peer() const
+{
+    assert(srvCtx);
+    return srvCtx->peer();
 }
 
 } //namespace gen
