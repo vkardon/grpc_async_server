@@ -93,6 +93,12 @@ public:
     void Run(const char* domainSocketPath, int threadCount);
     void Run(const std::vector<std::string>& addressUriArr, int threadCount);
 
+    GrpcService* GetService(const std::string& serviceName)
+    {
+        auto it = serviceMap_.find(serviceName);
+        return (it == serviceMap_.end() ? nullptr : it->second);
+    }
+
     // Tell the system to process unary RPC request
     template<class RPC_SERVICE, class REQ, class RESP>
     void AddUnaryRpcRequest(GrpcService* grpcService,
@@ -132,7 +138,7 @@ private:
 
     // Class data
     int contextCount_ = 0;
-    std::list<GrpcService*> serviceList_;
+    std::map<std::string, GrpcService*> serviceMap_;
     std::list<RequestContext*> requestContextList_;
 };
 
@@ -501,9 +507,10 @@ void GrpcServer::AddService(GrpcService* grpcService)
         // Note: service_full_name() is not well documented, but
         // is generated for every service class. It might need to
         // be replaced if/when it's no longer generated.
+        const char* serviceName = RPC_SERVICE::service_full_name();
         grpcService->service = new (std::nothrow) typename RPC_SERVICE::AsyncService;
-        grpcService->serviceName = RPC_SERVICE::service_full_name();
-        serviceList_.push_back(grpcService);
+        grpcService->serviceName = serviceName;
+        serviceMap_[serviceName] = grpcService;
 //        std::cout << ">>> " << __func__ << ":"
 //                << " name='" << grpcService->serviceName << "',"
 //                << " service=" << grpcService->service << std::endl;

@@ -100,6 +100,7 @@ class GrpcService
 public:
     virtual ~GrpcService() = default;
     virtual bool Init(GrpcServer* srv) = 0;
+    virtual bool IsServing() { return true; }
     const char* GetName() { return serviceName; }
 
 private:

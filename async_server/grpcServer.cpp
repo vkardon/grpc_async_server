@@ -87,7 +87,7 @@ void GrpcServer::RunImpl(const std::vector<std::string>& addressUriArr, int thre
             OnError("Server inialization failed");
             break;
         }
-        else if(serviceList_.empty())
+        else if(serviceMap_.empty())
         {
             OnError("Server inialization failed: no services registered");
             break;
@@ -107,8 +107,9 @@ void GrpcServer::RunImpl(const std::vector<std::string>& addressUriArr, int thre
         }
 
         // Register services
-        for(GrpcService* srv : serviceList_)
+        for(auto& pair : serviceMap_)
         {
+            GrpcService* srv = pair.second;
             builder.RegisterService(srv->service);
         }
 
@@ -164,12 +165,13 @@ void GrpcServer::RunImpl(const std::vector<std::string>& addressUriArr, int thre
     }
 
     // Clean up...
-    for(GrpcService* srv : serviceList_)
+    for(auto& pair : serviceMap_)
     {
+        GrpcService* srv = pair.second;
         delete srv->service;
         srv->service = nullptr;
     }
-    serviceList_.clear();
+    serviceMap_.clear();
 
     for(RequestContext* ctx : requestContextList_)
     {
