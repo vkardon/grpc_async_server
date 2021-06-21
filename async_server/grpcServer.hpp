@@ -150,7 +150,7 @@ private:
         // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
         // the number of contexts are multiple to 100 to the number of threads.
         // This defines the number of simultaneous completion queue requests
-        // of the same type (through SessionManagerService::AsyncService::RequestXXX).
+        // of the same type (through RPC_SERVICE::AsyncService::RequestXXX).
         // Presuming fast application response (through genGrpcServer::XXX),
         // this approach should be sufficient.
         //int context_count = threadCount * 100;
@@ -216,7 +216,7 @@ private:
                 sleep(2); // Sleep for 2 seconds and continue
             }
 
-            OnInfo("Stopping Session GrpcServer Server...");
+            OnInfo("Stopping GrpcServer ...");
 
             server->Shutdown();
             cq->Shutdown();
