@@ -36,7 +36,7 @@ PROTO_SRCS = $(PROTO_HOME)/test.proto
 PROTO_OUT  = $(PROJECT_HOME)/_generate
 
 # gRPC support
-GRPC_HOME = ../../grpc_1.38.0_install
+GRPC_HOME = ../grpc_1.38.0_install
 GRPC_INC = $(GRPC_HOME)/include
 
 ifeq "$(OS)" "Linux"
@@ -51,7 +51,7 @@ PROTOC          = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
 # Include directories
-INCS = -I.. \
+INCS = -I../async_server \
        -I$(PROJECT_HOME) \
        -I$(GRPC_INC) \
        -I$(PROTO_OUT)
