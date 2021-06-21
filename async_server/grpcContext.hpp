@@ -6,9 +6,9 @@
 #define __GRPC_CONTEXT_HPP__
 
 #include <grpcpp/impl/codegen/status_code_enum.h>   // grpc::StatusCode
+#include <grpcpp/impl/codegen/server_context.h>     // grpc::ServerContext
 #include <string>
 
-namespace grpc { class ServerContext; }
 namespace grpc { class Service; }
 
 namespace gen {
@@ -22,13 +22,38 @@ public:
     RpcContext(::grpc::ServerContext* ctx, const void* param) : srvCtx(ctx), rpcParam(param) {}
     ~RpcContext() = default;
 
-    void SetStatus(::grpc::StatusCode statusCode, const std::string& err) const;
-    ::grpc::StatusCode GetStatus() const { return grpcStatusCode; }
     const std::string& GetError() const { return grpcErr; }
 
-    void GetMetadata(const char* key, std::string& value) const;
-    void SetMetadata(const char* key, const std::string& value) const;
-    std::string Peer() const;
+    ::grpc::StatusCode GetStatus() const { return grpcStatusCode; }
+
+    void SetStatus(::grpc::StatusCode statusCode, const std::string& err) const
+    {
+        // Note: Ignore err if status is grpc::OK. Otherwise, it will be
+        // an error to construct gen::Status::OK with non-empty error_message.
+        if((grpcStatusCode = statusCode) != grpc::OK)
+            grpcErr = err;
+    }
+
+    void GetMetadata(const char* key, std::string& value) const
+    {
+        assert(srvCtx);
+        const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = srvCtx->client_metadata();
+        auto itr = client_metadata.find(key);
+        if(itr != client_metadata.end())
+            value.assign(itr->second.data(), itr->second.size());
+    }
+
+    void SetMetadata(const char* key, const std::string& value) const
+    {
+        assert(srvCtx);
+        srvCtx->AddTrailingMetadata(key, value);
+    }
+
+    std::string Peer() const
+    {
+        assert(srvCtx);
+        return srvCtx->peer();
+    }
 
     // Get application-level data set by AddUnaryRpcRequest/AddStreamRpcRequest
     const void* GetRpcParam() const { return rpcParam; }

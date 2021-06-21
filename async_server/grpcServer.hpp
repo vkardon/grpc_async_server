@@ -808,38 +808,6 @@ void GrpcServer::AddClientStreamRpcRequest(GrpcService* grpcService,
     }
 }
 
-//
-// Class RpcContext implementation
-//
-inline void RpcContext::SetStatus(::grpc::StatusCode statusCode, const std::string& err) const
-{
-    // Note: Ignore err if status is grpc::OK. Otherwise, it will be
-    // an error to construct gen::Status::OK with non-empty error_message.
-    if((grpcStatusCode = statusCode) != grpc::OK)
-        grpcErr = err;
-}
-
-inline void RpcContext::GetMetadata(const char* key, std::string& value) const
-{
-    assert(srvCtx);
-    const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = srvCtx->client_metadata();
-    auto itr = client_metadata.find(key);
-    if(itr != client_metadata.end())
-        value.assign(itr->second.data(), itr->second.size());
-}
-
-inline void RpcContext::SetMetadata(const char* key, const std::string& value) const
-{
-    assert(srvCtx);
-    srvCtx->AddTrailingMetadata(key, value);
-}
-
-inline std::string RpcContext::Peer() const
-{
-    assert(srvCtx);
-    return srvCtx->peer();
-}
-
 } //namespace gen
 
 //
