@@ -5,8 +5,12 @@
 #ifndef __GRPC_CONTEXT_HPP__
 #define __GRPC_CONTEXT_HPP__
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <grpcpp/impl/codegen/status_code_enum.h>   // grpc::StatusCode
 #include <grpcpp/impl/codegen/server_context.h>     // grpc::ServerContext
+#pragma GCC diagnostic pop
+
 #include <string>
 
 namespace grpc { class Service; }
