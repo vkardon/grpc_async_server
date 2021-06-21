@@ -53,7 +53,6 @@ GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 # Include directories
 INCS = -I.. \
        -I$(PROJECT_HOME) \
-       -I$(PROJECT_HOME)\gen \
        -I$(GRPC_INC) \
        -I$(PROTO_OUT)
 
