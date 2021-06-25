@@ -36,7 +36,18 @@ inline const std::string& GetThreadPrefix()
 
 inline pid_t GetThreadId()
 {
-    static thread_local pid_t threadId = syscall(__NR_gettid);
+    auto gettid = []()->pid_t
+    {
+#ifdef __APPLE__
+        uint64_t tid;
+        pthread_threadid_np(NULL, &tid);
+        return tid;
+#else
+        return syscall(__NR_gettid);
+#endif
+    };
+
+    static thread_local pid_t threadId = gettid();
     return threadId;
 }
 }

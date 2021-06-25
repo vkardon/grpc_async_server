@@ -6,11 +6,11 @@
 
 #include "grpcContext.hpp"
 
-namespace grpc::health::v1
+namespace grpc { namespace health { namespace v1
 {
 class HealthCheckRequest;
 class HealthCheckResponse;
-} 
+}}}
 
 class HealthService : public gen::GrpcService
 {
