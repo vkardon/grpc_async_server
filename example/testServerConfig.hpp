@@ -1,7 +1,7 @@
 #ifndef __TEST_SERVER_CONFIG_HPP__
 #define __TEST_SERVER_CONFIG_HPP__
 
-#define PORT_NUMBER                         50051
+#define PORT_NUMBER                         50055
 #define UNIX_DOMAIN_SOCKET_PATH             "/tmp/grpc_server_test.sock"
 #define UNIX_DOMAIN_ABSTRACT_SOCKET_PATH    "grpc_server_test.sock"
 

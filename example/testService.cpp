@@ -7,7 +7,9 @@
 #include "test.grpc.pb.h"
 
 //
-// Helper macros for Session Manager service
+// Helper macros to wrap ADD_UNARY(), ADD_SERVER_STREAM() and ADD_CLIENT_STREAM()
+// For example, TEST_UNARY(Ping) will be expended to
+// ADD_UNARY(Ping, test::PingRequest, test::PingResponse, test::GrpcService, &TestService::Ping, nullptr, srv)
 //
 #define TEST_UNARY(RPC) ADD_UNARY( \
     RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
@@ -21,7 +23,6 @@
     RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
     &TestService::RPC, nullptr, srv)
 
-
 bool TestService::Init(gen::GrpcServer* srv)
 {
     // Add TestService RPCs
@@ -34,8 +35,15 @@ bool TestService::Init(gen::GrpcServer* srv)
     return true;
 }
 
+bool TestService::IsServing()
+{
+    // Add some service-specific code to determine
+    // is the service is serving or not
+    return true;
+}
+
 void TestService::Shutdown(const gen::RpcContext& ctx,
-        const test::ShutdownRequest& req, test::ShutdownResponse& resp)
+                           const test::ShutdownRequest& req, test::ShutdownResponse& resp)
 {
     LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
 
@@ -43,26 +51,23 @@ void TestService::Shutdown(const gen::RpcContext& ctx,
 
     if(mServer->Shutdown(ctx, errMsg))
     {
-        test::Result* result = resp.mutable_result();
-        result->set_status(test::Result::SUCCESS);
+        resp.set_result(true);
     }
     else
     {
-        test::Result* result = resp.mutable_result();
-        result->set_status(test::Result::ERROR);
-        result->set_message(errMsg);
+        resp.set_result(false);
+        resp.set_msg(errMsg);
     }
 
     ctx.SetStatus(::grpc::OK, "");
 }
 
 void TestService::Ping(const gen::RpcContext& ctx,
-        const test::PingRequest& req, test::PingResponse& resp)
+                       const test::PingRequest& req, test::PingResponse& resp)
 {
     LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
 
-    test::Result* result = resp.mutable_result();
-    result->set_status(test::Result::SUCCESS);
+    resp.set_result(true);
 
     INFOMSG_MT("From " << ctx.Peer());
 
@@ -70,7 +75,7 @@ void TestService::Ping(const gen::RpcContext& ctx,
 }
 
 void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
-        const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp)
+                                   const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp)
 {
     LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
 
@@ -87,12 +92,12 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 
     // Are we done?
     if(ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ||
-       ctx.GetStreamStatus() == gen::StreamStatus::ERROR)
+            ctx.GetStreamStatus() == gen::StreamStatus::ERROR)
     {
         OUTMSG_MT((ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ? "SUCCESS" : "ERROR")
-                << ", stream=" << ctx.GetParam()
-                << ", sent "  << (respList ? respList->sentRows  : 0)
-                << " out of " << (respList ? respList->rows.size() : 0) << " rows");
+                  << ", stream=" << ctx.GetParam()
+                  << ", sent "  << (respList ? respList->sentRows  : 0)
+                  << " out of " << (respList ? respList->rows.size() : 0) << " rows");
 
         // Clean up...
         if(respList)
@@ -127,6 +132,7 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
             std::stringstream ss;
             ss << "Resp[" << (respList->sentRows + 1) << "]: '" << respList->rows[respList->sentRows] << "'";
             resp.set_msg(ss.str());
+            resp.set_result(true);
             respList->sentRows++;
             ctx.SetHasMore(true); // Ask for more data to send
         }
@@ -146,7 +152,7 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 }
 
 void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
-        const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp)
+                                   const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp)
 {
 //    static int count = 0;
 //    if(++count %12 == 0)
@@ -165,9 +171,10 @@ void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
     {
         // Done with client-stream reading. Write response back
         // ...
-        resp.mutable_result()->set_status(test::Result::SUCCESS);
+        resp.set_result(true);
     }
 
     ctx.SetStatus(::grpc::OK, "");
 }
+
 

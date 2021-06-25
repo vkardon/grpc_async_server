@@ -8,14 +8,14 @@
 //
 namespace test
 {
-    class ShutdownRequest;
-    class ShutdownResponse;
-    class PingRequest;
-    class PingResponse;
-    class ServerStreamTestRequest;
-    class ServerStreamTestResponse;
-    class ClientStreamTestRequest;
-    class ClientStreamTestResponse;
+class ShutdownRequest;
+class ShutdownResponse;
+class PingRequest;
+class PingResponse;
+class ServerStreamTestRequest;
+class ServerStreamTestResponse;
+class ClientStreamTestRequest;
+class ClientStreamTestResponse;
 }
 
 // Forward declarations
@@ -31,20 +31,22 @@ public:
     virtual ~TestService() = default;
 
     // gen::GrpcService override
-    virtual bool Init(gen::GrpcServer* srv);
+    virtual bool Init(gen::GrpcServer* srv) override;
+    virtual bool IsServing() override;
 
 protected:
+    // RPC methods
     void Shutdown(const gen::RpcContext& ctx,
-            const test::ShutdownRequest& req, test::ShutdownResponse& resp);
+                  const test::ShutdownRequest& req, test::ShutdownResponse& resp);
 
     void Ping(const gen::RpcContext& ctx,
-            const test::PingRequest& req, test::PingResponse& resp);
+              const test::PingRequest& req, test::PingResponse& resp);
 
     void ServerStreamTest(const gen::RpcServerStreamContext& ctx,
-            const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp);
+                          const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp);
 
     void ClientStreamTest(const gen::RpcClientStreamContext& ctx,
-            const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp);
+                          const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp);
 
 private:
     TestServer* mServer = nullptr;

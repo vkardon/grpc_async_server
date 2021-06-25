@@ -5,45 +5,11 @@
 #include "logger.hpp"
 
 //
-// Helper LoggerPrefix class to set thread-specific logger prefix
-//
-const char* METADATA_SESSION_ID = "sessionid";
-const char* METADATA_REQUEST_ID = "requestid";
-
-LoggerPrefix::LoggerPrefix(const gen::RpcContext& ctx)
-{
-    // Set thread-specific logging prefix "[session id][request id]"
-    std::string sessionId;
-    std::string requestId;
-
-    ctx.GetMetadata(METADATA_SESSION_ID, sessionId);
-    ctx.GetMetadata(METADATA_REQUEST_ID, requestId);
-
-    char prefix[256]{};
-    char* ptr = prefix;
-    if(!sessionId.empty())
-        ptr += sprintf(ptr, "[sid=%s]", sessionId.c_str());
-    if(!requestId.empty())
-        ptr += sprintf(ptr, "[rid=%s]", requestId.c_str());
-    *ptr++ = ' ';
-    *ptr = '\0';
-
-    mLoggerPrefix = prefix;
-
-    Logger::SetThreadPrefix(mLoggerPrefix.c_str());
-}
-
-LoggerPrefix::~LoggerPrefix()
-{
-    Logger::SetThreadPrefix("");
-}
-
-//
 // TestServer implementation
 //
 bool TestServer::OnInit()
 {
-    return testService.Init(this);
+    return (testService.Init(this) && healthService.Init(this));
 }
 
 bool TestServer::OnRun()

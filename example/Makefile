@@ -24,16 +24,18 @@ LDFLAGS =
 PROJECT_HOME = .
 OBJ_DIR = $(PROJECT_HOME)/_obj
 
-SRCS_SRV = $(PROJECT_HOME)/main.cpp \
+SRCS_SRV = $(PROJECT_HOME)/server.cpp \
            $(PROJECT_HOME)/testServer.cpp \
-           $(PROJECT_HOME)/testService.cpp 
+           $(PROJECT_HOME)/testService.cpp \
+           $(PROJECT_HOME)/healthService.cpp 
 
 SRCS_CLN = $(PROJECT_HOME)/client.cpp 
 
 # gRPC proto files 
 PROTO_HOME = $(PROJECT_HOME)
-PROTO_SRCS = $(PROTO_HOME)/test.proto 
 PROTO_OUT  = $(PROJECT_HOME)/_generate
+PROTO_SRCS = $(PROTO_HOME)/test.proto \
+             $(PROTO_HOME)/health.proto 
 
 # gRPC support
 GRPC_HOME = ../grpc_1.38.0_install
