@@ -20,6 +20,9 @@ CFLAGS = -std=c++11 -Wall -pthread
 LD = $(CC) 
 LDFLAGS = 
 
+CFLAGS += -g
+#CFLAGS += -D NDEBUG
+
 # Sources
 PROJECT_HOME = .
 OBJ_DIR = $(PROJECT_HOME)/_obj
