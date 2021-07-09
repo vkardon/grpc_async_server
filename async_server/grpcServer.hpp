@@ -190,8 +190,21 @@ private:
                 builder.RegisterService(srv->service);
             }
 
+            // Add Completion Queue
             std::unique_ptr<::grpc::ServerCompletionQueue> cq = builder.AddCompletionQueue();
+            if(!cq)
+            {
+                OnError("Failed to add Completion Queue");
+                return;
+            }
+
+            // Build and start server
             std::unique_ptr<::grpc::Server> server = builder.BuildAndStart();
+            if(!server)
+            {
+                OnError("Failed to add build and start server");
+                return;
+            }
 
             // Ask the system start processing requests
             for(RequestContext* ctx : requestContextList_)
