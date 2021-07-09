@@ -7,8 +7,11 @@
 //
 // TestServer implementation
 //
-bool TestServer::OnInit()
+bool TestServer::OnInit(::grpc::ServerBuilder& builder)
 {
+    // Don't allow reusing port
+    // Note: Check other channel arguments here
+    builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
     return (testService.Init(this) && healthService.Init(this));
 }
 

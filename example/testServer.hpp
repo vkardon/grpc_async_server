@@ -15,7 +15,7 @@ public:
     virtual ~TestServer() = default;
 
     // gen::GrpcServer overrides
-    virtual bool OnInit() override;
+    virtual bool OnInit(::grpc::ServerBuilder& builder) override;
     virtual bool OnRun() override;
     virtual void OnError(const std::string& err) const override;
     virtual void OnInfo(const std::string& info) const override;

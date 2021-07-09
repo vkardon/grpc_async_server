@@ -158,8 +158,10 @@ private:
 
         while(true)
         {
+            ::grpc::ServerBuilder builder;
+
             // Call derived class initialization
-            if(!OnInit())
+            if(!OnInit(builder))
             {
                 OnError("Server inialization failed");
                 break;
@@ -176,7 +178,6 @@ private:
             }
 
             // Setup server
-            ::grpc::ServerBuilder builder;
             for(const std::string& addressUri : addressUriArr)
             {
                 OnInfo("addressUri = '" + addressUri + "'");
@@ -359,7 +360,7 @@ private:
     void AddService(GrpcService* grpcService);
 
     // For derived class to override
-    virtual bool OnInit() = 0;
+    virtual bool OnInit(::grpc::ServerBuilder& builder) = 0;
     virtual bool OnRun() = 0;
 
     // Class data
