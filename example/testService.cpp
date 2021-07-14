@@ -1,4 +1,4 @@
-//
+//D
 // testService.cpp
 //
 #include "testService.hpp"
@@ -31,7 +31,6 @@ bool TestService::Init(gen::GrpcServer* srv)
     TEST_SERVER_STREAM(ServerStreamTest)
     TEST_CLIENT_STREAM(ClientStreamTest)
 
-    //TEST_CLIENT_STREAM(ClientStreamTest)
     return true;
 }
 

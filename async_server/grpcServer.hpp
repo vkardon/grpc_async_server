@@ -93,23 +93,23 @@ public:
     GrpcServer& operator=(const GrpcServer&) = delete;
 
     // Run() is blocked. It doesn't return until OnRun() returns false.
-    void Run(unsigned short port, int threadCount)
+    bool Run(unsigned short port, int threadCount)
     {
         std::vector<std::string> addressUriArr;
         addressUriArr.push_back(FormatDnsAddressUri("0.0.0.0", port));
-        RunImpl(addressUriArr, threadCount);
+        return RunImpl(addressUriArr, threadCount);
     }
 
-    void Run(const char* domainSocketPath, int threadCount)
+    bool Run(const char* domainSocketPath, int threadCount)
     {
         std::vector<std::string> addressUriArr;
         addressUriArr.push_back(FormatUnixDomainSocketAddressUri(domainSocketPath));
-        RunImpl(addressUriArr, threadCount);
+        return RunImpl(addressUriArr, threadCount);
     }
 
-    void Run(const std::vector<std::string>& addressUriArr, int threadCount)
+    bool Run(const std::vector<std::string>& addressUriArr, int threadCount)
     {
-        RunImpl(addressUriArr, threadCount);
+        return RunImpl(addressUriArr, threadCount);
     }
 
     GrpcService* GetService(const std::string& serviceName)
@@ -144,7 +144,7 @@ public:
     virtual void OnInfo(const std::string& /*info*/) const {}
 
 private:
-    void RunImpl(const std::vector<std::string>& addressUriArr, int threadCount)
+    bool RunImpl(const std::vector<std::string>& addressUriArr, int threadCount)
     {
         // Get the number of contexts for the server threads.
         // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
@@ -156,6 +156,7 @@ private:
         //int context_count = threadCount * 100;
         contextCount_ = threadCount * 10;
 
+        bool result = false; // Initially
         while(true)
         {
             ::grpc::ServerBuilder builder;
@@ -196,7 +197,7 @@ private:
             if(!cq)
             {
                 OnError("Failed to add Completion Queue");
-                return;
+                break;
             }
 
             // Build and start server
@@ -204,7 +205,7 @@ private:
             if(!server)
             {
                 OnError("Failed to add build and start server");
-                return;
+                break;
             }
 
             // Ask the system start processing requests
@@ -252,6 +253,7 @@ private:
                 ;
 
             // We are done
+            result = true;
             break;
         }
 
@@ -271,6 +273,7 @@ private:
         requestContextList_.clear();
 
         contextCount_ = 0;
+        return result;
     }
 
     void ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex)

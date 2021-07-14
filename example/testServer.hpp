@@ -11,7 +11,6 @@ class TestServer : public gen::GrpcServer
 {
 public:
     TestServer() : testService(this) {}
-
     virtual ~TestServer() = default;
 
     // gen::GrpcServer overrides
