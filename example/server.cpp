@@ -5,6 +5,7 @@
 #include "testServer.hpp"
 #include "testServerConfig.hpp"
 #include "logger.hpp"
+#include "grpcUtils.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -30,6 +31,12 @@ int main(int argc, char *argv[])
     {
         // Net socket
         srv.Run(PORT_NUMBER, threadCount);
+
+        // Both Net socket and Unix domain socket
+        // std::vector<gen::AddressUri> addressUriArr;
+        // addressUriArr.push_back({ gen::FormatDnsAddressUri("0.0.0.0", PORT_NUMBER) });
+        // addressUriArr.push_back({ gen::FormatUnixDomainSocketAddressUri(UNIX_DOMAIN_SOCKET_PATH) });
+        // srv.Run(addressUriArr, threadCount);
     }
 
     INFOMSG_MT("Grpc Server has stopped");

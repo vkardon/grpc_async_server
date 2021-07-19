@@ -82,6 +82,15 @@ using ClientStreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::S
 //
 // Class GrpcServer
 //
+struct AddressUri
+{
+    AddressUri(const std::string& uri_,
+               std::shared_ptr<grpc::ServerCredentials> credentials_ = nullptr)
+        : uri(uri_), credentials(credentials_ ? credentials_ : ::grpc::InsecureServerCredentials()) {}
+    std::string uri;
+    std::shared_ptr<grpc::ServerCredentials> credentials;
+};
+
 class GrpcServer
 {
 public:
@@ -93,21 +102,23 @@ public:
     GrpcServer& operator=(const GrpcServer&) = delete;
 
     // Run() is blocked. It doesn't return until OnRun() returns false.
-    bool Run(unsigned short port, int threadCount)
+    bool Run(unsigned short port, int threadCount,
+             std::shared_ptr<grpc::ServerCredentials> credentials = nullptr)
     {
-        std::vector<std::string> addressUriArr;
-        addressUriArr.push_back(FormatDnsAddressUri("0.0.0.0", port));
+        std::vector<AddressUri> addressUriArr;
+        addressUriArr.push_back({ FormatDnsAddressUri("0.0.0.0", port), credentials });
         return RunImpl(addressUriArr, threadCount);
     }
 
-    bool Run(const char* domainSocketPath, int threadCount)
+    bool Run(const char* domainSocketPath, int threadCount,
+             std::shared_ptr<grpc::ServerCredentials> credentials = nullptr)
     {
-        std::vector<std::string> addressUriArr;
-        addressUriArr.push_back(FormatUnixDomainSocketAddressUri(domainSocketPath));
+        std::vector<AddressUri> addressUriArr;
+        addressUriArr.push_back({ FormatUnixDomainSocketAddressUri(domainSocketPath), credentials });
         return RunImpl(addressUriArr, threadCount);
     }
 
-    bool Run(const std::vector<std::string>& addressUriArr, int threadCount)
+    bool Run(const std::vector<AddressUri>& addressUriArr, int threadCount)
     {
         return RunImpl(addressUriArr, threadCount);
     }
@@ -144,7 +155,7 @@ public:
     virtual void OnInfo(const std::string& /*info*/) const {}
 
 private:
-    bool RunImpl(const std::vector<std::string>& addressUriArr, int threadCount)
+    bool RunImpl(const std::vector<AddressUri>& addressUriArr, int threadCount)
     {
         // Get the number of contexts for the server threads.
         // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
@@ -179,10 +190,10 @@ private:
             }
 
             // Setup server
-            for(const std::string& addressUri : addressUriArr)
+            for(const AddressUri& addressUri : addressUriArr)
             {
-                OnInfo("addressUri = '" + addressUri + "'");
-                builder.AddListeningPort(addressUri, ::grpc::InsecureServerCredentials());
+                OnInfo("addressUri = '" + addressUri.uri + "'");
+                builder.AddListeningPort(addressUri.uri, addressUri.credentials);
             }
 
             // Register services
