@@ -24,8 +24,6 @@
 
 namespace gen {
 
-//const int GRPC_MAX_MESSAGE_SIZE = 1024 * 8; // 8K
-
 class GrpcServer;
 
 //
@@ -69,15 +67,18 @@ using ProcessClientStreamFunc = void (GrpcService::*)(const RpcClientStreamConte
 //
 template<class RPC_SERVICE, class REQ, class RESP>
 using UnaryRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
-        REQ*, ::grpc::ServerAsyncResponseWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
+        REQ*, ::grpc::ServerAsyncResponseWriter<RESP>*,
+        ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
 template<class RPC_SERVICE, class REQ, class RESP>
 using ServerStreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
-        REQ*, ::grpc::ServerAsyncWriter<RESP>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
+        REQ*, ::grpc::ServerAsyncWriter<RESP>*,
+        ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
 template<class RPC_SERVICE, class REQ, class RESP>
 using ClientStreamRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
-        ::grpc::ServerAsyncReader<RESP, REQ>*, ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
+        ::grpc::ServerAsyncReader<RESP, REQ>*,
+        ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
 //
 // Class GrpcServer
@@ -125,8 +126,8 @@ public:
 
     GrpcService* GetService(const std::string& serviceName)
     {
-        auto it = serviceMap_.find(serviceName);
-        return (it == serviceMap_.end() ? nullptr : it->second);
+        auto it = serviceMap.find(serviceName);
+        return (it == serviceMap.end() ? nullptr : it->second);
     }
 
     // Tell the system to process unary RPC request
@@ -139,9 +140,9 @@ public:
     // Tell the system to process stream RPC request
     template<class RPC_SERVICE, class REQ, class RESP>
     void AddServerStreamRpcRequest(GrpcService* grpcService,
-                             ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                             ProcessServerStreamFunc<REQ, RESP> processFunc,
-                             const void* processParam);
+                                   ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
+                                   ProcessServerStreamFunc<REQ, RESP> processFunc,
+                                   const void* processParam);
 
     // Tell the system to process client stream RPC request
     template<class RPC_SERVICE, class REQ, class RESP>
@@ -165,7 +166,7 @@ private:
         // Presuming fast application response (through genGrpcServer::XXX),
         // this approach should be sufficient.
         //int context_count = threadCount * 100;
-        contextCount_ = threadCount * 10;
+        contextCount = threadCount * 10;
 
         bool result = false; // Initially
         while(true)
@@ -178,12 +179,12 @@ private:
                 OnError("Server inialization failed");
                 break;
             }
-            else if(serviceMap_.empty())
+            else if(serviceMap.empty())
             {
                 OnError("Server inialization failed: no services registered");
                 break;
             }
-            else if(requestContextList_.empty())
+            else if(requestContextList.empty())
             {
                 OnError("Server inialization failed: no RPC request registered");
                 break;
@@ -197,7 +198,7 @@ private:
             }
 
             // Register services
-            for(auto& pair : serviceMap_)
+            for(auto& pair : serviceMap)
             {
                 GrpcService* srv = pair.second;
                 builder.RegisterService(srv->service);
@@ -220,7 +221,7 @@ private:
             }
 
             // Ask the system start processing requests
-            for(RequestContext* ctx : requestContextList_)
+            for(RequestContext* ctx : requestContextList)
             {
                 ctx->StartProcessing(cq.get());
             }
@@ -260,7 +261,7 @@ private:
             // Ignore all remaining events
             void* ignored_tag = nullptr;
             bool ignored_ok = false;
-            while (cq->Next(&ignored_tag, &ignored_ok))
+            while(cq->Next(&ignored_tag, &ignored_ok))
                 ;
 
             // We are done
@@ -269,21 +270,21 @@ private:
         }
 
         // Clean up...
-        for(auto& pair : serviceMap_)
+        for(auto& pair : serviceMap)
         {
             GrpcService* srv = pair.second;
             delete srv->service;
             srv->service = nullptr;
         }
-        serviceMap_.clear();
+        serviceMap.clear();
 
-        for(RequestContext* ctx : requestContextList_)
+        for(RequestContext* ctx : requestContextList)
         {
             delete ctx;
         }
-        requestContextList_.clear();
+        requestContextList.clear();
 
-        contextCount_ = 0;
+        contextCount = 0;
         return result;
     }
 
@@ -378,9 +379,9 @@ private:
     virtual bool OnRun() = 0;
 
     // Class data
-    int contextCount_ = 0;
-    std::map<std::string, GrpcService*> serviceMap_;
-    std::list<RequestContext*> requestContextList_;
+    int contextCount = 0;
+    std::map<std::string, GrpcService*> serviceMap;
+    std::list<RequestContext*> requestContextList;
 };
 
 //
@@ -621,10 +622,10 @@ struct ClientStreamRequestContext : public RequestContext
     virtual RequestContext* CloneMe() const
     {
         ClientStreamRequestContext* ctx = new (std::nothrow) ClientStreamRequestContext;
-        ctx->grpcService  = grpcService;
+        ctx->grpcService = grpcService;
         ctx->processParam = processParam;
-        ctx->processFunc  = processFunc;
-        ctx->requestFunc  = requestFunc;
+        ctx->processFunc = processFunc;
+        ctx->requestFunc = requestFunc;
         return ctx;
     }
 
@@ -751,7 +752,7 @@ void GrpcServer::AddService(GrpcService* grpcService)
         const char* serviceName = RPC_SERVICE::service_full_name();
         grpcService->service = new (std::nothrow) typename RPC_SERVICE::AsyncService;
         grpcService->serviceName = serviceName;
-        serviceMap_[serviceName] = grpcService;
+        serviceMap[serviceName] = grpcService;
 //        std::cout << ">>> " << __func__ << ":"
 //                << " name='" << grpcService->serviceName << "',"
 //                << " service=" << grpcService->service << std::endl;
@@ -778,9 +779,9 @@ void GrpcServer::AddUnaryRpcRequest(GrpcService* grpcService,
     ctx.requestFunc  = requestFunc;
 
     // Add request contexts
-    for(int i = 0; i < contextCount_; i++)
+    for(int i = 0; i < contextCount; i++)
     {
-        requestContextList_.push_back(ctx.CloneMe());
+        requestContextList.push_back(ctx.CloneMe());
     }
 }
 
@@ -798,15 +799,15 @@ void GrpcServer::AddServerStreamRpcRequest(GrpcService* grpcService,
     AddService<RPC_SERVICE>(grpcService);
 
     ServerStreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
-    ctx.grpcService  = grpcService;
+    ctx.grpcService = grpcService;
     ctx.processParam = processParam;
-    ctx.processFunc  = processFunc;
-    ctx.requestFunc  = requestFunc;
+    ctx.processFunc = processFunc;
+    ctx.requestFunc = requestFunc;
 
     // Add request contexts
-    for(int i = 0; i < contextCount_; i++)
+    for(int i = 0; i < contextCount; i++)
     {
-        requestContextList_.push_back(ctx.CloneMe());
+        requestContextList.push_back(ctx.CloneMe());
     }
 }
 
@@ -824,15 +825,15 @@ void GrpcServer::AddClientStreamRpcRequest(GrpcService* grpcService,
     AddService<RPC_SERVICE>(grpcService);
 
     ClientStreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
-    ctx.grpcService  = grpcService;
+    ctx.grpcService = grpcService;
     ctx.processParam = processParam;
-    ctx.processFunc  = processFunc;
-    ctx.requestFunc  = requestFunc;
+    ctx.processFunc = processFunc;
+    ctx.requestFunc = requestFunc;
 
     // Add request contexts
-    for(int i = 0; i < contextCount_; i++)
+    for(int i = 0; i < contextCount; i++)
     {
-        requestContextList_.push_back(ctx.CloneMe());
+        requestContextList.push_back(ctx.CloneMe());
     }
 }
 
