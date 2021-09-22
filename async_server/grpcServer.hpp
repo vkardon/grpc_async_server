@@ -20,7 +20,7 @@
 #include <sstream>          // stringstream
 #include <thread>
 #include <signal.h>         // pthread_sigmask
-#include <unistd.h>         // sleep
+#include <unistd.h>         // usleep
 
 namespace gen {
 
@@ -151,6 +151,9 @@ public:
                                    ProcessClientStreamFunc<REQ, RESP> processFunc,
                                    const void* processParam);
 
+    // Set OnRun() idle interval in milliseconds
+    void SetIdleInterval(int milliseconds) { idleIntervalMilliseconds = milliseconds * 1000; }
+
     // For derived class to override (Error and Info reporting)
     virtual void OnError(const std::string& /*err*/) const {}
     virtual void OnInfo(const std::string& /*info*/) const {}
@@ -240,7 +243,7 @@ private:
             // Loop until OnRun()returns
             while(OnRun())
             {
-                sleep(2); // Sleep for 2 seconds and continue
+                usleep(idleIntervalMilliseconds);
             }
 
             OnInfo("Stopping GrpcServer ...");
@@ -382,6 +385,7 @@ private:
     int contextCount = 0;
     std::map<std::string, GrpcService*> serviceMap;
     std::list<RequestContext*> requestContextList;
+    unsigned int idleIntervalMilliseconds{2000000}; // 2 secs default
 };
 
 //

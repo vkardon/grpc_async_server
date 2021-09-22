@@ -12,6 +12,12 @@ bool TestServer::OnInit(::grpc::ServerBuilder& builder)
     // Don't allow reusing port
     // Note: Check other channel arguments here
     builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+
+    // Set OnRun idle interval to 1 sec (in milliseconds)
+    // Note: this is optional. The default 2 secs interval
+    // will be used otherwise, that is fine most of the time.
+    SetIdleInterval(1000);
+
     return (testService.Init(this) && healthService.Init(this));
 }
 
