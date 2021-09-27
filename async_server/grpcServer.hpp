@@ -152,7 +152,7 @@ public:
                                    const void* processParam);
 
     // Set OnRun() idle interval in milliseconds
-    void SetIdleInterval(int milliseconds) { idleIntervalMilliseconds = milliseconds * 1000; }
+    void SetIdleInterval(int milliseconds) { idleIntervalMicroseconds = milliseconds * 1000; }
 
     // For derived class to override (Error and Info reporting)
     virtual void OnError(const std::string& /*err*/) const {}
@@ -243,7 +243,7 @@ private:
             // Loop until OnRun()returns
             while(OnRun())
             {
-                usleep(idleIntervalMilliseconds);
+                usleep(idleIntervalMicroseconds);
             }
 
             OnInfo("Stopping GrpcServer ...");
@@ -385,7 +385,7 @@ private:
     int contextCount = 0;
     std::map<std::string, GrpcService*> serviceMap;
     std::list<RequestContext*> requestContextList;
-    unsigned int idleIntervalMilliseconds{2000000}; // 2 secs default
+    unsigned int idleIntervalMicroseconds{2000000}; // 2 secs default
 };
 
 //
