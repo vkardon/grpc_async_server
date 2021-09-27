@@ -11,7 +11,7 @@ bool HealthService::Init(gen::GrpcServer* srv)
               grpc::health::v1::HealthCheckRequest, grpc::health::v1::HealthCheckResponse,
               grpc::health::v1::Health, &HealthService::Check, nullptr, srv)
 
-    srv_ = srv;
+    mGrpcServer = srv;
     return true;
 }
 
@@ -32,7 +32,7 @@ void HealthService::Check(const gen::RpcContext& rpcCtx,
     else
     {
         // Return service-specific health status
-        gen::GrpcService* service = srv_->GetService(serviceName);
+        gen::GrpcService* service = mGrpcServer->GetService(serviceName);
         if(!service)
         {
             statusCode = ::grpc::NOT_FOUND;

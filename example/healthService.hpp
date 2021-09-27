@@ -25,7 +25,7 @@ public:
                grpc::health::v1::HealthCheckResponse& resp);
 
 private:
-    gen::GrpcServer* srv_{nullptr};
+    gen::GrpcServer* mGrpcServer{nullptr};
 };
 
 #endif // __HEALTH_SERVICE_HPP__
