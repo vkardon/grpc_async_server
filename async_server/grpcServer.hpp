@@ -63,7 +63,7 @@ template<class REQ, class RESP>
 using ProcessClientStreamFunc = void (GrpcService::*)(const RpcClientStreamContext&, const REQ&, RESP&);
 
 //
-// Template pointer to function that *request* the system to start processing unary.strean requests
+// Template pointer to function that *request* the system to start processing unary/stream requests
 //
 template<class RPC_SERVICE, class REQ, class RESP>
 using UnaryRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
