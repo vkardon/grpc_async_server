@@ -248,8 +248,10 @@ private:
 
             OnInfo("Stopping GrpcServer ...");
 
+            // Shutdown the server
             server->Shutdown();
-            cq->Shutdown();
+            //cq->Shutdown(); // grpc asserts if we shutdown cq while threads are still running
+            stop = true;
 
             OnInfo("Waiting for server threads to complete...");
 
@@ -261,11 +263,12 @@ private:
 
             OnInfo("All server threads are completed");
 
-            // Ignore all remaining events
+            // Shutdown and drain the completion queue
+            cq->Shutdown();
             void* ignored_tag = nullptr;
             bool ignored_ok = false;
             while(cq->Next(&ignored_tag, &ignored_ok))
-                ;
+                ; // Ignore all remaining events
 
             // We are done
             result = true;
@@ -304,8 +307,37 @@ private:
         void* tag = nullptr;
         bool eventReadSuccess = false;
 
-        while(cq->Next(&tag, &eventReadSuccess))
+        const std::chrono::milliseconds timeout(200);
+        std::chrono::time_point<std::chrono::system_clock> deadline;
+
+        // Note: Reading events's with blocking Next() doesn't work well
+        // when server is being shutting down while some PRPs are still
+        // in progress (grpc asserts). Non-blocking AsyncNext() works fine.
+        // while(cq->Next(&tag, &eventReadSuccess))
+
+        while(!stop)
         {
+            deadline = std::chrono::system_clock::now() + timeout;
+            const grpc::CompletionQueue::NextStatus status = cq->AsyncNext(&tag, &eventReadSuccess, deadline);
+
+            if(status == grpc::CompletionQueue::NextStatus::GOT_EVENT)
+            {
+                // We have event to process
+            }
+            else if(status == grpc::CompletionQueue::NextStatus::TIMEOUT)
+            {
+                continue;
+            }
+            else if(status == grpc::CompletionQueue::NextStatus::SHUTDOWN)
+            {
+                break; // The server is being shutting down
+            }
+            else
+            {
+                OnError("Server Completion Queue returned invalid status" );
+                continue;
+            }
+
             if(tag == nullptr)
             {
                 OnError("Server Completion Queue returned empty tag");
@@ -385,6 +417,7 @@ private:
     int contextCount = 0;
     std::map<std::string, GrpcService*> serviceMap;
     std::list<RequestContext*> requestContextList;
+    std::atomic<bool> stop{false};
     unsigned int idleIntervalMicroseconds{2000000}; // 2 secs default
 };
 
