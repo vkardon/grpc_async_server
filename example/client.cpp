@@ -8,9 +8,8 @@
 #include <sys/time.h>   // gettimeofday()
 #include <sstream>      // std::stringstream
 #include <thread>
+#include "grpcClient.hpp"
 #include "testServerConfig.hpp"
-
-#include <grpcpp/grpcpp.h>
 
 #include "test.grpc.pb.h"
 #include "health.grpc.pb.h"
@@ -49,58 +48,18 @@ public:
     }
 };
 
-//
-// grpc::StatusCode to string conversion routine
-//
-const char* StatusToStr(grpc::StatusCode code)
+bool PingTest(gen::GrpcClient& grpcClient)
 {
-    switch(code)
-    {
-    case grpc::StatusCode::OK:                  return "OK";
-    case grpc::StatusCode::CANCELLED:           return "CANCELLED";
-    case grpc::StatusCode::UNKNOWN:             return "UNKNOWN";
-    case grpc::StatusCode::INVALID_ARGUMENT:    return "INVALID_ARGUMENT";
-    case grpc::StatusCode::DEADLINE_EXCEEDED:   return "DEADLINE_EXCEEDED";
-    case grpc::StatusCode::NOT_FOUND:           return "NOT_FOUND";
-    case grpc::StatusCode::ALREADY_EXISTS:      return "ALREADY_EXISTS";
-    case grpc::StatusCode::PERMISSION_DENIED:   return "PERMISSION_DENIED";
-    case grpc::StatusCode::UNAUTHENTICATED:     return "UNAUTHENTICATED";
-    case grpc::StatusCode::RESOURCE_EXHAUSTED:  return "RESOURCE_EXHAUSTED";
-    case grpc::StatusCode::FAILED_PRECONDITION: return "FAILED_PRECONDITION";
-    case grpc::StatusCode::ABORTED:             return "ABORTED";
-    case grpc::StatusCode::OUT_OF_RANGE:        return "OUT_OF_RANGE";
-    case grpc::StatusCode::UNIMPLEMENTED:       return "UNIMPLEMENTED";
-    case grpc::StatusCode::INTERNAL:            return "INTERNAL";
-    case grpc::StatusCode::UNAVAILABLE:         return "UNAVAILABLE";
-    case grpc::StatusCode::DATA_LOSS:           return "DATA_LOSS";
-    case grpc::StatusCode::DO_NOT_USE:          return "DO_NOT_USE";
-    default:                                    return "INVALID_ERROR_CODE";
-    }
-}
-
-bool PingTest(const std::string& addressUri)
-{
-    // Instantiate a channel, out of which the actual RPCs are created
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
-    std::unique_ptr<test::GrpcService::Stub> stub = test::GrpcService::NewStub(channel);
-
-    // Set random sessionId and requestId
-    grpc::ClientContext context;
-    context.AddMetadata("sessionid", std::to_string(rand() % 1000));
-    context.AddMetadata("requestid", std::to_string(rand() % 1000));
-
     test::PingRequest req;
     test::PingResponse resp;
 
-    grpc::Status s = stub->Ping(&context, req, &resp);
+    std::map<std::string, std::string> metadata;
+    metadata["sessionid"] = std::to_string(rand() % 1000);
+    metadata["requestid"] = std::to_string(rand() % 1000);
 
-    if(!s.ok())
+    if(!grpcClient.Call<test::GrpcService>(&test::GrpcService::Stub::Ping, req, resp, metadata))
     {
-        std::string err = s.error_message();
-        if(err.empty())
-            err = StatusToStr(s.error_code());
-
-        ERRORMSG_MT("Failed with error " << s.error_code() << ": " << err);
+        ERRORMSG_MT(grpcClient.GetError());
         return false;
     }
 
@@ -109,94 +68,77 @@ bool PingTest(const std::string& addressUri)
     return true;
 }
 
-bool ServerStreamTest(const std::string& addressUri)
+bool ServerStreamTest(gen::GrpcClient& grpcClient, bool silent = false)
 {
-    // Instantiate a channel, out of which the actual RPCs are created
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
-    std::unique_ptr<test::GrpcService::Stub> stub = test::GrpcService::NewStub(channel);
-
     test::ServerStreamTestRequest req;
     req.set_msg("ServerStreamTestRequest");
 
-    // Set random sessionId and requestId
-    grpc::ClientContext context;
-    context.AddMetadata("sessionid", std::to_string(rand() % 1000));
-    context.AddMetadata("requestid", std::to_string(rand() % 1000));
-
-    // Send request and read responses
-    std::list<test::ServerStreamTestResponse> respList;
-
-    test::ServerStreamTestResponse resp;
-    std::unique_ptr<grpc::ClientReader<test::ServerStreamTestResponse> > reader(stub->ServerStreamTest(&context, req));
-    while(reader->Read(&resp))
+    struct ResponseCallback : public gen::RespCallbackFunctor<test::ServerStreamTestResponse>
     {
-        //INFOMSG_MT("Got Record: " << resp.msg());
-        respList.push_back(resp);
-    }
-    grpc::Status s = reader->Finish();
+        bool operator()(const test::ServerStreamTestResponse& resp) override
+        {
+//            std::cout << resp.msg() << std::endl;
+            respList.push_back(resp);
+            return true;
+        }
 
-    if(!s.ok())
+        void Dump()
+        {
+            // Dump all collected responses
+            std::unique_lock<std::mutex> lock(logger::GetMutex());
+            std::cout << "BEGIN" << std::endl;
+            for(const test::ServerStreamTestResponse& resp : respList)
+            {
+                std::cout << resp.msg() << std::endl;
+            }
+            std::cout << "END: " << respList.size() << " responses" << std::endl;
+        }
+
+        std::list<test::ServerStreamTestResponse> respList;
+
+    } respCallback;
+
+    std::map<std::string, std::string> metadata;
+    metadata["sessionid"] = std::to_string(rand() % 1000);
+    metadata["requestid"] = std::to_string(rand() % 1000);
+
+    if(!grpcClient.CallStream<test::GrpcService>(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata))
     {
-        std::string err = s.error_message();
-        if(err.empty())
-            err = StatusToStr(s.error_code());
-
-        ERRORMSG_MT("Failed with error " << s.error_code() << ": " << err);
+        ERRORMSG_MT(grpcClient.GetError());
         return false;
     }
 
-    // Dump all collected responses
-    std::unique_lock<std::mutex> lock(logger::GetMutex());
-    std::cout << "BEGIN" << std::endl;
-    for(const test::ServerStreamTestResponse& resp : respList)
-    {
-        std::cout << resp.msg() << std::endl;
-    }
-    std::cout << "END: " << respList.size() << " responses" << std::endl;
+    if(!silent)
+        respCallback.Dump();
 
     return true;
 }
 
-bool ClientStreamTest(const std::string& addressUri)
+bool ClientStreamTest(gen::GrpcClient& grpcClient)
 {
-    // Instantiate a channel, out of which the actual RPCs are created
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
-    std::unique_ptr<test::GrpcService::Stub> stub = test::GrpcService::NewStub(channel);
-
-    // Set random sessionId and requestId
-    grpc::ClientContext context;
-    context.AddMetadata("sessionid", std::to_string(rand() % 1000));
-    context.AddMetadata("requestid", std::to_string(rand() % 1000));
-
-    test::ClientStreamTestResponse resp;
-    std::unique_ptr<grpc::ClientWriter<test::ClientStreamTestRequest>> writer(stub->ClientStreamTest(&context, &resp));
-
-    for(int i = 0; i < 20; i++)
+    struct RequestCallback : public gen::ReqCallbackFunctor<test::ClientStreamTestRequest>
     {
-        INFOMSG_MT("Client-side streaming message " + std::to_string(i + 1));
-
-        test::ClientStreamTestRequest req;
-        req.set_msg("ClientStreamTestRequest " + std::to_string(i + 1));
-
-        if(!writer->Write(req))
+        bool operator()(test::ClientStreamTestRequest& req) override
         {
-            // Broken stream
-            ERRORMSG_MT("Client-side streaming failed");
-            return false;
+            if(++count > 20)
+                return false;
+            INFOMSG_MT("Client-side streaming message " + std::to_string(count));
+            req.set_msg("ClientStreamTestRequest " + std::to_string(count));
+            return true;
         }
 
-        //usleep(100000);
-    }
-    writer->WritesDone();
-    grpc::Status s = writer->Finish();
+        int count{0};
+    } reqCallback;
 
-    if(!s.ok())
+    test::ClientStreamTestResponse resp;
+
+    std::map<std::string, std::string> metadata;
+    metadata["sessionid"] = std::to_string(rand() % 1000);
+    metadata["requestid"] = std::to_string(rand() % 1000);
+
+    if(!grpcClient.CallClientStream<test::GrpcService>(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata))
     {
-        std::string err = s.error_message();
-        if(err.empty())
-            err = StatusToStr(s.error_code());
-
-        ERRORMSG_MT("Failed with error " << s.error_code() << ": " << err);
+        ERRORMSG_MT(grpcClient.GetError());
         return false;
     }
 
@@ -205,61 +147,38 @@ bool ClientStreamTest(const std::string& addressUri)
     return true;
 }
 
-bool ShutdownTest(const std::string& addressUri)
+bool ShutdownTest(gen::GrpcClient& grpcClient)
 {
-    // Instantiate a channel, out of which the actual RPCs are created
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
-    std::unique_ptr<test::GrpcService::Stub> stub = test::GrpcService::NewStub(channel);
-
-    // Set random sessionId and requestId
-    grpc::ClientContext context;
-    context.AddMetadata("sessionid", std::to_string(rand() % 1000));
-    context.AddMetadata("requestid", std::to_string(rand() % 1000));
-
     test::ShutdownRequest req;
     test::ShutdownResponse resp;
 
+    std::map<std::string, std::string> metadata;
+    metadata["sessionid"] = std::to_string(rand() % 1000);
+    metadata["requestid"] = std::to_string(rand() % 1000);
+
     req.set_reason("Shutdown Test");
-    grpc::Status s = stub->Shutdown(&context, req, &resp);
 
-    if(!s.ok())
+    if(!grpcClient.Call<test::GrpcService>(&test::GrpcService::Stub::Shutdown, req, resp, metadata))
     {
-        std::string err = s.error_message();
-        if(err.empty())
-            err = StatusToStr(s.error_code());
-
-        ERRORMSG_MT("Failed with error " << s.error_code() << ": " << err);
+        ERRORMSG_MT(grpcClient.GetError());
         return false;
     }
 
-    const char* result = (resp.result() ? "success" : resp.msg().c_str());
+    const char* result = (resp.result() ? "success" : "error");
     INFOMSG_MT(result);
     return true;
 }
 
-bool HealthTest(const std::string& addressUri, const char* serviceName)
+bool HealthTest(gen::GrpcClient& grpcClient, const char* serviceName)
 {
-    // Instantiate a channel, out of which the actual RPCs are created
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
-    std::unique_ptr<grpc::health::v1::Health::Stub> stub = grpc::health::v1::Health::NewStub(channel);
-
-    // Set random sessionId and requestId
-    grpc::ClientContext context;
-
     grpc::health::v1::HealthCheckRequest req;
     grpc::health::v1::HealthCheckResponse resp;
 
     req.set_service(serviceName ? serviceName : "");
 
-    grpc::Status s = stub->Check(&context, req, &resp);
-
-    if(!s.ok())
+    if(!grpcClient.Call<grpc::health::v1::Health>(&grpc::health::v1::Health::Stub::Check, req, resp))
     {
-        std::string err = s.error_message();
-        if(err.empty())
-            err = StatusToStr(s.error_code());
-
-        ERRORMSG_MT("Failed with error " << s.error_code() << ": " << err);
+        ERRORMSG_MT(grpcClient.GetError());
         return false;
     }
 
@@ -275,7 +194,7 @@ bool HealthTest(const std::string& addressUri, const char* serviceName)
     return true;
 }
 
-void LoadTest(const std::string& addressUri)
+void LoadTest(gen::GrpcClient& grpcClient)
 {
     const int numClientThreads = 100;  // Number of threads
     const int numRpcs = 50;            // Number of RPCs per thread
@@ -290,18 +209,16 @@ void LoadTest(const std::string& addressUri)
 
     for(std::thread& thread : threads)
     {
-        // Capture threadIndex by value, capture other variables by reference
         thread = std::thread([&]()
         {
+            gen::GrpcClient thisGrpcClient;
+            thisGrpcClient.InitFromAddressUri(grpcClient.GetAddressUri());
+
             for(int i = 0; i < numRpcs; ++i)
             {
                 // Format request message and call RPC
-                if(!ServerStreamTest(addressUri))
+                if(!ServerStreamTest(thisGrpcClient, true /*silent*/))
                     break;
-
-//                // Client-streaming test
-//                if(!client.ClientStreamTest(addressUri))
-//                    break;
             }
         });
     }
@@ -331,66 +248,62 @@ void PrintUsage(const char* arg = nullptr)
 
 int main(int argc, char** argv)
 {
-    char addressUri[256] {};
+    if(argc < 2)
+    {
+        PrintUsage();
+        return 0;
+    }
+
+    // Initialize gRpc client
+    gen::GrpcClient grpcClient;
 
     if(!strcmp(URI, "domain_socket"))
     {
         // Unix domain socket
-        sprintf(addressUri, "unix://%s", UNIX_DOMAIN_SOCKET_PATH);
+        grpcClient.Init(UNIX_DOMAIN_SOCKET_PATH);
     }
     else if(!strcmp(URI, "domain_abstract_socket"))
     {
         // Unix domain socket in abstract namespace
-        sprintf(addressUri, "unix-abstract:%s", UNIX_DOMAIN_ABSTRACT_SOCKET_PATH);
+        // Note: the first character in socket path must be '\0'.
+        char buf[256]{0};
+        strcpy(buf+1, UNIX_DOMAIN_ABSTRACT_SOCKET_PATH);
+        grpcClient.Init(buf);
     }
     else //(!strcmp(URI, "dns"))
     {
         // Net socket
-        sprintf(addressUri, "localhost:%d", PORT_NUMBER);
+        grpcClient.Init("localhost", PORT_NUMBER);
     }
 
-    // To call the server, we need to instantiate a channel, out of which
-    // the actual RPCs are created. This channel models a connection to an
-    // endpoint specified by addressUri. We are going to indicate that the
-    // channel isn't authenticated (use of InsecureChannelCredentials()).
-    // Note: We are going to instantiate channel in every RPCs simply to
-    // demonstrate necessary steps. In real application, channel should
-    // be created once per addressUri and shared across RPCs.
-
-    if(argc > 1)
+    // Call gRpc service
+    if(!strcmp(argv[1], "ping"))
     {
-        if(!strcmp(argv[1], "ping"))
-        {
-            PingTest(addressUri);
-        }
-        else if(!strcmp(argv[1], "serverstream"))
-        {
-            ServerStreamTest(addressUri);
-        }
-        else if(!strcmp(argv[1], "clientstream"))
-        {
-            ClientStreamTest(addressUri);
-        }
-        else if(!strcmp(argv[1], "shutdown"))
-        {
-            ShutdownTest(addressUri);
-        }
-        else if(!strcmp(argv[1], "health"))
-        {
-            HealthTest(addressUri, (argc > 2 ? argv[2]: nullptr));
-        }
-        else if(!strcmp(argv[1], "load"))
-        {
-            LoadTest(addressUri);
-        }
-        else
-        {
-            PrintUsage(argv[1]);
-        }
+        PingTest(grpcClient);
+    }
+    else if(!strcmp(argv[1], "serverstream"))
+    {
+        ServerStreamTest(grpcClient);
+    }
+    else if(!strcmp(argv[1], "clientstream"))
+    {
+        ClientStreamTest(grpcClient);
+    }
+    else if(!strcmp(argv[1], "shutdown"))
+    {
+        ShutdownTest(grpcClient);
+    }
+    else if(!strcmp(argv[1], "health"))
+    {
+        HealthTest(grpcClient, (argc > 2 ? argv[2]: nullptr));
+    }
+    else if(!strcmp(argv[1], "load"))
+    {
+        LoadTest(grpcClient);
     }
     else
     {
-        PrintUsage();
+        PrintUsage(argv[1]);
     }
 
     return 0;

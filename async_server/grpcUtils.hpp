@@ -5,15 +5,20 @@
 #ifndef __GRPC_UTILS_HPP__
 #define __GRPC_UTILS_HPP__
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <grpcpp/grpcpp.h>
+#pragma GCC diagnostic pop
+
 namespace gen {
 
-// Helper to formst DNS address uri
-inline std::string FormatDnsAddressUri(const char* hostname, unsigned short port)
+// Helper to format DNS address uri
+inline std::string FormatDnsAddressUri(const char* host, unsigned short port)
 {
-    return "dns:" + std::string(hostname) + ":" + std::to_string(port);
+    return "dns:" + std::string(host) + ":" + std::to_string(port);
 }
 
-// Helper to formst Unix Domain Socket address uri
+// Helper to format Unix Domain Socket address uri
 inline std::string FormatUnixDomainSocketAddressUri(const char* domainSocketPath)
 {
     if(domainSocketPath[0] == '\0')
@@ -41,6 +46,33 @@ inline std::string FormatUnixDomainSocketAddressUri(const char* domainSocketPath
         //    (i.e., there will actually be three slashes, two prior to the path and another to begin the absolute path).
         //
         return "unix://" + std::string(domainSocketPath);
+    }
+}
+
+// Helper routine to convert grpc::StatusCode to string
+inline const char* StatusToStr(grpc::StatusCode code)
+{
+    switch(code)
+    {
+    case grpc::StatusCode::OK:                  return "OK";
+    case grpc::StatusCode::CANCELLED:           return "CANCELLED";
+    case grpc::StatusCode::UNKNOWN:             return "UNKNOWN";
+    case grpc::StatusCode::INVALID_ARGUMENT:    return "INVALID_ARGUMENT";
+    case grpc::StatusCode::DEADLINE_EXCEEDED:   return "DEADLINE_EXCEEDED";
+    case grpc::StatusCode::NOT_FOUND:           return "NOT_FOUND";
+    case grpc::StatusCode::ALREADY_EXISTS:      return "ALREADY_EXISTS";
+    case grpc::StatusCode::PERMISSION_DENIED:   return "PERMISSION_DENIED";
+    case grpc::StatusCode::UNAUTHENTICATED:     return "UNAUTHENTICATED";
+    case grpc::StatusCode::RESOURCE_EXHAUSTED:  return "RESOURCE_EXHAUSTED";
+    case grpc::StatusCode::FAILED_PRECONDITION: return "FAILED_PRECONDITION";
+    case grpc::StatusCode::ABORTED:             return "ABORTED";
+    case grpc::StatusCode::OUT_OF_RANGE:        return "OUT_OF_RANGE";
+    case grpc::StatusCode::UNIMPLEMENTED:       return "UNIMPLEMENTED";
+    case grpc::StatusCode::INTERNAL:            return "INTERNAL";
+    case grpc::StatusCode::UNAVAILABLE:         return "UNAVAILABLE";
+    case grpc::StatusCode::DATA_LOSS:           return "DATA_LOSS";
+    case grpc::StatusCode::DO_NOT_USE:          return "DO_NOT_USE";
+    default:                                    return "INVALID_ERROR_CODE";
     }
 }
 

@@ -16,7 +16,8 @@ else
   CC_LIB_PATH = $(LD_LIBRARY_PATH)
 endif
 
-CFLAGS = -std=c++11 -Wall -pthread
+#CFLAGS = -std=c++11 -Wall -pthread
+CFLAGS = -std=c++1z -Wall -pthread
 LD = $(CC) 
 LDFLAGS = 
 

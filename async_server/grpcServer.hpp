@@ -36,6 +36,11 @@ struct RequestContext
 
     std::unique_ptr<::grpc::ServerContext> srv_ctx;
     enum : char { UNKNOWN=0, REQUEST, READ, READEND, WRITE, FINISH } state = UNKNOWN;
+    GrpcService* grpcService = nullptr;
+
+    // Any application-level data assigned by AddRpcRequest.
+    // It will be make available to RPC function through RpcContext.
+    const void* processParam = nullptr; // Any application-level data stored by AddRpcRequest
 
     virtual void Process() = 0;
     virtual void StartProcessing(::grpc::ServerCompletionQueue* cq) = 0;
@@ -63,7 +68,7 @@ template<class REQ, class RESP>
 using ProcessClientStreamFunc = void (GrpcService::*)(const RpcClientStreamContext&, const REQ&, RESP&);
 
 //
-// Template pointer to function that *request* the system to start processing unary/stream requests
+// Template pointer to function that *request* the system to start processing unary.strean requests
 //
 template<class RPC_SERVICE, class REQ, class RESP>
 using UnaryRequestFuncPtr = void (AsyncService<RPC_SERVICE>::*)(::grpc::ServerContext*,
@@ -442,11 +447,6 @@ struct UnaryRequestContext : public RequestContext
 
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncResponseWriter<RESP>> resp_writer;
-    GrpcService* grpcService = nullptr;
-
-    // Any application-level data assigned by AddRpcRequest.
-    // It will be make available to RPC function through RpcContext.
-    const void* processParam = nullptr; // Any application-level data stored by AddRpcRequest
 
     // Pointer to function that does actual processing
     ProcessUnaryFunc<REQ, RESP> processFunc = nullptr;
@@ -520,11 +520,6 @@ struct ServerStreamRequestContext : public RequestContext
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncWriter<RESP>> resp_writer;
     std::unique_ptr<RpcServerStreamContext> stream_ctx;
-    GrpcService* grpcService = nullptr;
-
-    // Any application-level data assigned by AddRpcRequest.
-    // It will be make available to RPC function through RpcContext.
-    const void* processParam = nullptr; // Any application-level data stored by AddRpcRequest
 
     // Pointer to function that does actual processing
     ProcessServerStreamFunc<REQ, RESP> processFunc = nullptr;
@@ -670,11 +665,6 @@ struct ClientStreamRequestContext : public RequestContext
     RESP resp;
     std::unique_ptr<::grpc::ServerAsyncReader<RESP, REQ>> req_reader;
     std::unique_ptr<RpcClientStreamContext> stream_ctx;
-    GrpcService* grpcService = nullptr;
-
-    // Any application-level data assigned by AddRpcRequest.
-    // It will be make available to RPC function through RpcContext.
-    const void* processParam = nullptr; // Any application-level data stored by AddRpcRequest
 
     // Pointer to function that does actual processing
     ProcessClientStreamFunc<REQ, RESP> processFunc = nullptr;
