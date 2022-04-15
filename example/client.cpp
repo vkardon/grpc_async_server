@@ -171,14 +171,15 @@ bool ShutdownTest(GrpcClient& grpcClient)
     return true;
 }
 
-bool HealthTest(const char* serviceName)
+bool HealthTest(const std::string& addressUri, const std::string& serviceName)
 {
     gen::GrpcClient<grpc::health::v1::Health> healthServiceClient;
+    healthServiceClient.InitFromAddressUri(addressUri);
 
     grpc::health::v1::HealthCheckRequest req;
     grpc::health::v1::HealthCheckResponse resp;
 
-    req.set_service(serviceName ? serviceName : "");
+    req.set_service(serviceName);
 
     if(!healthServiceClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp))
     {
@@ -299,7 +300,7 @@ int main(int argc, char** argv)
     }
     else if(!strcmp(argv[1], "health"))
     {
-        HealthTest(argc > 2 ? argv[2]: nullptr);
+        HealthTest(grpcClient.GetAddressUri(), (argc > 2 ? argv[2]: ""));
     }
     else if(!strcmp(argv[1], "load"))
     {
