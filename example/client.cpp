@@ -15,6 +15,8 @@
 #include "health.grpc.pb.h"
 #include "logger.hpp"
 
+using GrpcClient = gen::GrpcClient<test::GrpcService>;
+
 //
 // Helper CTimeElapsed class to measure elapsed time
 //
@@ -48,7 +50,7 @@ public:
     }
 };
 
-bool PingTest(gen::GrpcClient& grpcClient)
+bool PingTest(GrpcClient& grpcClient)
 {
     test::PingRequest req;
     test::PingResponse resp;
@@ -57,7 +59,7 @@ bool PingTest(gen::GrpcClient& grpcClient)
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
 
-    if(!grpcClient.Call<test::GrpcService>(&test::GrpcService::Stub::Ping, req, resp, metadata))
+    if(!grpcClient.Call(&test::GrpcService::Stub::Ping, req, resp, metadata))
     {
         ERRORMSG_MT(grpcClient.GetError());
         return false;
@@ -68,7 +70,7 @@ bool PingTest(gen::GrpcClient& grpcClient)
     return true;
 }
 
-bool ServerStreamTest(gen::GrpcClient& grpcClient, bool silent = false)
+bool ServerStreamTest(GrpcClient& grpcClient, bool silent = false)
 {
     test::ServerStreamTestRequest req;
     req.set_msg("ServerStreamTestRequest");
@@ -102,7 +104,7 @@ bool ServerStreamTest(gen::GrpcClient& grpcClient, bool silent = false)
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
 
-    if(!grpcClient.CallStream<test::GrpcService>(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata))
+    if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata))
     {
         ERRORMSG_MT(grpcClient.GetError());
         return false;
@@ -114,7 +116,7 @@ bool ServerStreamTest(gen::GrpcClient& grpcClient, bool silent = false)
     return true;
 }
 
-bool ClientStreamTest(gen::GrpcClient& grpcClient)
+bool ClientStreamTest(GrpcClient& grpcClient)
 {
     struct RequestCallback : public gen::ReqCallbackFunctor<test::ClientStreamTestRequest>
     {
@@ -136,7 +138,7 @@ bool ClientStreamTest(gen::GrpcClient& grpcClient)
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
 
-    if(!grpcClient.CallClientStream<test::GrpcService>(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata))
+    if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata))
     {
         ERRORMSG_MT(grpcClient.GetError());
         return false;
@@ -147,7 +149,7 @@ bool ClientStreamTest(gen::GrpcClient& grpcClient)
     return true;
 }
 
-bool ShutdownTest(gen::GrpcClient& grpcClient)
+bool ShutdownTest(GrpcClient& grpcClient)
 {
     test::ShutdownRequest req;
     test::ShutdownResponse resp;
@@ -158,7 +160,7 @@ bool ShutdownTest(gen::GrpcClient& grpcClient)
 
     req.set_reason("Shutdown Test");
 
-    if(!grpcClient.Call<test::GrpcService>(&test::GrpcService::Stub::Shutdown, req, resp, metadata))
+    if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, metadata))
     {
         ERRORMSG_MT(grpcClient.GetError());
         return false;
@@ -169,16 +171,18 @@ bool ShutdownTest(gen::GrpcClient& grpcClient)
     return true;
 }
 
-bool HealthTest(gen::GrpcClient& grpcClient, const char* serviceName)
+bool HealthTest(const char* serviceName)
 {
+    gen::GrpcClient<grpc::health::v1::Health> healthServiceClient;
+
     grpc::health::v1::HealthCheckRequest req;
     grpc::health::v1::HealthCheckResponse resp;
 
     req.set_service(serviceName ? serviceName : "");
 
-    if(!grpcClient.Call<grpc::health::v1::Health>(&grpc::health::v1::Health::Stub::Check, req, resp))
+    if(!healthServiceClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp))
     {
-        ERRORMSG_MT(grpcClient.GetError());
+        ERRORMSG_MT(healthServiceClient.GetError());
         return false;
     }
 
@@ -194,7 +198,7 @@ bool HealthTest(gen::GrpcClient& grpcClient, const char* serviceName)
     return true;
 }
 
-void LoadTest(gen::GrpcClient& grpcClient)
+void LoadTest(GrpcClient& grpcClient)
 {
     const int numClientThreads = 100;  // Number of threads
     const int numRpcs = 50;            // Number of RPCs per thread
@@ -211,7 +215,7 @@ void LoadTest(gen::GrpcClient& grpcClient)
     {
         thread = std::thread([&]()
         {
-            gen::GrpcClient thisGrpcClient;
+            GrpcClient thisGrpcClient;
             thisGrpcClient.InitFromAddressUri(grpcClient.GetAddressUri());
 
             for(int i = 0; i < numRpcs; ++i)
@@ -255,7 +259,7 @@ int main(int argc, char** argv)
     }
 
     // Initialize gRpc client
-    gen::GrpcClient grpcClient;
+    GrpcClient grpcClient;
 
     if(!strcmp(URI, "domain_socket"))
     {
@@ -295,7 +299,7 @@ int main(int argc, char** argv)
     }
     else if(!strcmp(argv[1], "health"))
     {
-        HealthTest(grpcClient, (argc > 2 ? argv[2]: nullptr));
+        HealthTest(argc > 2 ? argv[2]: nullptr);
     }
     else if(!strcmp(argv[1], "load"))
     {
