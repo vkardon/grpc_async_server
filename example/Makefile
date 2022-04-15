@@ -42,7 +42,7 @@ PROTO_SRCS = $(PROTO_HOME)/test.proto \
              $(PROTO_HOME)/health.proto 
 
 # gRPC support
-GRPC_HOME = ../grpc_1.38.0_install
+GRPC_HOME = ../grpc_1.44.0_install
 GRPC_INC = $(GRPC_HOME)/include
 
 ifeq "$(OS)" "Linux"
@@ -90,7 +90,21 @@ LIBS = -lpthread \
        -labsl_symbolize \
        -labsl_stacktrace \
        -labsl_debugging_internal \
-       -labsl_demangle_internal
+       -labsl_demangle_internal \
+       -labsl_bad_variant_access \
+       -labsl_random_internal_randen_slow \
+       -labsl_random_internal_randen_hwaes_impl \
+       -labsl_random_internal_randen \
+       -labsl_random_internal_pool_urbg \
+       -labsl_cordz_info \
+       -labsl_cord_internal \
+       -labsl_cordz_functions \
+       -labsl_random_internal_platform \
+       -labsl_random_internal_randen_hwaes \
+       -labsl_random_internal_seed_material \
+       -labsl_random_seed_gen_exception \
+       -labsl_cordz_handle \
+       -labsl_exponential_biased
 
 ifeq "$(OS)" "Darwin"
   LIBS += -framework CoreFoundation
