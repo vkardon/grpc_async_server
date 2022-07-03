@@ -2,6 +2,7 @@
 # Target(s) to build
 TARGET_SRV = server
 TARGET_CLN = client
+PROTOSET = protoset
 
 # Detect operating system
 OS = $(shell uname -s)
@@ -132,7 +133,7 @@ OBJS_CLN =  $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS_
 OBJS_CLN += $(PROTOC_OBJS) $(GRPC_OBJS)
 
 # Build target(s)
-all: $(TARGET_SRV) $(TARGET_CLN)
+all: $(TARGET_SRV) $(TARGET_CLN) $(PROTOSET)
 
 $(TARGET_SRV): $(PROTOC_CC) $(GRPC_CC) $(OBJS_SRV) 
 	export LD_LIBRARY_PATH=$(CC_LIB_PATH); $(LD) $(LDFLAGS) -o $(TARGET_SRV) $(OBJS_SRV) $(LIBS)
@@ -164,6 +165,11 @@ $(PROTO_OUT)/%.pb.cc: $(PROTO_HOME)/%.proto Makefile
 	-mkdir -p $(PROTO_OUT)
 	$(PROTOC) --cpp_out=$(PROTO_OUT) --proto_path=$(PROTO_HOME) $<
 
+# Generate protoset file
+$(PROTOSET): $(PROTO_SRCS)
+	@echo ">>> Generating test.protoset ..."
+	$(PROTOC) -I $(PROTO_HOME) --descriptor_set_out=$(PROTOSET) $(PROTO_SRCS)
+
 # Delete all intermediate files
 clean: 
 #	@echo PROTO_SRCS = $(PROTO_SRCS)
@@ -173,7 +179,7 @@ clean:
 #	@echo GRPC_OBJS = $(GRPC_OBJS)
 #	@echo OBJS_SRV = $(OBJS_SRV)
 #	@echo OBJS_CLN = $(OBJS_CLN)
-	rm -rf $(TARGET_SRV) $(TARGET_CLN) $(OBJ_DIR) $(PROTO_OUT) core
+	rm -rf $(TARGET_SRV) $(TARGET_CLN) $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT) core
 
 #
 # Read the dependency files.

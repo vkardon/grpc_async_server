@@ -57,8 +57,6 @@ void TestService::Shutdown(const gen::RpcContext& ctx,
         resp.set_result(false);
         resp.set_msg(errMsg);
     }
-
-    ctx.SetStatus(::grpc::OK, "");
 }
 
 void TestService::Ping(const gen::RpcContext& ctx,
@@ -69,8 +67,6 @@ void TestService::Ping(const gen::RpcContext& ctx,
     resp.set_result(true);
 
     INFOMSG_MT("From " << ctx.Peer());
-
-    ctx.SetStatus(::grpc::OK, "");
 }
 
 void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
@@ -146,8 +142,6 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 
     // Print statistics.
     OUTMSG_MT("opened_streams=" << opened_streams);
-
-    ctx.SetStatus(::grpc::OK, "");
 }
 
 void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
@@ -172,8 +166,6 @@ void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
         // ...
         resp.set_result(true);
     }
-
-    ctx.SetStatus(::grpc::OK, "");
 }
 
 

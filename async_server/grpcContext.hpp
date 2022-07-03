@@ -65,7 +65,8 @@ public:
 private:
     ::grpc::ServerContext* srvCtx = nullptr;
     const void* rpcParam{nullptr};
-    mutable ::grpc::StatusCode grpcStatusCode{grpc::UNKNOWN};
+    //mutable ::grpc::StatusCode grpcStatusCode{grpc::UNKNOWN};
+    mutable ::grpc::StatusCode grpcStatusCode{grpc::OK};
     mutable std::string grpcErr;
 };
 

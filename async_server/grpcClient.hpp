@@ -11,6 +11,7 @@
 #pragma GCC diagnostic pop
 
 #include "grpcUtils.hpp"
+unsigned short getHostPort(std::string&, const char*, const char*, const char*, std::string&);
 
 namespace gen {
 
@@ -41,20 +42,32 @@ public:
     ~GrpcClient() = default;
 
     GrpcClient(const std::string& domainSocketPath,
-               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr);
+               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
+    {
+        Init(domainSocketPath, creds);
+    }
 
     GrpcClient(const std::string& host, unsigned short port,
-               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr);
+               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
+    {
+        Init(host, port, creds);
+    }
 
     // To call the server, we need to instantiate a channel, out of which the actual RPCs
     // are created. This channel models a connection to an endpoint specified by addressUri.
-    // Note: The channel isn't authenticated be default (use of InsecureChannelCredentials()).
+    // Note: The channel isn't authenticated by default (use of InsecureChannelCredentials()).
 
     bool Init(const std::string& host, unsigned short port,
-              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr);
+              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
+    {
+        return InitFromAddressUri(FormatDnsAddressUri(host.c_str(), port), creds);
+    }
 
     bool Init(const std::string& domainSocketPath,
-              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr);
+              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
+    {
+        return InitFromAddressUri(FormatUnixDomainSocketAddressUri(domainSocketPath.c_str()), creds);
+    }
 
     bool InitFromAddressUri(const std::string& addressUriIn,
                             const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr);
@@ -73,7 +86,10 @@ public:
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallMT(GRPC_STUB_FUNC grpcStubFunc,
                 const REQ& req, RESP& resp,
-                std::string& errMsg);
+                std::string& errMsg)
+    {
+        return CallMT(grpcStubFunc, req, resp, dummy_metadata, errMsg);
+    }
 
     // Thread-save server-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -81,11 +97,15 @@ public:
                       const REQ& req, RespCallbackFunctor<RESP>& respCallback,
                       const std::map<std::string, std::string>& metadata,
                       std::string& errMsg);
+
     // Thread-save server-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                       const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                      std::string& errMsg);
+                      std::string& errMsg)
+    {
+        return CallStreamMT(grpcStubFunc, req, respCallback, dummy_metadata, errMsg);
+    }
 
     // Thread-save client-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -98,38 +118,52 @@ public:
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallClientStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                             ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                            std::string& errMsg);
+                            std::string& errMsg)
+    {
+        return CallClientStreamMT(grpcStubFunc, reqCallback, resp, dummy_metadata, errMsg);
+    }
 
-    //
     // Single threaded versions.
-    // Note: The only difference versus multy-threaded versions is that
+    // Note: The only difference versus multi-threaded versions is that
     // errMsg is not a function argument but a class member. The error
     // can be obtained after the call by calling GetError().
-    //
 
     // Single-thread UNARY gRpc (to be used in single-threaded application)
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool Call(GRPC_STUB_FUNC grpcStubFunc,
               const REQ& req, RESP& resp,
-              const std::map<std::string, std::string>& metadata = dummy_metadata);
+              const std::map<std::string, std::string>& metadata = dummy_metadata)
+    {
+        error.clear();
+        return CallMT(grpcStubFunc, req, resp, metadata, error);
+    }
 
     // Single-thread server-side STREAM gRpc (to be used in single-threaded application)
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallStream(GRPC_STUB_FUNC grpcStubFunc,
                     const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                    const std::map<std::string, std::string>& metadata = dummy_metadata);
+                    const std::map<std::string, std::string>& metadata = dummy_metadata)
+    {
+        error.clear();
+        return CallStreamMT(grpcStubFunc, req, respCallback, metadata, error);
+    }
 
     // Single-thread client-side STREAM gRpc (to be used in single-threaded application)
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                           ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                          const std::map<std::string, std::string>& metadata = dummy_metadata);
+                          const std::map<std::string, std::string>& metadata = dummy_metadata)
+    {
+        error.clear();
+        return CallClientStreamMT(grpcStubFunc, reqCallback, resp, metadata, error);
+    }
 
-    const std::string GetAddressUri() { return addressUri; }
-    bool IsValid() { return (bool)stub; }
+    const std::shared_ptr<grpc::ChannelCredentials> GetCredentials() const { return creds; }
+    const std::string GetAddressUri() const { return addressUri; }
+    bool IsValid() const { return (bool)stub; }
 
     // Note: GetError() is only valid when using with single-threaded calls
-    const std::string GetError() { return error; }
+    const std::string GetError() const { return error; }
 
 private:
     // Do not allow copy constructor and assignment operator (prevent class copy)
@@ -150,8 +184,8 @@ private:
     }
 
 private:
-    std::shared_ptr<grpc::Channel> channel;
     std::unique_ptr<typename RPC_SERVICE::Stub> stub;
+    std::shared_ptr<grpc::ChannelCredentials> creds;
 
     std::string addressUri;
     std::string error;     // Only used during initialization and later by single-threaded calls
@@ -161,41 +195,20 @@ private:
 };
 
 template <class RPC_SERVICE>
-GrpcClient<RPC_SERVICE>::GrpcClient(const std::string& domainSocketPath,
-                                    const std::shared_ptr<grpc::ChannelCredentials>& creds /*= nullptr*/)
-{
-    Init(domainSocketPath, creds);
-}
-
-template <class RPC_SERVICE>
-GrpcClient<RPC_SERVICE>::GrpcClient(const std::string& host, unsigned short port,
-                                    const std::shared_ptr<grpc::ChannelCredentials>& creds /*= nullptr*/)
-{
-    Init(host, port, creds);
-}
-
-template <class RPC_SERVICE>
-bool GrpcClient<RPC_SERVICE>::Init(const std::string& host, unsigned short port,
-                                   const std::shared_ptr<grpc::ChannelCredentials>& creds /*= nullptr*/)
-{
-    return InitFromAddressUri(FormatDnsAddressUri(host.c_str(), port), creds);
-}
-
-template <class RPC_SERVICE>
-bool GrpcClient<RPC_SERVICE>::Init(const std::string& domainSocketPath,
-                                   const std::shared_ptr<grpc::ChannelCredentials>& creds /*= nullptr*/)
-{
-    return InitFromAddressUri(FormatUnixDomainSocketAddressUri(domainSocketPath.c_str()), creds);
-}
-
-template <class RPC_SERVICE>
 bool GrpcClient<RPC_SERVICE>::InitFromAddressUri(const std::string& addressUriIn,
-                                                 const std::shared_ptr<grpc::ChannelCredentials>& creds /*= nullptr*/)
+                                                 const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*= nullptr*/)
 {
     addressUri = addressUriIn;
-    channel = grpc::CreateChannel(addressUri, (creds ? creds : grpc::InsecureChannelCredentials()));
+    creds = (credsIn ? credsIn : grpc::InsecureChannelCredentials());
+
+    // Set the max send and receive message sizes
+    grpc::ChannelArguments channelArgs;
+    channelArgs.SetMaxSendMessageSize(INT_MAX);
+    channelArgs.SetMaxReceiveMessageSize(INT_MAX);
+    auto channel = grpc::CreateCustomChannel(addressUri, creds, channelArgs);
+
     stub = RPC_SERVICE::NewStub(channel);
-    if(!stub.get())
+    if(!stub)
     {
         SetError(error, "Failed to create gRpc service stub");
         return false;
@@ -207,7 +220,7 @@ template <class RPC_SERVICE>
 void GrpcClient<RPC_SERVICE>::Reset()
 {
     stub.reset();
-    channel.reset();
+    creds.reset();
     addressUri.clear();
     error.clear();
 }
@@ -220,7 +233,7 @@ bool GrpcClient<RPC_SERVICE>::CallMT(GRPC_STUB_FUNC grpcStubFunc,
                                      const std::map<std::string, std::string>& metadata,
                                      std::string& errMsg)
 {
-    if(!stub.get())
+    if(!stub)
     {
         SetError(errMsg, "Invalid (null) gRpc service stub");
         return false;
@@ -242,16 +255,6 @@ bool GrpcClient<RPC_SERVICE>::CallMT(GRPC_STUB_FUNC grpcStubFunc,
     return true;
 }
 
-// Thread-save UNARY gRpc - no metadata
-template <class RPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::CallMT(GRPC_STUB_FUNC grpcStubFunc,
-                                     const REQ& req, RESP& resp,
-                                     std::string& errMsg)
-{
-    return CallMT(grpcStubFunc, req, resp, dummy_metadata, errMsg);
-}
-
 // Thread-save server-side STREAM gRpc
 template <class RPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -260,7 +263,7 @@ bool GrpcClient<RPC_SERVICE>::CallStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                                            const std::map<std::string, std::string>& metadata,
                                            std::string& errMsg)
 {
-    if(!stub.get())
+    if(!stub)
     {
         SetError(errMsg, "Invalid (null) gRpc service stub");
         return false;
@@ -291,16 +294,6 @@ bool GrpcClient<RPC_SERVICE>::CallStreamMT(GRPC_STUB_FUNC grpcStubFunc,
     return true;
 }
 
-// Thread-save server-side STREAM gRpc - no metadata
-template <class RPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::CallStreamMT(GRPC_STUB_FUNC grpcStubFunc,
-                                           const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                                           std::string& errMsg)
-{
-    return CallStreamMT(grpcStubFunc, req, respCallback, dummy_metadata, errMsg);
-}
-
 // Thread-save client-side STREAM gRpc
 template <class RPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -309,7 +302,7 @@ bool GrpcClient<RPC_SERVICE>::CallClientStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                                                  const std::map<std::string, std::string>& metadata,
                                                  std::string& errMsg)
 {
-    if(!stub.get())
+    if(!stub)
     {
         SetError(errMsg, "Invalid (null) gRpc service stub");
         return false;
@@ -345,63 +338,15 @@ bool GrpcClient<RPC_SERVICE>::CallClientStreamMT(GRPC_STUB_FUNC grpcStubFunc,
     return true;
 }
 
-// Thread-save client-side STREAM gRpc - no metadata
 template <class RPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::CallClientStreamMT(GRPC_STUB_FUNC grpcStubFunc,
-                                                 ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                                                 std::string& errMsg)
-{
-    return CallClientStreamMT(grpcStubFunc, reqCallback, resp, dummy_metadata, errMsg);
-}
-
-//
-// Single threaded versions.
-// Note: The only difference versus multy-threaded versions is that
-// errMsg is not a function argument but a class member. The error
-// can be obtained after the call by calling GetError().
-//
-
-// Single-thread UNARY gRpc (to be used in single-threaded application)
-template <class RPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
-                                   const REQ& req, RESP& resp,
-                                   const std::map<std::string, std::string>& metadata /*= dummy_metadata*/)
-{
-    error.clear();
-    return CallMT(grpcStubFunc, req, resp, metadata, error);
-}
-
-// Single-thread server-side STREAM gRpc (to be used in single-threaded application)
-template <class RPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                                         const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                                         const std::map<std::string, std::string>& metadata /*= dummy_metadata*/)
-{
-    error.clear();
-    return CallStreamMT(grpcStubFunc, req, respCallback, metadata, error);
-}
-
-// Single-thread client-side STREAM gRpc (to be used in single-threaded application)
-template <class RPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
-                                               ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                                               const std::map<std::string, std::string>& metadata /*= dummy_metadata*/)
-{
-    error.clear();
-    return CallClientStreamMT(grpcStubFunc, reqCallback, resp, metadata, error);
-}
-
-template <class RPC_SERVICE>
-inline pid_t grpcFork(GrpcClient<RPC_SERVICE>& grpcClient)
+pid_t grpcFork(GrpcClient<RPC_SERVICE>& grpcClient)
 {
     // gRpc fork support: Reset GrpcClient before fork()
+    std::shared_ptr<grpc::ChannelCredentials> creds;
     std::string addressUri;
     if(grpcClient.IsValid())
     {
+        creds = grpcClient.GetCredentials();
         addressUri = grpcClient.GetAddressUri();
         grpcClient.Reset();
     }
@@ -410,7 +355,7 @@ inline pid_t grpcFork(GrpcClient<RPC_SERVICE>& grpcClient)
 
     // gRpc fork support: Re-Initialize GrpcClient after fork()
     if(!addressUri.empty())
-        grpcClient.InitFromAddressUri(addressUri);
+        grpcClient.InitFromAddressUri(addressUri, creds);
 
     return pid;
 }
