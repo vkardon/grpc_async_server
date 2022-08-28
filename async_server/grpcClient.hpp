@@ -11,7 +11,6 @@
 #pragma GCC diagnostic pop
 
 #include "grpcUtils.hpp"
-unsigned short getHostPort(std::string&, const char*, const char*, const char*, std::string&);
 
 namespace gen {
 
@@ -80,15 +79,17 @@ public:
     bool CallMT(GRPC_STUB_FUNC grpcStubFunc,
                 const REQ& req, RESP& resp,
                 const std::map<std::string, std::string>& metadata,
-                std::string& errMsg);
+                std::string& errMsg,
+                unsigned long timeout = 0);
 
     // Thread-save UNARY gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallMT(GRPC_STUB_FUNC grpcStubFunc,
                 const REQ& req, RESP& resp,
-                std::string& errMsg)
+                std::string& errMsg,
+                unsigned long timeout = 0)
     {
-        return CallMT(grpcStubFunc, req, resp, dummy_metadata, errMsg);
+        return CallMT(grpcStubFunc, req, resp, dummy_metadata, errMsg, timeout);
     }
 
     // Thread-save server-side STREAM gRpc
@@ -96,15 +97,17 @@ public:
     bool CallStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                       const REQ& req, RespCallbackFunctor<RESP>& respCallback,
                       const std::map<std::string, std::string>& metadata,
-                      std::string& errMsg);
+                      std::string& errMsg,
+                      unsigned long timeout = 0);
 
     // Thread-save server-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                       const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                      std::string& errMsg)
+                      std::string& errMsg,
+                      unsigned long timeout = 0)
     {
-        return CallStreamMT(grpcStubFunc, req, respCallback, dummy_metadata, errMsg);
+        return CallStreamMT(grpcStubFunc, req, respCallback, dummy_metadata, errMsg, timeout);
     }
 
     // Thread-save client-side STREAM gRpc
@@ -112,15 +115,17 @@ public:
     bool CallClientStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                             ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
                             const std::map<std::string, std::string>& metadata,
-                            std::string& errMsg);
+                            std::string& errMsg,
+                            unsigned long timeout = 0);
 
     // Thread-save client-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallClientStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                             ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                            std::string& errMsg)
+                            std::string& errMsg,
+                            unsigned long timeout = 0)
     {
-        return CallClientStreamMT(grpcStubFunc, reqCallback, resp, dummy_metadata, errMsg);
+        return CallClientStreamMT(grpcStubFunc, reqCallback, resp, dummy_metadata, errMsg, timeout);
     }
 
     // Single threaded versions.
@@ -132,30 +137,63 @@ public:
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool Call(GRPC_STUB_FUNC grpcStubFunc,
               const REQ& req, RESP& resp,
-              const std::map<std::string, std::string>& metadata = dummy_metadata)
+              const std::map<std::string, std::string>& metadata,
+              unsigned long timeout = 0)
     {
         error.clear();
-        return CallMT(grpcStubFunc, req, resp, metadata, error);
+        return CallMT(grpcStubFunc, req, resp, metadata, error, timeout);
+    }
+
+    // No metadata variation
+    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    bool Call(GRPC_STUB_FUNC grpcStubFunc,
+              const REQ& req, RESP& resp,
+              unsigned long timeout = 0)
+    {
+        error.clear();
+        return CallMT(grpcStubFunc, req, resp, dummy_metadata, error, timeout);
     }
 
     // Single-thread server-side STREAM gRpc (to be used in single-threaded application)
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallStream(GRPC_STUB_FUNC grpcStubFunc,
                     const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                    const std::map<std::string, std::string>& metadata = dummy_metadata)
+                    const std::map<std::string, std::string>& metadata,
+                    unsigned long timeout = 0)
     {
         error.clear();
-        return CallStreamMT(grpcStubFunc, req, respCallback, metadata, error);
+        return CallStreamMT(grpcStubFunc, req, respCallback, metadata, error, timeout);
+    }
+
+    // No metadata variation
+    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    bool CallStream(GRPC_STUB_FUNC grpcStubFunc,
+                    const REQ& req, RespCallbackFunctor<RESP>& respCallback,
+                    unsigned long timeout = 0)
+    {
+        error.clear();
+        return CallStreamMT(grpcStubFunc, req, respCallback, dummy_metadata, error, timeout);
     }
 
     // Single-thread client-side STREAM gRpc (to be used in single-threaded application)
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     bool CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                           ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                          const std::map<std::string, std::string>& metadata = dummy_metadata)
+                          const std::map<std::string, std::string>& metadata,
+                          unsigned long timeout = 0)
     {
         error.clear();
-        return CallClientStreamMT(grpcStubFunc, reqCallback, resp, metadata, error);
+        return CallClientStreamMT(grpcStubFunc, reqCallback, resp, metadata, error, timeout);
+    }
+
+    // No metadata variation
+    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    bool CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
+                          ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
+                          unsigned long timeout = 0)
+    {
+        error.clear();
+        return CallClientStreamMT(grpcStubFunc, reqCallback, resp, dummy_metadata, error, timeout);
     }
 
     const std::shared_ptr<grpc::ChannelCredentials> GetCredentials() const { return creds; }
@@ -231,7 +269,8 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 bool GrpcClient<RPC_SERVICE>::CallMT(GRPC_STUB_FUNC grpcStubFunc,
                                      const REQ& req, RESP& resp,
                                      const std::map<std::string, std::string>& metadata,
-                                     std::string& errMsg)
+                                     std::string& errMsg,
+                                     unsigned long timeout)
 {
     if(!stub)
     {
@@ -243,6 +282,14 @@ bool GrpcClient<RPC_SERVICE>::CallMT(GRPC_STUB_FUNC grpcStubFunc,
     grpc::ClientContext context;
     for(const std::pair<std::string, std::string>& p : metadata)
         context.AddMetadata(p.first, p.second);
+
+    // Set deadline of how long to wait for a server reply
+    if(timeout > 0)
+    {
+        std::chrono::time_point<std::chrono::system_clock> deadline =
+                std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
+        context.set_deadline(deadline);
+    }
 
     // Call service
     grpc::Status s = (stub.get()->*grpcStubFunc)(&context, req, &resp);
@@ -261,7 +308,8 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 bool GrpcClient<RPC_SERVICE>::CallStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                                            const REQ& req, RespCallbackFunctor<RESP>& respCallback,
                                            const std::map<std::string, std::string>& metadata,
-                                           std::string& errMsg)
+                                           std::string& errMsg,
+                                           unsigned long timeout)
 {
     if(!stub)
     {
@@ -272,7 +320,14 @@ bool GrpcClient<RPC_SERVICE>::CallStreamMT(GRPC_STUB_FUNC grpcStubFunc,
     // Create context and set metadata (if we have any...)
     grpc::ClientContext context;
     for(const std::pair<std::string, std::string>& p : metadata)
-        context.AddMetadata(p.first, p.second);
+
+    // Set deadline of how long to wait for a server reply
+    if(timeout > 0)
+    {
+        std::chrono::time_point<std::chrono::system_clock> deadline =
+                std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
+        context.set_deadline(deadline);
+    }
 
     // Call service
     RESP resp;
@@ -300,7 +355,8 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 bool GrpcClient<RPC_SERVICE>::CallClientStreamMT(GRPC_STUB_FUNC grpcStubFunc,
                                                  ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
                                                  const std::map<std::string, std::string>& metadata,
-                                                 std::string& errMsg)
+                                                 std::string& errMsg,
+                                                 unsigned long timeout)
 {
     if(!stub)
     {
@@ -312,6 +368,14 @@ bool GrpcClient<RPC_SERVICE>::CallClientStreamMT(GRPC_STUB_FUNC grpcStubFunc,
     grpc::ClientContext context;
     for(const std::pair<std::string, std::string>& p : metadata)
         context.AddMetadata(p.first, p.second);
+
+    // Set deadline of how long to wait for a server reply
+    if(timeout > 0)
+    {
+        std::chrono::time_point<std::chrono::system_clock> deadline =
+                std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
+        context.set_deadline(deadline);
+    }
 
     // Call service
     REQ req;
