@@ -5,8 +5,8 @@
 
 bool HealthService::Init()
 {
-    AddUnaryRpcRequest(
-            &HealthService::Check,
+    // Add Health service RPCs
+    AddUnary(&HealthService::Check,
             &grpc::health::v1::Health::AsyncService::RequestCheck);
 
     return true;

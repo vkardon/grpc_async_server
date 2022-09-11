@@ -5,26 +5,17 @@
 #include "testServer.hpp"
 #include "logger.hpp"
 
-//
-// Helper macros to wrap ADD_UNARY(), ADD_SERVER_STREAM() and ADD_CLIENT_STREAM()
-//
-#define ADD_UNARY(RPC) AddUnaryRpcRequest( \
-    &TestService::RPC, &test::GrpcService::AsyncService::Request##RPC);
-
-#define ADD_SERVER_STREAM(RPC) AddServerStreamRpcRequest( \
-    &TestService::RPC, &test::GrpcService::AsyncService::Request##RPC);
-
-#define ADD_CLIENT_STREAM(RPC) AddClientStreamRpcRequest( \
-    &TestService::RPC, &test::GrpcService::AsyncService::Request##RPC);
-
-
 bool TestService::Init()
 {
     // Add TestService RPCs
-    ADD_UNARY(Shutdown)
-    ADD_UNARY(Ping)
-    ADD_SERVER_STREAM(ServerStreamTest)
-    ADD_CLIENT_STREAM(ClientStreamTest)
+    AddUnary(&TestService::Shutdown,
+            &test::GrpcService::AsyncService::RequestShutdown);
+    AddUnary(&TestService::Ping,
+            &test::GrpcService::AsyncService::RequestPing);
+    AddServerStream(&TestService::ServerStreamTest,
+            &test::GrpcService::AsyncService::RequestServerStreamTest);
+    AddClientStream(&TestService::ClientStreamTest,
+            &test::GrpcService::AsyncService::RequestClientStreamTest);
 
     return true;
 }

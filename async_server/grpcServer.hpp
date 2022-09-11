@@ -783,7 +783,7 @@ public:
     // GrpcServer::AddUnaryRpcRequest implementation
     //
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddUnaryRpcRequest(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
+    void AddUnary(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
                             auto requestFunc,
                             const void* processParam = nullptr)
     {
@@ -803,7 +803,7 @@ public:
     // GrpcServer::AddStreamRpcRequest implementation
     //
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddServerStreamRpcRequest(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
+    void AddServerStream(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
                                    auto requestFunc,
                                    const void* processParam = nullptr)
     {
@@ -823,7 +823,7 @@ public:
     // GrpcServer::AddClientStreamRpcRequest implementation
     //
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddClientStreamRpcRequest(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
+    void AddClientStream(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
                                    auto requestFunc,
                                    const void* processParam = nullptr)
     {
