@@ -1,22 +1,8 @@
 #ifndef __TEST_SERVICE_HPP__
 #define __TEST_SERVICE_HPP__
 
-#include "grpcContext.hpp"  // gen::GrpcService
-
-//
-// Forward declaration of gRpc messages
-//
-namespace test
-{
-class ShutdownRequest;
-class ShutdownResponse;
-class PingRequest;
-class PingResponse;
-class ServerStreamTestRequest;
-class ServerStreamTestResponse;
-class ClientStreamTestRequest;
-class ClientStreamTestResponse;
-}
+#include "grpcServer.hpp"
+#include "test.grpc.pb.h"
 
 // Forward declarations
 class TestServer;
@@ -24,14 +10,14 @@ class TestServer;
 //
 // TestService declaration
 //
-class TestService : public gen::GrpcService
+class TestService : public gen::GrpcService<test::GrpcService>
 {
 public:
     TestService(TestServer* server) : mServer(server) {}
     virtual ~TestService() = default;
 
     // gen::GrpcService override
-    virtual bool Init(gen::GrpcServer* srv) override;
+    virtual bool Init() override;
     virtual bool IsServing() override;
 
 protected:

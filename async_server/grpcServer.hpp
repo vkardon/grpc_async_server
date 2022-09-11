@@ -36,7 +36,6 @@ struct RequestContext
 
     std::unique_ptr<::grpc::ServerContext> srv_ctx;
     enum : char { UNKNOWN=0, REQUEST, READ, READEND, WRITE, FINISH } state = UNKNOWN;
-    GrpcService* grpcService = nullptr;
 
     // Any application-level data assigned by AddRpcRequest.
     // It will be make available to RPC function through RpcContext.
@@ -45,9 +44,38 @@ struct RequestContext
     virtual void Process() = 0;
     virtual void StartProcessing(::grpc::ServerCompletionQueue* cq) = 0;
     virtual void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) = 0;
-
-    virtual RequestContext* CloneMe() const = 0;
 };
+
+//
+// This is the base class for service-specific RPC-processing classes
+//
+class GrpcServiceBase
+{
+public:
+    virtual ~GrpcServiceBase() = default;
+    virtual bool Init() = 0;
+    virtual bool IsServing() { return true; }
+    const char* GetName() { return serviceName; }
+
+protected:
+    ::grpc::Service* service = nullptr;
+    const char* serviceName = "";
+    GrpcServer* srv = nullptr;
+
+    friend class GrpcServer;
+
+    template<class RPC_SERVICE, class REQ, class RESP>
+    friend struct UnaryRequestContext;
+
+    template<class RPC_SERVICE, class REQ, class RESP>
+    friend struct ServerStreamRequestContext;
+
+    template<class RPC_SERVICE, class REQ, class RESP>
+    friend struct ClientStreamRequestContext;
+};
+
+template<class RPC_SERVICE>
+class GrpcService;
 
 //
 // Template service-specific AsyncService type
@@ -58,14 +86,14 @@ using AsyncService = typename RPC_SERVICE::AsyncService;
 //
 // Template pointer to function that does actual unary/stream processing
 //
-template<class REQ, class RESP>
-using ProcessUnaryFunc = void (GrpcService::*)(const RpcContext&, const REQ&, RESP&);
+template<class RPC_SERVICE, class REQ, class RESP>
+using ProcessUnaryFunc = void (GrpcService<RPC_SERVICE>::*)(const RpcContext&, const REQ&, RESP&);
 
-template<class REQ, class RESP>
-using ProcessServerStreamFunc = void (GrpcService::*)(const RpcServerStreamContext&, const REQ&, RESP&);
+template<class RPC_SERVICE, class REQ, class RESP>
+using ProcessServerStreamFunc = void (GrpcService<RPC_SERVICE>::*)(const RpcServerStreamContext&, const REQ&, RESP&);
 
-template<class REQ, class RESP>
-using ProcessClientStreamFunc = void (GrpcService::*)(const RpcClientStreamContext&, const REQ&, RESP&);
+template<class RPC_SERVICE, class REQ, class RESP>
+using ProcessClientStreamFunc = void (GrpcService<RPC_SERVICE>::*)(const RpcClientStreamContext&, const REQ&, RESP&);
 
 //
 // Template pointer to function that *request* the system to start processing unary.strean requests
@@ -129,32 +157,23 @@ public:
         return RunImpl(addressUriArr, threadCount);
     }
 
-    GrpcService* GetService(const std::string& serviceName)
+    bool AddService(GrpcServiceBase* grpcService)
+    {
+        if(grpcService->srv != nullptr)
+        {
+            OnError("Double inialization of service " + std::string(grpcService->GetName()));
+            return false;
+        }
+        grpcService->srv = this;
+        serviceMap[grpcService->GetName()] = grpcService;
+        return grpcService->Init();
+    }
+
+    GrpcServiceBase* GetService(const std::string& serviceName)
     {
         auto it = serviceMap.find(serviceName);
         return (it == serviceMap.end() ? nullptr : it->second);
     }
-
-    // Tell the system to process unary RPC request
-    template<class RPC_SERVICE, class REQ, class RESP>
-    void AddUnaryRpcRequest(GrpcService* grpcService,
-                            UnaryRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                            ProcessUnaryFunc<REQ, RESP> processFunc,
-                            const void* processParam);
-
-    // Tell the system to process stream RPC request
-    template<class RPC_SERVICE, class REQ, class RESP>
-    void AddServerStreamRpcRequest(GrpcService* grpcService,
-                                   ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                                   ProcessServerStreamFunc<REQ, RESP> processFunc,
-                                   const void* processParam);
-
-    // Tell the system to process client stream RPC request
-    template<class RPC_SERVICE, class REQ, class RESP>
-    void AddClientStreamRpcRequest(GrpcService* grpcService,
-                                   ClientStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                                   ProcessClientStreamFunc<REQ, RESP> processFunc,
-                                   const void* processParam);
 
     // Set OnRun() idle interval in milliseconds
     void SetIdleInterval(int milliseconds) { idleIntervalMicroseconds = milliseconds * 1000; }
@@ -208,7 +227,7 @@ private:
             // Register services
             for(auto& pair : serviceMap)
             {
-                GrpcService* srv = pair.second;
+                GrpcServiceBase* srv = pair.second;
                 builder.RegisterService(srv->service);
             }
 
@@ -285,7 +304,7 @@ private:
         // Clean up...
         for(auto& pair : serviceMap)
         {
-            GrpcService* srv = pair.second;
+            GrpcServiceBase* srv = pair.second;
             delete srv->service;
             srv->service = nullptr;
         }
@@ -413,8 +432,7 @@ private:
     }
 
     // Helpers
-    template<class RPC_SERVICE>
-    void AddService(GrpcService* grpcService);
+    void AddRpcRequest(RequestContext* ctx) { requestContextList.push_back(ctx); }
 
     // For derived class to override
     virtual bool OnInit(::grpc::ServerBuilder& builder) = 0;
@@ -422,10 +440,13 @@ private:
 
     // Class data
     int contextCount = 0;
-    std::map<std::string, GrpcService*> serviceMap;
+    std::map<std::string, GrpcServiceBase*> serviceMap;
     std::list<RequestContext*> requestContextList;
     std::atomic<bool> stop{false};
     unsigned int idleIntervalMicroseconds{2000000}; // 2 secs default
+
+    template<class RPC_SERVICE>
+    friend class GrpcService;
 };
 
 //
@@ -437,21 +458,12 @@ struct UnaryRequestContext : public RequestContext
     UnaryRequestContext() = default;
     virtual ~UnaryRequestContext() = default;
 
-    virtual RequestContext* CloneMe() const
-    {
-        UnaryRequestContext* ctx = new (std::nothrow) UnaryRequestContext;
-        ctx->grpcService = grpcService;
-        ctx->processParam = processParam;
-        ctx->processFunc = processFunc;
-        ctx->requestFunc = requestFunc;
-        return ctx;
-    }
-
+    GrpcService<RPC_SERVICE>* grpcService = nullptr;
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncResponseWriter<RESP>> resp_writer;
 
     // Pointer to function that does actual processing
-    ProcessUnaryFunc<REQ, RESP> processFunc = nullptr;
+    ProcessUnaryFunc<RPC_SERVICE, REQ, RESP> processFunc = nullptr;
 
     // Pointer to function that *request* the system to start processing given requests
     UnaryRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
@@ -509,22 +521,13 @@ struct ServerStreamRequestContext : public RequestContext
     ServerStreamRequestContext() = default;
     ~ServerStreamRequestContext() = default;
 
-    virtual RequestContext* CloneMe() const
-    {
-        ServerStreamRequestContext* ctx = new (std::nothrow) ServerStreamRequestContext;
-        ctx->grpcService  = grpcService;
-        ctx->processParam = processParam;
-        ctx->processFunc  = processFunc;
-        ctx->requestFunc  = requestFunc;
-        return ctx;
-    }
-
+    GrpcService<RPC_SERVICE>* grpcService = nullptr;
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncWriter<RESP>> resp_writer;
     std::unique_ptr<RpcServerStreamContext> stream_ctx;
 
     // Pointer to function that does actual processing
-    ProcessServerStreamFunc<REQ, RESP> processFunc = nullptr;
+    ProcessServerStreamFunc<RPC_SERVICE, REQ, RESP> processFunc = nullptr;
 
     // Pointer to function that *request* the system to start processing given requests
     ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
@@ -653,23 +656,14 @@ struct ClientStreamRequestContext : public RequestContext
     ClientStreamRequestContext() = default;
     ~ClientStreamRequestContext() = default;
 
-    virtual RequestContext* CloneMe() const
-    {
-        ClientStreamRequestContext* ctx = new (std::nothrow) ClientStreamRequestContext;
-        ctx->grpcService = grpcService;
-        ctx->processParam = processParam;
-        ctx->processFunc = processFunc;
-        ctx->requestFunc = requestFunc;
-        return ctx;
-    }
-
+    GrpcService<RPC_SERVICE>* grpcService = nullptr;
     REQ req;
     RESP resp;
     std::unique_ptr<::grpc::ServerAsyncReader<RESP, REQ>> req_reader;
     std::unique_ptr<RpcClientStreamContext> stream_ctx;
 
     // Pointer to function that does actual processing
-    ProcessClientStreamFunc<REQ, RESP> processFunc = nullptr;
+    ProcessClientStreamFunc<RPC_SERVICE, REQ, RESP> processFunc = nullptr;
 
     // Pointer to function that *request* the system to start processing given requests
     ClientStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
@@ -766,129 +760,88 @@ struct ClientStreamRequestContext : public RequestContext
 };
 
 //
-// Helper method to add service to the list
+// Template implementation of service-specific GrpcService class
 //
 template<class RPC_SERVICE>
-void GrpcServer::AddService(GrpcService* grpcService)
+class GrpcService : public GrpcServiceBase
 {
-    // Create RPC-specific grpc service (if not created yet) and
-    // bind it with the corresponding processing function.
-    if(grpcService->service == nullptr)
+public:
+    GrpcService()
     {
+        // Create RPC-specific grpc service
         // Note: service_full_name() is not well documented, but
         // is generated for every service class. It might need to
         // be replaced if/when it's no longer generated.
-        const char* serviceName = RPC_SERVICE::service_full_name();
-        grpcService->service = new (std::nothrow) typename RPC_SERVICE::AsyncService;
-        grpcService->serviceName = serviceName;
-        serviceMap[serviceName] = grpcService;
+        serviceName = RPC_SERVICE::service_full_name();
+        service = new (std::nothrow) typename RPC_SERVICE::AsyncService;
 //        std::cout << ">>> " << __func__ << ":"
-//                << " name='" << grpcService->serviceName << "',"
-//                << " service=" << grpcService->service << std::endl;
+//                << " name='" << serviceName << "',"
+//                << " service=" << service << std::endl;
     }
-}
 
-//
-// GrpcServer::AddUnaryRpcRequest implementation
-//
-template<class RPC_SERVICE, class REQ, class RESP>
-void GrpcServer::AddUnaryRpcRequest(GrpcService* grpcService,
-                                    UnaryRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                                    ProcessUnaryFunc<REQ, RESP> processFunc,
-                                    const void* processParam)
-{
-    // Create RPC-specific grpc service (if not created yet) and
-    // bind it with the corresponding processing function.
-    AddService<RPC_SERVICE>(grpcService);
-
-    UnaryRequestContext<RPC_SERVICE, REQ, RESP> ctx;
-    ctx.grpcService  = grpcService;
-    ctx.processParam = processParam;
-    ctx.processFunc  = processFunc;
-    ctx.requestFunc  = requestFunc;
-
-    // Add request contexts
-    for(int i = 0; i < contextCount; i++)
+    //
+    // GrpcServer::AddUnaryRpcRequest implementation
+    //
+    template<class REQ, class RESP, class SERVICE_IMPL>
+    void AddUnaryRpcRequest(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
+                            auto requestFunc,
+                            const void* processParam = nullptr)
     {
-        requestContextList.push_back(ctx.CloneMe());
+        // Bind RPC-specific grpc service with the corresponding processing function.
+        for(int i = 0; i < srv->contextCount; i++)
+        {
+            auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>;
+            ctx->grpcService = this;
+            ctx->requestFunc = requestFunc;
+            ctx->processFunc = (ProcessUnaryFunc<RPC_SERVICE, REQ, RESP>)processFunc;
+            ctx->processParam = processParam;
+            srv->AddRpcRequest(ctx);
+        }
     }
-}
 
-//
-// GrpcServer::AddStreamRpcRequest implementation
-//
-template<class RPC_SERVICE, class REQ, class RESP>
-void GrpcServer::AddServerStreamRpcRequest(GrpcService* grpcService,
-                                           ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                                           ProcessServerStreamFunc<REQ, RESP> processFunc,
-                                           const void* processParam)
-{
-    // Create RPC-specific grpc service (if not created yet) and
-    // bind it with the corresponding processing function.
-    AddService<RPC_SERVICE>(grpcService);
-
-    ServerStreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
-    ctx.grpcService = grpcService;
-    ctx.processParam = processParam;
-    ctx.processFunc = processFunc;
-    ctx.requestFunc = requestFunc;
-
-    // Add request contexts
-    for(int i = 0; i < contextCount; i++)
+    //
+    // GrpcServer::AddStreamRpcRequest implementation
+    //
+    template<class REQ, class RESP, class SERVICE_IMPL>
+    void AddServerStreamRpcRequest(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
+                                   auto requestFunc,
+                                   const void* processParam = nullptr)
     {
-        requestContextList.push_back(ctx.CloneMe());
+        // Bind RPC-specific grpc service with the corresponding processing function.
+        for(int i = 0; i < srv->contextCount; i++)
+        {
+            auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+            ctx->grpcService = this;
+            ctx->requestFunc = requestFunc;
+            ctx->processFunc = (ProcessServerStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
+            ctx->processParam = processParam;
+            srv->AddRpcRequest(ctx);
+        }
     }
-}
 
-//
-// GrpcServer::AddClientStreamRpcRequest implementation
-//
-template<class RPC_SERVICE, class REQ, class RESP>
-void GrpcServer::AddClientStreamRpcRequest(GrpcService* grpcService,
-                                           ClientStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc,
-                                           ProcessClientStreamFunc<REQ, RESP> processFunc,
-                                           const void* processParam)
-{
-    // Create RPC-specific grpc service (if not created yet) and
-    // bind it with the corresponding processing function.
-    AddService<RPC_SERVICE>(grpcService);
-
-    ClientStreamRequestContext<RPC_SERVICE, REQ, RESP> ctx;
-    ctx.grpcService = grpcService;
-    ctx.processParam = processParam;
-    ctx.processFunc = processFunc;
-    ctx.requestFunc = requestFunc;
-
-    // Add request contexts
-    for(int i = 0; i < contextCount; i++)
+    //
+    // GrpcServer::AddClientStreamRpcRequest implementation
+    //
+    template<class REQ, class RESP, class SERVICE_IMPL>
+    void AddClientStreamRpcRequest(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
+                                   auto requestFunc,
+                                   const void* processParam = nullptr)
     {
-        requestContextList.push_back(ctx.CloneMe());
+        // Bind RPC-specific grpc service with the corresponding processing function.
+        for(int i = 0; i < srv->contextCount; i++)
+        {
+            auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+            ctx->grpcService = this;
+            ctx->requestFunc = requestFunc;
+            ctx->processFunc = (ProcessClientStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
+            ctx->processParam = processParam;
+            srv->AddRpcRequest(ctx);
+        }
     }
-}
+};
 
 } //namespace gen
 
-//
-// Helper macros to add unary and stream RPC request.
-// Should be called within GrpcService::Init() implementation
-//
-#define ADD_UNARY(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, PROC_FUNC_PARAM, SERVER_PTR)  \
-    SERVER_PTR->AddUnaryRpcRequest<RPC_SERVICE, REQ, RESP>(this,                            \
-            &RPC_SERVICE::AsyncService::Request##RPC,                                       \
-            (gen::ProcessUnaryFunc<REQ, RESP>)PROC_FUNC_PTR,                                \
-            PROC_FUNC_PARAM);
-
-#define ADD_SERVER_STREAM(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, PROC_FUNC_PARAM, SERVER_PTR) \
-    SERVER_PTR->AddServerStreamRpcRequest<RPC_SERVICE, REQ, RESP>(this,                            \
-            &RPC_SERVICE::AsyncService::Request##RPC,                                              \
-            (gen::ProcessServerStreamFunc<REQ, RESP>)PROC_FUNC_PTR,                                \
-            PROC_FUNC_PARAM);
-
-#define ADD_CLIENT_STREAM(RPC, REQ, RESP, RPC_SERVICE, PROC_FUNC_PTR, PROC_FUNC_PARAM, SERVER_PTR) \
-    SERVER_PTR->AddClientStreamRpcRequest<RPC_SERVICE, REQ, RESP>(this,                            \
-            &RPC_SERVICE::AsyncService::Request##RPC,                                              \
-            (gen::ProcessClientStreamFunc<REQ, RESP>)PROC_FUNC_PTR,                                \
-            PROC_FUNC_PARAM);
 
 #endif // __GRPC_SERVER_HPP__
 // *INDENT-ON*

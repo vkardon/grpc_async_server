@@ -18,7 +18,7 @@ bool TestServer::OnInit(::grpc::ServerBuilder& builder)
     // will be used otherwise, that is fine most of the time.
     SetIdleInterval(1000);
 
-    return (testService.Init(this) && healthService.Init(this));
+    return (AddService(&testService) && AddService(&healthService));
 }
 
 bool TestServer::OnRun()

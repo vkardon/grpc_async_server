@@ -120,36 +120,6 @@ private:
     friend struct ClientStreamRequestContext;
 };
 
-//
-// This is the base class for service-specific RPC-processing classes
-//
-class GrpcServer;
-
-class GrpcService
-{
-public:
-    virtual ~GrpcService() = default;
-    virtual bool Init(GrpcServer* srv) = 0;
-    virtual bool IsServing() { return true; }
-    const char* GetName() { return serviceName; }
-
-private:
-    ::grpc::Service* service = nullptr;
-    const char* serviceName = "";
-
-    friend class GrpcServer;
-
-    template<class RPC_SERVICE, class REQ, class RESP>
-    friend struct UnaryRequestContext;
-
-    template<class RPC_SERVICE, class REQ, class RESP>
-    friend struct ServerStreamRequestContext;
-
-    template<class RPC_SERVICE, class REQ, class RESP>
-    friend struct ClientStreamRequestContext;
-};
-
-
 } //namespace gen
 
 #endif // __GRPC_CONTEXT_HPP__

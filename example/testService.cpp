@@ -4,32 +4,27 @@
 #include "testService.hpp"
 #include "testServer.hpp"
 #include "logger.hpp"
-#include "test.grpc.pb.h"
 
 //
 // Helper macros to wrap ADD_UNARY(), ADD_SERVER_STREAM() and ADD_CLIENT_STREAM()
-// For example, TEST_UNARY(Ping) will be expended to
-// ADD_UNARY(Ping, test::PingRequest, test::PingResponse, test::GrpcService, &TestService::Ping, nullptr, srv)
 //
-#define TEST_UNARY(RPC) ADD_UNARY( \
-    RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
-    &TestService::RPC, nullptr, srv)
+#define ADD_UNARY(RPC) AddUnaryRpcRequest( \
+    &TestService::RPC, &test::GrpcService::AsyncService::Request##RPC);
 
-#define TEST_SERVER_STREAM(RPC) ADD_SERVER_STREAM( \
-    RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
-    &TestService::RPC, nullptr, srv)
+#define ADD_SERVER_STREAM(RPC) AddServerStreamRpcRequest( \
+    &TestService::RPC, &test::GrpcService::AsyncService::Request##RPC);
 
-#define TEST_CLIENT_STREAM(RPC) ADD_CLIENT_STREAM( \
-    RPC, test::RPC##Request, test::RPC##Response, test::GrpcService, \
-    &TestService::RPC, nullptr, srv)
+#define ADD_CLIENT_STREAM(RPC) AddClientStreamRpcRequest( \
+    &TestService::RPC, &test::GrpcService::AsyncService::Request##RPC);
 
-bool TestService::Init(gen::GrpcServer* srv)
+
+bool TestService::Init()
 {
     // Add TestService RPCs
-    TEST_UNARY(Shutdown)
-    TEST_UNARY(Ping)
-    TEST_SERVER_STREAM(ServerStreamTest)
-    TEST_CLIENT_STREAM(ClientStreamTest)
+    ADD_UNARY(Shutdown)
+    ADD_UNARY(Ping)
+    ADD_SERVER_STREAM(ServerStreamTest)
+    ADD_CLIENT_STREAM(ClientStreamTest)
 
     return true;
 }

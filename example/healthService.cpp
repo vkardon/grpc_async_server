@@ -1,17 +1,14 @@
 //
 // healthService.cpp
 //
-#include "grpcServer.hpp"
 #include "healthService.hpp"
-#include "health.grpc.pb.h"
 
-bool HealthService::Init(gen::GrpcServer* srv)
+bool HealthService::Init()
 {
-    ADD_UNARY(Check,
-              grpc::health::v1::HealthCheckRequest, grpc::health::v1::HealthCheckResponse,
-              grpc::health::v1::Health, &HealthService::Check, nullptr, srv)
+    AddUnaryRpcRequest(
+            &HealthService::Check,
+            &grpc::health::v1::Health::AsyncService::RequestCheck);
 
-    mGrpcServer = srv;
     return true;
 }
 
@@ -32,7 +29,7 @@ void HealthService::Check(const gen::RpcContext& rpcCtx,
     else
     {
         // Return service-specific health status
-        gen::GrpcService* service = mGrpcServer->GetService(serviceName);
+        gen::GrpcServiceBase* service = srv->GetService(serviceName);
         if(!service)
         {
             statusCode = ::grpc::NOT_FOUND;
