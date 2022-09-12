@@ -779,13 +779,10 @@ public:
 //                << " service=" << service << std::endl;
     }
 
-    //
-    // GrpcServer::AddUnaryRpcRequest implementation
-    //
+    // Add request for unary RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddUnary(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
-                            auto requestFunc,
-                            const void* processParam = nullptr)
+    void AddRpc(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
+                auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         for(int i = 0; i < srv->contextCount; i++)
@@ -799,13 +796,10 @@ public:
         }
     }
 
-    //
-    // GrpcServer::AddStreamRpcRequest implementation
-    //
+    // Add request for server-stream RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddServerStream(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
-                                   auto requestFunc,
-                                   const void* processParam = nullptr)
+    void AddRpc(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
+                auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         for(int i = 0; i < srv->contextCount; i++)
@@ -819,13 +813,10 @@ public:
         }
     }
 
-    //
-    // GrpcServer::AddClientStreamRpcRequest implementation
-    //
+    // Add request for client-stream RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddClientStream(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
-                                   auto requestFunc,
-                                   const void* processParam = nullptr)
+    void AddRpc(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
+                auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         for(int i = 0; i < srv->contextCount; i++)

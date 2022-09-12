@@ -8,13 +8,13 @@
 bool TestService::Init()
 {
     // Add TestService RPCs
-    AddUnary(&TestService::Shutdown,
+    AddRpc(&TestService::Shutdown,
             &test::GrpcService::AsyncService::RequestShutdown);
-    AddUnary(&TestService::Ping,
+    AddRpc(&TestService::Ping,
             &test::GrpcService::AsyncService::RequestPing);
-    AddServerStream(&TestService::ServerStreamTest,
+    AddRpc(&TestService::ServerStreamTest,
             &test::GrpcService::AsyncService::RequestServerStreamTest);
-    AddClientStream(&TestService::ClientStreamTest,
+    AddRpc(&TestService::ClientStreamTest,
             &test::GrpcService::AsyncService::RequestClientStreamTest);
 
     return true;
