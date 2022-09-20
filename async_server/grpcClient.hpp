@@ -40,7 +40,7 @@ public:
     GrpcClient() = default;
     ~GrpcClient() = default;
 
-    GrpcClient(const std::string& domainSocketPath,
+    GrpcClient(const char* domainSocketPath,
                const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
     {
         Init(domainSocketPath, creds);
@@ -62,10 +62,10 @@ public:
         return InitFromAddressUri(FormatDnsAddressUri(host.c_str(), port), creds);
     }
 
-    bool Init(const std::string& domainSocketPath,
+    bool Init(const char* domainSocketPath,
               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
     {
-        return InitFromAddressUri(FormatUnixDomainSocketAddressUri(domainSocketPath.c_str()), creds);
+        return InitFromAddressUri(FormatUnixDomainSocketAddressUri(domainSocketPath), creds);
     }
 
     bool InitFromAddressUri(const std::string& addressUriIn,
