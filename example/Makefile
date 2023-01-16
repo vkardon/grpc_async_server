@@ -20,7 +20,7 @@ endif
 #CFLAGS = -std=c++11 -Wall -pthread
 CFLAGS = -std=c++1z -Wall -pthread
 LD = $(CC) 
-LDFLAGS = 
+LDFLAGS = -pthread
 
 CFLAGS += -g
 #CFLAGS += -D NDEBUG
@@ -64,8 +64,7 @@ INCS = -I../async_server \
        -I$(PROTO_OUT)
 
 # Libraries
-LIBS = -lpthread \
-       -L$(GRPC_LIB) \
+LIBS = -L$(GRPC_LIB) \
        -lgrpc -lgrpc++ -lgrpc++_reflection \
        -lgrpc_unsecure -lgrpc++_unsecure \
        -lprotobuf -lcrypto -lssl \
