@@ -1,0 +1,12 @@
+prefix=/home/vkardons/victor/gRpc/grpc_1.46.6_install/linux
+exec_prefix=${prefix}
+libdir=/home/vkardons/victor/gRpc/grpc_1.46.6_install/linux/lib64
+includedir=/home/vkardons/victor/gRpc/grpc_1.46.6_install/linux/include
+
+Name: absl_strerror
+Description: Abseil strerror library
+URL: https://abseil.io/
+Version: 20211102
+Requires: absl_config = 20211102, absl_core_headers = 20211102, absl_errno_saver = 20211102
+Libs: -L${libdir}  -labsl_strerror
+Cflags: -I${includedir} -DNOMINMAX

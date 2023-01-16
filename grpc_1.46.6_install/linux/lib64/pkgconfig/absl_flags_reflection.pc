@@ -1,0 +1,12 @@
+prefix=/home/vkardons/victor/gRpc/grpc_1.46.6_install/linux
+exec_prefix=${prefix}
+libdir=/home/vkardons/victor/gRpc/grpc_1.46.6_install/linux/lib64
+includedir=/home/vkardons/victor/gRpc/grpc_1.46.6_install/linux/include
+
+Name: absl_flags_reflection
+Description: Abseil flags_reflection library
+URL: https://abseil.io/
+Version: 20211102
+Requires: absl_config = 20211102, absl_flags_commandlineflag = 20211102, absl_flags_private_handle_accessor = 20211102, absl_flags_config = 20211102, absl_strings = 20211102, absl_synchronization = 20211102, absl_flat_hash_map = 20211102
+Libs: -L${libdir}  -labsl_flags_reflection
+Cflags: -I${includedir} -DNOMINMAX
