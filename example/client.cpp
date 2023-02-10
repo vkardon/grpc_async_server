@@ -59,9 +59,10 @@ bool PingTest(GrpcClient& grpcClient)
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
 
-    if(!grpcClient.Call(&test::GrpcService::Stub::Ping, req, resp, metadata))
+    std::string errMsg;
+    if(!grpcClient.Call(&test::GrpcService::Stub::Ping, req, resp, metadata, errMsg))
     {
-        ERRORMSG_MT(grpcClient.GetError());
+        ERRORMSG_MT(errMsg);
         return false;
     }
 
@@ -104,9 +105,10 @@ bool ServerStreamTest(GrpcClient& grpcClient, bool silent = false)
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
 
-    if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata))
+    std::string errMsg;
+    if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata, errMsg))
     {
-        ERRORMSG_MT(grpcClient.GetError());
+        ERRORMSG_MT(errMsg);
         return false;
     }
 
@@ -138,9 +140,10 @@ bool ClientStreamTest(GrpcClient& grpcClient)
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
 
-    if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata))
+    std::string errMsg;
+    if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata, errMsg))
     {
-        ERRORMSG_MT(grpcClient.GetError());
+        ERRORMSG_MT(errMsg);
         return false;
     }
 
@@ -160,9 +163,10 @@ bool ShutdownTest(GrpcClient& grpcClient)
 
     req.set_reason("Shutdown Test");
 
-    if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, metadata))
+    std::string errMsg;
+    if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, metadata, errMsg))
     {
-        ERRORMSG_MT(grpcClient.GetError());
+        ERRORMSG_MT(errMsg);
         return false;
     }
 
@@ -181,9 +185,10 @@ bool HealthTest(const std::string& addressUri, const std::string& serviceName)
 
     req.set_service(serviceName);
 
-    if(!healthServiceClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp))
+    std::string errMsg;
+    if(!healthServiceClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp, errMsg))
     {
-        ERRORMSG_MT(healthServiceClient.GetError());
+        ERRORMSG_MT(errMsg);
         return false;
     }
 
@@ -216,13 +221,10 @@ void LoadTest(GrpcClient& grpcClient)
     {
         thread = std::thread([&]()
         {
-            GrpcClient thisGrpcClient;
-            thisGrpcClient.InitFromAddressUri(grpcClient.GetAddressUri());
-
             for(int i = 0; i < numRpcs; ++i)
             {
                 // Format request message and call RPC
-                if(!ServerStreamTest(thisGrpcClient, true /*silent*/))
+                if(!ServerStreamTest(grpcClient, true /*silent*/))
                     break;
             }
         });
@@ -271,7 +273,7 @@ int main(int argc, char** argv)
     {
         // Unix domain socket in abstract namespace
         // Note: the first character in socket path must be '\0'.
-        char buf[256]{0};
+        char buf[256] {0};
         strcpy(buf+1, UNIX_DOMAIN_ABSTRACT_SOCKET_PATH);
         grpcClient.Init(buf);
     }
