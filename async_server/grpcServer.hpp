@@ -44,6 +44,8 @@ struct RequestContext
     virtual void Process() = 0;
     virtual void StartProcessing(::grpc::ServerCompletionQueue* cq) = 0;
     virtual void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) = 0;
+
+    virtual RequestContext* Clone() = 0;
 };
 
 //
@@ -185,16 +187,6 @@ public:
 private:
     bool RunImpl(const std::vector<AddressUri>& addressUriArr, int threadCount)
     {
-        // Get the number of contexts for the server threads.
-        // NOTE: In the gRpc code grpc_1.0.0/test/cpp/end2end/thread_stress_test.cc
-        // the number of contexts are multiple to 100 to the number of threads.
-        // This defines the number of simultaneous completion queue requests
-        // of the same type (through RPC_SERVICE::AsyncService::RequestXXX).
-        // Presuming fast application response (through genGrpcServer::XXX),
-        // this approach should be sufficient.
-        //int context_count = threadCount * 100;
-        contextCount = threadCount * 10;
-
         bool result = false; // Initially
         while(true)
         {
@@ -231,9 +223,16 @@ private:
                 builder.RegisterService(srv->service);
             }
 
-            // Add Completion Queue
-            std::unique_ptr<::grpc::ServerCompletionQueue> cq = builder.AddCompletionQueue();
-            if(!cq)
+            // Add Completion Queues - one queue per a thread for a best performance
+            std::vector<std::unique_ptr<::grpc::ServerCompletionQueue>> cqueus;
+            for(int i = 0; i < threadCount; i++)
+            {
+                cqueus.emplace_back(builder.AddCompletionQueue());
+                if(!cqueus.back())
+                    break;
+            }
+
+            if((int)cqueus.size() != threadCount)
             {
                 OnError("Failed to add Completion Queue");
                 break;
@@ -247,19 +246,11 @@ private:
                 break;
             }
 
-            // Ask the system start processing requests
-            for(RequestContext* ctx : requestContextList)
-            {
-                ctx->StartProcessing(cq.get());
-            }
-
             // Start threads
-            std::vector<std::thread> threads(threadCount);
-
-            int threadIndx = 0;
-            for(std::thread& thread : threads)
+            std::vector<std::thread> threads;
+            for(int i = 0; i < threadCount; i++)
             {
-                thread = std::thread(&GrpcServer::ProcessEvents, this, cq.get(), threadIndx++);
+                threads.emplace_back(&GrpcServer::ProcessEvents, this, cqueus[i].get(), i);
             }
 
             OnInfo("GrpcServer is running with " + std::to_string(threads.size()) + " threads");
@@ -276,7 +267,6 @@ private:
             std::chrono::time_point<std::chrono::system_clock> deadline =
                     std::chrono::system_clock::now() + std::chrono::milliseconds(200);
             server->Shutdown(deadline);
-            //cq->Shutdown(); // grpc asserts if we shutdown cq while threads are still running
             stop = true;
 
             OnInfo("Waiting for server threads to complete...");
@@ -288,13 +278,6 @@ private:
             threads.clear();
 
             OnInfo("All server threads are completed");
-
-            // Shutdown and drain the completion queue
-            cq->Shutdown();
-            void* ignored_tag = nullptr;
-            bool ignored_ok = false;
-            while(cq->Next(&ignored_tag, &ignored_ok))
-                ; // Ignore all remaining events
 
             // We are done
             result = true;
@@ -310,13 +293,8 @@ private:
         }
         serviceMap.clear();
 
-        for(RequestContext* ctx : requestContextList)
-        {
-            delete ctx;
-        }
         requestContextList.clear();
 
-        contextCount = 0;
         return result;
     }
 
@@ -330,6 +308,16 @@ private:
         sigaddset(&set, SIGINT);
         pthread_sigmask(SIG_BLOCK, &set, nullptr);
 
+        // Ask the system start processing requests
+        std::list<std::unique_ptr<RequestContext>> threadRequestContextList;
+        for(const std::unique_ptr<RequestContext>& ctx : requestContextList)
+        {
+            RequestContext* threadRequestContext = ctx->Clone();
+            threadRequestContextList.emplace_back(threadRequestContext);
+            threadRequestContext->StartProcessing(cq);
+        }
+
+        // Enter event loop to process events
         void* tag = nullptr;
         bool eventReadSuccess = false;
 
@@ -428,20 +416,26 @@ private:
             } // end of switch
         } // end of while
 
+        // Shutdown and drain the completion queue
+        cq->Shutdown();
+        void* ignored_tag = nullptr;
+        bool ignored_ok = false;
+        while(cq->Next(&ignored_tag, &ignored_ok))
+            ; // Ignore all remaining events
+
         OnInfo("Thread " + std::to_string(threadIndex) + " is completed");
     }
 
     // Helpers
-    void AddRpcRequest(RequestContext* ctx) { requestContextList.push_back(ctx); }
+    void AddRpcRequest(RequestContext* ctx) { requestContextList.emplace_back(ctx); }
 
     // For derived class to override
     virtual bool OnInit(::grpc::ServerBuilder& builder) = 0;
     virtual bool OnRun() = 0;
 
     // Class data
-    int contextCount = 0;
     std::map<std::string, GrpcServiceBase*> serviceMap;
-    std::list<RequestContext*> requestContextList;
+    std::list<std::unique_ptr<RequestContext>> requestContextList;
     std::atomic<bool> stop{false};
     unsigned int idleIntervalMicroseconds{2000000}; // 2 secs default
 
@@ -509,6 +503,16 @@ struct UnaryRequestContext : public RequestContext
 
         // Ask the system start processing requests
         StartProcessing(cq);
+    }
+
+    virtual RequestContext* Clone()
+    {
+        auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>;
+        ctx->grpcService = grpcService;
+        ctx->requestFunc = requestFunc;
+        ctx->processFunc = processFunc;
+        ctx->processParam = processParam;
+        return ctx;
     }
 };
 
@@ -645,6 +649,16 @@ struct ServerStreamRequestContext : public RequestContext
         // Ask the system start processing requests
         StartProcessing(cq);
     }
+
+    virtual RequestContext* Clone()
+    {
+        auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+        ctx->grpcService = grpcService;
+        ctx->requestFunc = requestFunc;
+        ctx->processFunc = processFunc;
+        ctx->processParam = processParam;
+        return ctx;
+    }
 };
 
 //
@@ -757,6 +771,16 @@ struct ClientStreamRequestContext : public RequestContext
         // Ask the system start processing requests
         StartProcessing(cq);
     }
+
+    virtual RequestContext* Clone()
+    {
+        auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+        ctx->grpcService = grpcService;
+        ctx->requestFunc = requestFunc;
+        ctx->processFunc = processFunc;
+        ctx->processParam = processParam;
+        return ctx;
+    }
 };
 
 //
@@ -785,15 +809,12 @@ public:
                 auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
-        for(int i = 0; i < srv->contextCount; i++)
-        {
-            auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>;
-            ctx->grpcService = this;
-            ctx->requestFunc = requestFunc;
-            ctx->processFunc = (ProcessUnaryFunc<RPC_SERVICE, REQ, RESP>)processFunc;
-            ctx->processParam = processParam;
-            srv->AddRpcRequest(ctx);
-        }
+        auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>;
+        ctx->grpcService = this;
+        ctx->requestFunc = requestFunc;
+        ctx->processFunc = (ProcessUnaryFunc<RPC_SERVICE, REQ, RESP>)processFunc;
+        ctx->processParam = processParam;
+        srv->AddRpcRequest(ctx);
     }
 
     // Add request for server-stream RPC
@@ -802,15 +823,12 @@ public:
                 auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
-        for(int i = 0; i < srv->contextCount; i++)
-        {
-            auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>;
-            ctx->grpcService = this;
-            ctx->requestFunc = requestFunc;
-            ctx->processFunc = (ProcessServerStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
-            ctx->processParam = processParam;
-            srv->AddRpcRequest(ctx);
-        }
+        auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+        ctx->grpcService = this;
+        ctx->requestFunc = requestFunc;
+        ctx->processFunc = (ProcessServerStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
+        ctx->processParam = processParam;
+        srv->AddRpcRequest(ctx);
     }
 
     // Add request for client-stream RPC
@@ -819,15 +837,12 @@ public:
                 auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
-        for(int i = 0; i < srv->contextCount; i++)
-        {
-            auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>;
-            ctx->grpcService = this;
-            ctx->requestFunc = requestFunc;
-            ctx->processFunc = (ProcessClientStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
-            ctx->processParam = processParam;
-            srv->AddRpcRequest(ctx);
-        }
+        auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+        ctx->grpcService = this;
+        ctx->requestFunc = requestFunc;
+        ctx->processFunc = (ProcessClientStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
+        ctx->processParam = processParam;
+        srv->AddRpcRequest(ctx);
     }
 };
 
