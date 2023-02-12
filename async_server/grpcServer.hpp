@@ -300,7 +300,7 @@ private:
 
     void ProcessEvents(::grpc::ServerCompletionQueue* cq, int threadIndex)
     {
-        // PR5044360: Don't handle SIGHUP or SIGINT in the spawned threads -
+        // Don't handle SIGHUP or SIGINT in the spawned threads -
         // let the main thread handle them.
         sigset_t set;
         sigemptyset(&set);
@@ -418,9 +418,7 @@ private:
 
         // Shutdown and drain the completion queue
         cq->Shutdown();
-        void* ignored_tag = nullptr;
-        bool ignored_ok = false;
-        while(cq->Next(&ignored_tag, &ignored_ok))
+        while(cq->Next(&tag, &eventReadSuccess))
             ; // Ignore all remaining events
 
         OnInfo("Thread " + std::to_string(threadIndex) + " is completed");
