@@ -362,7 +362,7 @@ private:
             RequestContext* ctx = static_cast<RequestContext*>(tag);
 
     //        // victor test
-    //        OUTMSG_MT("Next Event: tag='" << tag << "', eventReadSuccess=" << eventReadSuccess << ", "
+    //        OUTMSG("Next Event: tag='" << tag << "', eventReadSuccess=" << eventReadSuccess << ", "
     //                << "state=" << (ctx->state == RequestContext::REQUEST ? "REQUEST" :
     //                                ctx->state == RequestContext::READ    ? "READ"    :
     //                                ctx->state == RequestContext::WRITE   ? "WRITE"   :
@@ -543,7 +543,7 @@ struct ServerStreamRequestContext : public RequestContext
         req.Clear();
 
 //            // victor test
-//            OUTMSG_MT(__func__ << ": Calling requestFunc(), tag='" << this << "', "
+//            OUTMSG("Calling requestFunc(), tag='" << this << "', "
 //                    << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
 //                                    state == RequestContext::WRITE   ? "WRITE"   :
 //                                    state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
@@ -576,7 +576,7 @@ struct ServerStreamRequestContext : public RequestContext
         if(stream_ctx->streamHasMore)
         {
 //                // victor test
-//                OUTMSG_MT(__func__ << ": Calling Write(), tag='" << this << "', "
+//                OUTMSG("Calling Write(), tag='" << this << "', "
 //                        << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
 //                                        state == RequestContext::WRITE   ? "WRITE"   :
 //                                        state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
@@ -595,7 +595,7 @@ struct ServerStreamRequestContext : public RequestContext
             state = RequestContext::FINISH;
 
 //                // victor test
-//                OUTMSG_MT(__func__ << ": Calling Finish(), tag='" << this << "', "
+//                OUTMSG("Calling Finish(), tag='" << this << "', "
 //                        << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
 //                                        state == RequestContext::WRITE   ? "WRITE"   :
 //                                        state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
@@ -706,7 +706,7 @@ struct ClientStreamRequestContext : public RequestContext
             stream_ctx->streamHasMore = true;
 
             // Start reading
-            //OUTMSG_MT("this=" << this << ", ASK TO READ");  // victor test
+            //OUTMSG("this=" << this << ", ASK TO READ");  // victor test
 
             state = RequestContext::READ;
             req.Clear();
@@ -714,14 +714,14 @@ struct ClientStreamRequestContext : public RequestContext
         }
         else if(state == RequestContext::READ)
         {
-            //OUTMSG_MT("this=" << this << ", READ COMPLETE");    // victor test
+            //OUTMSG("this=" << this << ", READ COMPLETE");    // victor test
 
             (grpcService->*processFunc)(*stream_ctx, req, resp);
 
             // Is processing failed?
             if(stream_ctx->GetStatus() != ::grpc::OK)
             {
-                //OUTMSG_MT("this=" << this << ", Processing returned error " << stream_ctx->GetStatus());    // victor test
+                //OUTMSG("this=" << this << ", Processing returned error " << stream_ctx->GetStatus());    // victor test
 
                 // Processing returned error
                 state = RequestContext::FINISH;
@@ -731,14 +731,14 @@ struct ClientStreamRequestContext : public RequestContext
             }
 
             // Continue reading
-            //OUTMSG_MT("this=" << this << ", ASK TO READ");  // victor test
+            //OUTMSG("this=" << this << ", ASK TO READ");  // victor test
 
             req.Clear();
             req_reader->Read(&req, this);
         }
         else if(state == RequestContext::READEND)
         {
-            //OUTMSG_MT("this=" << this << ", READ END");     // victor test
+            //OUTMSG("this=" << this << ", READ END");     // victor test
 
             // And we are done!
             req.Clear();
@@ -755,7 +755,7 @@ struct ClientStreamRequestContext : public RequestContext
         }
         else
         {
-            //ERRORMSG_MT("Invalid ClientStreamRequestContext::Process state() " << state); // victor test
+            //ERRORMSG("Invalid ClientStreamRequestContext::Process state() " << state); // victor test
 
 //            // TODO - handle errors
 //            serv->OnError("Invalid ClientStreamRequestContext::Process state() " + std::to_string(state));
@@ -764,7 +764,7 @@ struct ClientStreamRequestContext : public RequestContext
 
     void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError)
     {
-        //OUTMSG_MT("Done");  // victor test
+        //OUTMSG("Done");  // victor test
 
         // Ask the system start processing requests
         StartProcessing(cq);

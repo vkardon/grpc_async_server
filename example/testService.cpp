@@ -9,13 +9,13 @@ bool TestService::Init()
 {
     // Add TestService RPCs
     AddRpc(&TestService::Shutdown,
-            &test::GrpcService::AsyncService::RequestShutdown);
+           &test::GrpcService::AsyncService::RequestShutdown);
     AddRpc(&TestService::Ping,
-            &test::GrpcService::AsyncService::RequestPing);
+           &test::GrpcService::AsyncService::RequestPing);
     AddRpc(&TestService::ServerStreamTest,
-            &test::GrpcService::AsyncService::RequestServerStreamTest);
+           &test::GrpcService::AsyncService::RequestServerStreamTest);
     AddRpc(&TestService::ClientStreamTest,
-            &test::GrpcService::AsyncService::RequestClientStreamTest);
+           &test::GrpcService::AsyncService::RequestClientStreamTest);
 
     return true;
 }
@@ -52,7 +52,7 @@ void TestService::Ping(const gen::RpcContext& ctx,
 
     resp.set_result(true);
 
-    INFOMSG_MT("From " << ctx.Peer());
+    INFOMSG("From " << ctx.Peer());
 }
 
 void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
@@ -75,7 +75,7 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
     if(ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ||
             ctx.GetStreamStatus() == gen::StreamStatus::ERROR)
     {
-        OUTMSG_MT((ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ? "SUCCESS" : "ERROR")
+        OUTMSG((ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ? "SUCCESS" : "ERROR")
                   << ", stream=" << ctx.GetParam()
                   << ", sent "  << (respList ? respList->sentRows  : 0)
                   << " out of " << (respList ? respList->rows.size() : 0) << " rows");
@@ -95,7 +95,7 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
         if(!respList)
         {
             // This is very first response, create list of empty responses to be streammed
-            OUTMSG_MT("Req = '" << req.msg() << "'");
+            OUTMSG("Req = '" << req.msg() << "'");
 
             respList = new ResponseList;
             ctx.SetParam(respList);
@@ -127,7 +127,7 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
     //usleep(1000000);  // sleep for one second to simulate processing
 
     // Print statistics.
-    OUTMSG_MT("opened_streams=" << opened_streams);
+    OUTMSG("opened_streams=" << opened_streams);
 }
 
 void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
@@ -144,7 +144,7 @@ void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
 
     if(ctx.GetHasMore())
     {
-        INFOMSG_MT("req.msg='" << req.msg() << "'");
+        INFOMSG("req.msg='" << req.msg() << "'");
     }
     else
     {

@@ -36,18 +36,7 @@ inline const std::string& GetThreadPrefix()
 
 inline pid_t GetThreadId()
 {
-    auto gettid = []()->pid_t
-    {
-#ifdef __APPLE__
-        uint64_t tid;
-        pthread_threadid_np(NULL, &tid);
-        return tid;
-#else
-        return syscall(__NR_gettid);
-#endif
-    };
-
-    static thread_local pid_t threadId = gettid();
+    static thread_local pid_t threadId = syscall(__NR_gettid);
     return threadId;
 }
 }
@@ -55,18 +44,18 @@ inline pid_t GetThreadId()
 //
 // Thread-safe logging
 //
-#define MSG_MT(msg_type, msg)                                   \
+#define __MSG__(msg_type, msg)                                  \
 do{                                                             \
     std::unique_lock<std::mutex> lock(logger::GetMutex());      \
     std::cout << "[" << logger::GetThreadId() << "]"            \
               << (*msg_type == '\0' ? "" : "[" msg_type "]")    \
               << logger::GetThreadPrefix() << " " << __func__   \
-              << ": " << msg << std::endl;          \
+              << ": " << msg << std::endl;                      \
 }while(0)
 
-#define OUTMSG_MT(msg)    MSG_MT("", msg)
-#define INFOMSG_MT(msg)   MSG_MT("INFO", msg)
-#define ERRORMSG_MT(msg)  MSG_MT("ERROR", msg)
+#define OUTMSG(msg)    __MSG__("", msg)
+#define INFOMSG(msg)   __MSG__("INFO", msg)
+#define ERRORMSG(msg)  __MSG__("ERROR", msg)
 
 #endif // __LOGGER_HPP__
 

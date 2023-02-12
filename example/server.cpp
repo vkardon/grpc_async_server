@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
         // srv.Run(addressUriArr, threadCount);
     }
 
-    INFOMSG_MT("Grpc Server has stopped");
+    INFOMSG("Grpc Server has stopped");
     return 0;
 }
 

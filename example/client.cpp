@@ -62,12 +62,12 @@ bool PingTest(GrpcClient& grpcClient)
     std::string errMsg;
     if(!grpcClient.Call(&test::GrpcService::Stub::Ping, req, resp, metadata, errMsg))
     {
-        ERRORMSG_MT(errMsg);
+        ERRORMSG(errMsg);
         return false;
     }
 
     const char* result = (resp.result() ? "success" : "error");
-    INFOMSG_MT(result);
+    INFOMSG(result);
     return true;
 }
 
@@ -108,7 +108,7 @@ bool ServerStreamTest(GrpcClient& grpcClient, bool silent = false)
     std::string errMsg;
     if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata, errMsg))
     {
-        ERRORMSG_MT(errMsg);
+        ERRORMSG(errMsg);
         return false;
     }
 
@@ -126,7 +126,7 @@ bool ClientStreamTest(GrpcClient& grpcClient)
         {
             if(++count > 20)
                 return false;
-            INFOMSG_MT("Client-side streaming message " + std::to_string(count));
+            INFOMSG("Client-side streaming message " + std::to_string(count));
             req.set_msg("ClientStreamTestRequest " + std::to_string(count));
             return true;
         }
@@ -143,12 +143,12 @@ bool ClientStreamTest(GrpcClient& grpcClient)
     std::string errMsg;
     if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata, errMsg))
     {
-        ERRORMSG_MT(errMsg);
+        ERRORMSG(errMsg);
         return false;
     }
 
     const char* result = (resp.result() ? "success" : "error");
-    INFOMSG_MT(result);
+    INFOMSG(result);
     return true;
 }
 
@@ -166,12 +166,12 @@ bool ShutdownTest(GrpcClient& grpcClient)
     std::string errMsg;
     if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, metadata, errMsg))
     {
-        ERRORMSG_MT(errMsg);
+        ERRORMSG(errMsg);
         return false;
     }
 
     const char* result = (resp.result() ? "success" : "error");
-    INFOMSG_MT(result);
+    INFOMSG(result);
     return true;
 }
 
@@ -188,7 +188,7 @@ bool HealthTest(const std::string& addressUri, const std::string& serviceName)
     std::string errMsg;
     if(!healthServiceClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp, errMsg))
     {
-        ERRORMSG_MT(errMsg);
+        ERRORMSG(errMsg);
         return false;
     }
 
@@ -200,7 +200,7 @@ bool HealthTest(const std::string& addressUri, const std::string& serviceName)
          status == grpc::health::v1::HealthCheckResponse::NOT_SERVING     ? "NOT_SERVING" :
          status == grpc::health::v1::HealthCheckResponse::SERVICE_UNKNOWN ? "SERVICE_UNKNOWN" : "INVALID");
 
-    INFOMSG_MT(result);
+    INFOMSG(result);
     return true;
 }
 
@@ -210,7 +210,7 @@ void LoadTest(GrpcClient& grpcClient)
     const int numRpcs = 50;            // Number of RPCs per thread
 
     // Start threads
-    INFOMSG_MT("Sending requests using " << numClientThreads
+    INFOMSG("Sending requests using " << numClientThreads
                << " threads with " << numRpcs << " RPC requests per thread");
 
     CTimeElapsed elapsed(("Elapsed time [" + std::to_string(numClientThreads * numRpcs) + " calls]: ").c_str());
@@ -236,7 +236,7 @@ void LoadTest(GrpcClient& grpcClient)
         thread.join();
     }
 
-    INFOMSG_MT("All client threads are completed");
+    INFOMSG("All client threads are completed");
 }
 
 void PrintUsage(const char* arg = nullptr)
