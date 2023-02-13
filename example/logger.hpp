@@ -1,38 +1,17 @@
 #ifndef __LOGGER_HPP__
 #define __LOGGER_HPP__
 
-#include <iostream> // cout
-#include <sstream>  // ostringstream
-#include <mutex>    // mutex, unique_lock
-
-#include <unistd.h>
-#include <sys/syscall.h>
+#include <iostream>         // cout
+#include <mutex>            // mutex, unique_lock
+#include <sys/syscall.h>    // syscall()
 
 //
 // Multi-threaded logger access methods
 //
 namespace logger
 {
-inline std::mutex& GetMutex()
-{
-    // Mutex to protect logger in multi-threading logging
-    static std::mutex sLoggerMutex;
-    return sLoggerMutex;
-}
-
-inline const std::string& SetThreadPrefix(const char* newPrefix)
-{
-    // Thread-local storage for thread-specific prefix string
-    static thread_local std::string sLoggerThreadPrefix;
-    if(newPrefix)
-        sLoggerThreadPrefix = newPrefix;
-    return sLoggerThreadPrefix;
-}
-
-inline const std::string& GetThreadPrefix()
-{
-    return SetThreadPrefix(nullptr);
-}
+// Mutex to sync multi-threading logging
+inline static std::mutex sLogMutex;
 
 inline pid_t GetThreadId()
 {
@@ -46,11 +25,10 @@ inline pid_t GetThreadId()
 //
 #define __MSG__(msg_type, msg)                                  \
 do{                                                             \
-    std::unique_lock<std::mutex> lock(logger::GetMutex());      \
+    std::unique_lock<std::mutex> lock(logger::sLogMutex);       \
     std::cout << "[" << logger::GetThreadId() << "]"            \
               << (*msg_type == '\0' ? "" : "[" msg_type "]")    \
-              << logger::GetThreadPrefix() << " " << __func__   \
-              << ": " << msg << std::endl;                      \
+              << " " << __func__ << ": " << msg << std::endl;   \
 }while(0)
 
 #define OUTMSG(msg)    __MSG__("", msg)

@@ -88,7 +88,7 @@ bool ServerStreamTest(GrpcClient& grpcClient, bool silent = false)
         void Dump()
         {
             // Dump all collected responses
-            std::unique_lock<std::mutex> lock(logger::GetMutex());
+            std::unique_lock<std::mutex> lock(logger::sLogMutex);
             std::cout << "BEGIN" << std::endl;
             for(const test::ServerStreamTestResponse& resp : respList)
             {

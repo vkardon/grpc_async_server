@@ -30,8 +30,6 @@ bool TestService::IsServing()
 void TestService::Shutdown(const gen::RpcContext& ctx,
                            const test::ShutdownRequest& req, test::ShutdownResponse& resp)
 {
-    LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
-
     std::string errMsg;
 
     if(mServer->Shutdown(ctx, errMsg))
@@ -48,8 +46,6 @@ void TestService::Shutdown(const gen::RpcContext& ctx,
 void TestService::Ping(const gen::RpcContext& ctx,
                        const test::PingRequest& req, test::PingResponse& resp)
 {
-    LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
-
     resp.set_result(true);
 
     INFOMSG("From " << ctx.Peer());
@@ -58,8 +54,6 @@ void TestService::Ping(const gen::RpcContext& ctx,
 void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
                                    const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp)
 {
-    LoggerPrefix loggerPrefix(ctx); // Set thread-specific logger prefix
-
     // Statistics - track the total number of opened streams
     static std::atomic<int> opened_streams{0};
 
