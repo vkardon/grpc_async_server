@@ -131,17 +131,17 @@ private:
     GrpcClient(const GrpcClient&) = delete;
     GrpcClient& operator=(const GrpcClient&) = delete;
 
-    void SetError(std::string& errMsg, const std::string& err, const grpc::Status& status)
+    void SetError(std::string& errOut, const std::string& errIn, const grpc::Status& status = grpc::Status())
     {
-        std::string status_err = status.error_message();
-        if(status_err.empty())
-            status_err = StatusToStr(status.error_code());
-        errMsg = err + ", addressUri='" + addressUri + "', err='" + status_err + "'";
-    }
+        errOut = errIn + ", addressUri='" + addressUri + "'";
 
-    void SetError(std::string& errMsg, const std::string& err)
-    {
-        errMsg = err + ", addressUri='" + addressUri + "'";
+        if(!status.ok())
+        {
+            std::string status_err = status.error_message();
+            if(status_err.empty())
+                status_err = StatusToStr(status.error_code());
+            errOut += ", err='" + status_err + "'";
+        }
     }
 
 private:
