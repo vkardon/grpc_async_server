@@ -48,13 +48,15 @@ GRPC_INC = $(GRPC_HOME)/linux_shared/include
 
 ifeq "$(OS)" "Linux"
   GRPC_BIN = $(GRPC_HOME)/linux_shared/bin
-  GRPC_LIB = -L$(GRPC_HOME)/linux_shared/lib -L$(GRPC_HOME)/linux_shared/lib64
+  GRPC_LIB = $(GRPC_HOME)/linux_shared/lib
+  GRPC_LIB64 = $(GRPC_HOME)/linux_shared/lib64
 else
   GRPC_BIN = $(GRPC_HOME)/mac_shared/bin
-  GRPC_LIB = -L$(GRPC_HOME)/mac_shared/lib -L$(GRPC_HOME)/mac_shared/lib64
+  GRPC_LIB = $(GRPC_HOME)/mac_shared/lib
+  GRPC_LIB64 = $(GRPC_HOME)/mac_shared/lib64
 endif
 
-PROTOC          = $(GRPC_BIN)/protoc
+PROTOC = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
 # Note: Add libs requred by proto to LD_LIBRARY_ATH
@@ -64,7 +66,7 @@ else
   PROTO_LIB_PATH = $(LD_LIBRARY_PATH):$(GRPC_HOME)/mac_shared/lib:$(GRPC_HOME)/mac_shared/lib64
 endif
 
-LDFLAGS += -Wl,-rpath='$$ORIGIN/$(GRPC_LIB)'
+LDFLAGS += -Wl,-rpath='$$ORIGIN/$(GRPC_LIB)' -Wl,-rpath='$$ORIGIN/$(GRPC_LIB64)'
 
 # Include directories
 INCS = -I../async_server \
@@ -73,9 +75,8 @@ INCS = -I../async_server \
        -I$(PROTO_OUT)
 
 # Libraries
-LIBS = $(GRPC_LIB) \
+LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) \
        -lgrpc -lgrpc++ -lgrpc++_reflection \
-       -lgrpc_unsecure -lgrpc++_unsecure \
        -lprotobuf -lcrypto -lssl \
        -lgpr -lz -laddress_sorting -lcares \
        -lre2 \

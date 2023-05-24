@@ -48,13 +48,15 @@ GRPC_INC = $(GRPC_HOME)/linux/include
 
 ifeq "$(OS)" "Linux"
   GRPC_BIN = $(GRPC_HOME)/linux/bin
-  GRPC_LIB = -L$(GRPC_HOME)/linux/lib -L$(GRPC_HOME)/linux/lib64
+  GRPC_LIB = $(GRPC_HOME)/linux/lib
+  GRPC_LIB64 = $(GRPC_HOME)/linux/lib64
 else
   GRPC_BIN = $(GRPC_HOME)/mac/bin
-  GRPC_LIB = -L$(GRPC_HOME)/mac/lib -L$(GRPC_HOME)/mac/lib64
+  GRPC_LIB = $(GRPC_HOME)/mac/lib
+  GRPC_LIB64 = $(GRPC_HOME)/mac/lib64
 endif
 
-PROTOC          = $(GRPC_BIN)/protoc
+PROTOC = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
 # Include directories
@@ -64,9 +66,9 @@ INCS = -I../async_server \
        -I$(PROTO_OUT)
 
 # Libraries
-LIBS = $(GRPC_LIB) \
+LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) \
        -lgrpc -lgrpc++ -lgrpc++_reflection \
-       -lgrpc_unsecure -lgrpc++_unsecure \
+       -lgrpc_unsecure \
        -lprotobuf -lcrypto -lssl \
        -lgpr -lz -laddress_sorting -lcares \
        -lre2 \
