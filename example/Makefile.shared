@@ -8,16 +8,12 @@ PROTOSET = protoset
 OS = $(shell uname -s)
 
 # Compiler and linker to use
-# Note: We have to add g++ libs to LD_LIBRARY_ATH
 ifeq "$(OS)" "Linux"
-  CC = /usr/local/geneva/packages/devtoolset-7/root/usr/bin/g++
-  CC_LIB_PATH = $(LD_LIBRARY_PATH):/usr/local-rhel7/geneva/packages/devtoolset-7/root/lib64
+  CC = g++
 else
   CC = g++
-  CC_LIB_PATH = $(LD_LIBRARY_PATH)
 endif
 
-#CFLAGS = -std=c++11 -Wall -pthread
 CFLAGS = -std=c++1z -Wall -pthread
 LD = $(CC) 
 LDFLAGS = -pthread
@@ -155,22 +151,22 @@ OBJS_CLN += $(PROTOC_OBJS) $(GRPC_OBJS)
 all: $(TARGET_SRV) $(TARGET_CLN) $(PROTOSET)
 
 $(TARGET_SRV): $(PROTOC_CC) $(GRPC_CC) $(OBJS_SRV) 
-	export LD_LIBRARY_PATH=$(CC_LIB_PATH); $(LD) $(LDFLAGS) -o $(TARGET_SRV) $(OBJS_SRV) $(LIBS)
+	$(LD) $(LDFLAGS) -o $(TARGET_SRV) $(OBJS_SRV) $(LIBS)
 
 $(TARGET_CLN): $(PROTOC_CC) $(GRPC_CC) $(OBJS_CLN) 
-	export LD_LIBRARY_PATH=$(CC_LIB_PATH); $(LD) $(LDFLAGS) -o $(TARGET_CLN) $(OBJS_CLN) $(LIBS)
+	$(LD) $(LDFLAGS) -o $(TARGET_CLN) $(OBJS_CLN) $(LIBS)
 
 # Compile source files
 # Add -MP to generate dependency list
 # Add -MMD to not include system headers
 $(OBJ_DIR)/%.o: $(PROJECT_HOME)/%.cpp Makefile   
 	-mkdir -p $(OBJ_DIR)
-	export LD_LIBRARY_PATH=$(CC_LIB_PATH); $(CC) -c -MP -MMD $(CFLAGS) $(INCS) -o $(OBJ_DIR)/$*.o $<
+	$(CC) -c -MP -MMD $(CFLAGS) $(INCS) -o $(OBJ_DIR)/$*.o $<
 	
 # Compile gRpc source files 
 $(OBJ_DIR)/%.o: $(PROTO_OUT)/%.cc Makefile
 	-mkdir -p $(OBJ_DIR)
-	export LD_LIBRARY_PATH=$(CC_LIB_PATH); $(CC) -c $(CFLAGS) $(INCS) -I$(PROTO_OUT) -o $(OBJ_DIR)/$*.o $<
+	$(CC) -c $(CFLAGS) $(INCS) -I$(PROTO_OUT) -o $(OBJ_DIR)/$*.o $<
 
 # Generate gRpc files
 $(PROTO_OUT)/%.grpc.pb.cc: $(PROTO_HOME)/%.proto Makefile
