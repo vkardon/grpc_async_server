@@ -1,7 +1,7 @@
 
 # Target(s) to build
-TARGET_SRV = server
-TARGET_CLN = client
+EXE_SRV = server
+EXE_CLN = client
 PROTOSET = protoset
 
 # Detect operating system
@@ -14,12 +14,10 @@ else
   CC = g++
 endif
 
-CFLAGS = -std=c++1z -Wall -pthread
+CFLAGS = -std=c++17 -Wall -pthread -D NDEBUG -O3 -s
+#CFLAGS = -std=c++17 -Wall -pthread -g
 LD = $(CC) 
 LDFLAGS = -pthread
-
-CFLAGS += -g
-#CFLAGS += -D NDEBUG
 
 # Sources
 PROJECT_HOME = .
@@ -39,7 +37,7 @@ PROTO_SRCS = $(PROTO_HOME)/test.proto \
              $(PROTO_HOME)/health.proto 
 
 # gRPC support
-GRPC_HOME = ../grpc_1.46.6_install
+GRPC_HOME = $(PROJECT_HOME)/../grpc_1.46.6_install
 GRPC_INC = $(GRPC_HOME)/linux_shared/include
 
 ifeq "$(OS)" "Linux"
@@ -132,7 +130,7 @@ endif
 #       -Wl,--whole-archive -lgrpc++_reflection -Wl,--no-whole-archive
 
 # gRpc files to generate from *.proto files 
-PROTO_NAMES   = $(basename $(notdir $(PROTO_SRCS)))
+PROTO_NAMES = $(basename $(notdir $(PROTO_SRCS)))
 
 PROTOC_CC   = $(addprefix $(PROTO_OUT)/, $(addsuffix .pb.cc, $(PROTO_NAMES)))
 PROTOC_OBJS = $(addprefix $(OBJ_DIR)/,   $(addsuffix .pb.o,  $(PROTO_NAMES)))
@@ -148,13 +146,13 @@ OBJS_CLN =  $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS_
 OBJS_CLN += $(PROTOC_OBJS) $(GRPC_OBJS)
 
 # Build target(s)
-all: $(TARGET_SRV) $(TARGET_CLN) $(PROTOSET)
+all: $(EXE_SRV) $(EXE_CLN) $(PROTOSET)
 
-$(TARGET_SRV): $(PROTOC_CC) $(GRPC_CC) $(OBJS_SRV) 
-	$(LD) $(LDFLAGS) -o $(TARGET_SRV) $(OBJS_SRV) $(LIBS)
+$(EXE_SRV): $(PROTOC_CC) $(GRPC_CC) $(OBJS_SRV) 
+	$(LD) $(LDFLAGS) -o $(EXE_SRV) $(OBJS_SRV) $(LIBS)
 
-$(TARGET_CLN): $(PROTOC_CC) $(GRPC_CC) $(OBJS_CLN) 
-	$(LD) $(LDFLAGS) -o $(TARGET_CLN) $(OBJS_CLN) $(LIBS)
+$(EXE_CLN): $(PROTOC_CC) $(GRPC_CC) $(OBJS_CLN) 
+	$(LD) $(LDFLAGS) -o $(EXE_CLN) $(OBJS_CLN) $(LIBS)
 
 # Compile source files
 # Add -MP to generate dependency list
@@ -170,31 +168,24 @@ $(OBJ_DIR)/%.o: $(PROTO_OUT)/%.cc Makefile
 
 # Generate gRpc files
 $(PROTO_OUT)/%.grpc.pb.cc: $(PROTO_HOME)/%.proto Makefile
-	@echo ">>> Generating grpc files..."
+	@echo ">>> Generating grpc files from $<..."
 	-mkdir -p $(PROTO_OUT)
 	export LD_LIBRARY_PATH=$(PROTO_LIB_PATH); $(PROTOC) --grpc_out=$(PROTO_OUT) -I $(PROTO_HOME) --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN) $<
 
 # Generate protobuf files
 $(PROTO_OUT)/%.pb.cc: $(PROTO_HOME)/%.proto Makefile
-	@echo ">>> Generating proto files..."
+	@echo ">>> Generating proto files from $<..."
 	-mkdir -p $(PROTO_OUT)
 	export LD_LIBRARY_PATH=$(PROTO_LIB_PATH); $(PROTOC) --cpp_out=$(PROTO_OUT) --proto_path=$(PROTO_HOME) $<
 
 # Generate protoset file
 $(PROTOSET): $(PROTO_SRCS)
-	@echo ">>> Generating test.protoset ..."
+	@echo ">>> Generating protoset ..."
 	export LD_LIBRARY_PATH=$(PROTO_LIB_PATH); $(PROTOC) -I $(PROTO_HOME) --descriptor_set_out=$(PROTOSET) $(PROTO_SRCS)
 
 # Delete all intermediate files
 clean: 
-#	@echo PROTO_SRCS = $(PROTO_SRCS)
-#	@echo PROTO_NAMES = $(PROTO_NAMES)
-#	@echo PROTO_OUT = $(PROTO_OUT)
-#	@echo PROTOC_OBJS = $(PROTOC_OBJS)
-#	@echo GRPC_OBJS = $(GRPC_OBJS)
-#	@echo OBJS_SRV = $(OBJS_SRV)
-#	@echo OBJS_CLN = $(OBJS_CLN)
-	rm -rf $(TARGET_SRV) $(TARGET_CLN) $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT) core
+	rm -rf $(EXE_SRV) $(EXE_CLN) $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT) core
 
 #
 # Read the dependency files.
