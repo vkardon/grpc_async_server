@@ -1,56 +1,15 @@
 //
 // client
 //
-#include <iostream>
-#include <memory>
 #include <string>
-#include <unistd.h>     // sleep()
-#include <sys/time.h>   // gettimeofday()
-#include <sstream>      // std::stringstream
 #include <thread>
 #include "grpcClient.hpp"
 #include "testServerConfig.hpp"
-
 #include "test.grpc.pb.h"
 #include "health.grpc.pb.h"
 #include "logger.hpp"
 
-using GrpcClient = gen::GrpcClient<test::GrpcService>;
-
-//
-// Helper CTimeElapsed class to measure elapsed time
-//
-class CTimeElapsed
-{
-    struct timeval start_tv;
-    struct timeval stop_tv;
-    std::string prefix;
-
-public:
-    CTimeElapsed(const char* _prefix="") : prefix(_prefix) { gettimeofday(&start_tv, NULL); }
-    ~CTimeElapsed()
-    {
-        gettimeofday(&stop_tv, NULL);
-        //long long elapsed = (stop_tv.tv_sec - start_tv.tv_sec)*1000000 + (stop_tv.tv_usec - start_tv.tv_usec);
-        //printf("%lld microseconds\n", elapsed);
-
-        timeval tmp;
-        if(stop_tv.tv_usec < start_tv.tv_usec)
-        {
-            tmp.tv_sec = stop_tv.tv_sec - start_tv.tv_sec - 1;
-            tmp.tv_usec = 1000000 + stop_tv.tv_usec - start_tv.tv_usec;
-        }
-        else
-        {
-            tmp.tv_sec = stop_tv.tv_sec - start_tv.tv_sec;
-            tmp.tv_usec = stop_tv.tv_usec - start_tv.tv_usec;
-        }
-
-        printf("%s%ld.%06lu sec\n", prefix.c_str(), tmp.tv_sec, (long)tmp.tv_usec);
-    }
-};
-
-bool PingTest(GrpcClient& grpcClient)
+bool PingTest()
 {
     test::PingRequest req;
     test::PingResponse resp;
@@ -60,6 +19,7 @@ bool PingTest(GrpcClient& grpcClient)
     metadata["requestid"] = std::to_string(rand() % 1000);
 
     std::string errMsg;
+    gen::GrpcClient<test::GrpcService> grpcClient("localhost", PORT_NUMBER);
     if(!grpcClient.Call(&test::GrpcService::Stub::Ping, req, resp, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -71,7 +31,7 @@ bool PingTest(GrpcClient& grpcClient)
     return true;
 }
 
-bool ServerStreamTest(GrpcClient& grpcClient, bool silent = false)
+bool ServerStreamTest(bool silent = false)
 {
     test::ServerStreamTestRequest req;
     req.set_msg("ServerStreamTestRequest");
@@ -106,6 +66,7 @@ bool ServerStreamTest(GrpcClient& grpcClient, bool silent = false)
     metadata["requestid"] = std::to_string(rand() % 1000);
 
     std::string errMsg;
+    gen::GrpcClient<test::GrpcService> grpcClient("localhost", PORT_NUMBER);
     if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -118,7 +79,7 @@ bool ServerStreamTest(GrpcClient& grpcClient, bool silent = false)
     return true;
 }
 
-bool ClientStreamTest(GrpcClient& grpcClient)
+bool ClientStreamTest()
 {
     struct RequestCallback : public gen::ReqCallbackFunctor<test::ClientStreamTestRequest>
     {
@@ -141,6 +102,7 @@ bool ClientStreamTest(GrpcClient& grpcClient)
     metadata["requestid"] = std::to_string(rand() % 1000);
 
     std::string errMsg;
+    gen::GrpcClient<test::GrpcService> grpcClient("localhost", PORT_NUMBER);
     if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -152,7 +114,7 @@ bool ClientStreamTest(GrpcClient& grpcClient)
     return true;
 }
 
-bool ShutdownTest(GrpcClient& grpcClient)
+bool ShutdownTest()
 {
     test::ShutdownRequest req;
     test::ShutdownResponse resp;
@@ -164,6 +126,7 @@ bool ShutdownTest(GrpcClient& grpcClient)
     req.set_reason("Shutdown Test");
 
     std::string errMsg;
+    gen::GrpcClient<test::GrpcService> grpcClient("localhost", PORT_NUMBER);
     if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -175,18 +138,16 @@ bool ShutdownTest(GrpcClient& grpcClient)
     return true;
 }
 
-bool HealthTest(const std::string& addressUri, const std::string& serviceName)
+bool HealthTest(const std::string& serviceName)
 {
-    gen::GrpcClient<grpc::health::v1::Health> healthServiceClient;
-    healthServiceClient.InitFromAddressUri(addressUri);
-
     grpc::health::v1::HealthCheckRequest req;
     grpc::health::v1::HealthCheckResponse resp;
 
     req.set_service(serviceName);
 
     std::string errMsg;
-    if(!healthServiceClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp, errMsg))
+    gen::GrpcClient<grpc::health::v1::Health> grpcClient("localhost", PORT_NUMBER);
+    if(!grpcClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -204,7 +165,7 @@ bool HealthTest(const std::string& addressUri, const std::string& serviceName)
     return true;
 }
 
-void LoadTest(GrpcClient& grpcClient)
+void LoadTest()
 {
     const int numClientThreads = 100;  // Number of threads
     const int numRpcs = 50;            // Number of RPCs per thread
@@ -224,7 +185,7 @@ void LoadTest(GrpcClient& grpcClient)
             for(int i = 0; i < numRpcs; ++i)
             {
                 // Format request message and call RPC
-                if(!ServerStreamTest(grpcClient, true /*silent*/))
+                if(!ServerStreamTest(true /*silent*/))
                     break;
             }
         });
@@ -255,62 +216,41 @@ void PrintUsage(const char* arg = nullptr)
 
 int main(int argc, char** argv)
 {
-    if(argc < 2)
+    const char* cmd = (argc < 2 ? nullptr : argv[1]);
+    if(!cmd)
     {
         PrintUsage();
         return 0;
     }
 
-    // Initialize gRpc client
-    GrpcClient grpcClient;
-
-    if(!strcmp(URI, "domain_socket"))
-    {
-        // Unix domain socket
-        grpcClient.Init(UNIX_DOMAIN_SOCKET_PATH);
-    }
-    else if(!strcmp(URI, "domain_abstract_socket"))
-    {
-        // Unix domain socket in abstract namespace
-        // Note: the first character in socket path must be '\0'.
-        char buf[256] {0};
-        strcpy(buf+1, UNIX_DOMAIN_ABSTRACT_SOCKET_PATH);
-        grpcClient.Init(buf);
-    }
-    else //(!strcmp(URI, "dns"))
-    {
-        // Net socket
-        grpcClient.Init("localhost", PORT_NUMBER);
-    }
-
     // Call gRpc service
-    if(!strcmp(argv[1], "ping"))
+    if(!strcmp(cmd, "ping"))
     {
-        PingTest(grpcClient);
+        PingTest();
     }
-    else if(!strcmp(argv[1], "serverstream"))
+    else if(!strcmp(cmd, "serverstream"))
     {
-        ServerStreamTest(grpcClient);
+        ServerStreamTest();
     }
-    else if(!strcmp(argv[1], "clientstream"))
+    else if(!strcmp(cmd, "clientstream"))
     {
-        ClientStreamTest(grpcClient);
+        ClientStreamTest();
     }
-    else if(!strcmp(argv[1], "shutdown"))
+    else if(!strcmp(cmd, "shutdown"))
     {
-        ShutdownTest(grpcClient);
+        ShutdownTest();
     }
-    else if(!strcmp(argv[1], "health"))
+    else if(!strcmp(cmd, "health"))
     {
-        HealthTest(grpcClient.GetAddressUri(), (argc > 2 ? argv[2]: ""));
+        HealthTest(argc > 2 ? argv[2]: "");
     }
-    else if(!strcmp(argv[1], "load"))
+    else if(!strcmp(cmd, "load"))
     {
-        LoadTest(grpcClient);
+        LoadTest();
     }
     else
     {
-        PrintUsage(argv[1]);
+        PrintUsage(cmd);
     }
 
     return 0;
