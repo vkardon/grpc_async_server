@@ -3,7 +3,7 @@
 
 #define PORT_NUMBER                         50055
 #define UNIX_DOMAIN_SOCKET_PATH             "/tmp/grpc_server_test.sock"
-#define UNIX_DOMAIN_ABSTRACT_SOCKET_PATH    "grpc_server_test.sock"
+#define UNIX_DOMAIN_ABSTRACT_SOCKET_PATH    "\0grpc_server_test.sock"
 
 #define URI "dns"
 //#define URI "domain_socket"

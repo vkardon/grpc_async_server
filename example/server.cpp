@@ -22,10 +22,7 @@ int main(int argc, char *argv[])
     else if(!strcmp(URI, "domain_abstract_socket"))
     {
         // Unix domain socket in abstract namespace
-        char socket_path[256] {};
-        socket_path[0] = '\0';
-        strcpy(socket_path + 1, UNIX_DOMAIN_ABSTRACT_SOCKET_PATH);
-        srv.Run(socket_path, threadCount);
+        srv.Run(UNIX_DOMAIN_ABSTRACT_SOCKET_PATH, threadCount);
     }
     else //(!strcmp(URI, "dns"))
     {
