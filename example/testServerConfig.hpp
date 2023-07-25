@@ -5,10 +5,6 @@
 #define UNIX_DOMAIN_SOCKET_PATH             "/tmp/grpc_server_test.sock"
 #define UNIX_DOMAIN_ABSTRACT_SOCKET_PATH    "\0grpc_server_test.sock"
 
-#define URI "dns"
-//#define URI "domain_socket"
-//#define URI "domain_abstract_socket"
-
 //
 // Helper CTimeElapsed class to measure elapsed time
 //

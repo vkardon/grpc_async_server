@@ -1,6 +1,7 @@
 //
 // client
 //
+#include <libgen.h>     // dirname()
 #include <string>
 #include <thread>
 #include "grpcClient.hpp"
@@ -8,6 +9,10 @@
 #include "test.grpc.pb.h"
 #include "health.grpc.pb.h"
 #include "logger.hpp"
+
+// Channel SSL/TSL credentials
+std::shared_ptr<grpc::ChannelCredentials> gCreds;
+std::string gHost = "localhost";
 
 bool PingTest()
 {
@@ -19,7 +24,7 @@ bool PingTest()
     metadata["requestid"] = std::to_string(rand() % 1000);
 
     std::string errMsg;
-    gen::GrpcClient<test::GrpcService> grpcClient("localhost", PORT_NUMBER);
+    gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
     if(!grpcClient.Call(&test::GrpcService::Stub::Ping, req, resp, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -66,7 +71,7 @@ bool ServerStreamTest(bool silent = false)
     metadata["requestid"] = std::to_string(rand() % 1000);
 
     std::string errMsg;
-    gen::GrpcClient<test::GrpcService> grpcClient("localhost", PORT_NUMBER);
+    gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
     if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -102,7 +107,7 @@ bool ClientStreamTest()
     metadata["requestid"] = std::to_string(rand() % 1000);
 
     std::string errMsg;
-    gen::GrpcClient<test::GrpcService> grpcClient("localhost", PORT_NUMBER);
+    gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
     if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -126,7 +131,7 @@ bool ShutdownTest()
     req.set_reason("Shutdown Test");
 
     std::string errMsg;
-    gen::GrpcClient<test::GrpcService> grpcClient("localhost", PORT_NUMBER);
+    gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
     if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -146,7 +151,7 @@ bool HealthTest(const std::string& serviceName)
     req.set_service(serviceName);
 
     std::string errMsg;
-    gen::GrpcClient<grpc::health::v1::Health> grpcClient("localhost", PORT_NUMBER);
+    gen::GrpcClient<grpc::health::v1::Health> grpcClient(gHost, PORT_NUMBER, gCreds);
     if(!grpcClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp, errMsg))
     {
         ERRORMSG(errMsg);
@@ -205,7 +210,7 @@ void PrintUsage(const char* arg = nullptr)
     if(arg)
         printf("Unwknown test name '%s'\n", arg);
 
-    printf("Usage: client <test name>\n");
+    printf("Usage: client <ssl:hostname (optional)> <test name>\n");
     printf("       client ping\n");
     printf("       client serverstream\n");
     printf("       client clientstream\n");
@@ -216,41 +221,65 @@ void PrintUsage(const char* arg = nullptr)
 
 int main(int argc, char** argv)
 {
-    const char* cmd = (argc < 2 ? nullptr : argv[1]);
-    if(!cmd)
+    // Read hostname if we have it
+    if(argc > 2)
+        gHost = argv[1];
+
+    // Get the name of the test
+    const char* testName = (argc > 2 ? argv[2] : argc > 1 ? argv[1] : nullptr);
+    if(!testName)
     {
         PrintUsage();
         return 0;
     }
 
+    // If client binary name ends with "ssl", then build client SSL/TSL credentials
+    size_t len = strlen(argv[0]);
+    if(len > 3 && !strcmp(argv[0] + len - 3, "ssl"))
+    {
+        std::string errMsg;
+        std::string dir = dirname(argv[0]);
+        gCreds = gen::GetChannelCredentials(
+                dir + "/ssl/ca-cert.pem",
+                dir + "/ssl/client-key.pem",
+                dir + "/ssl/client-cert.pem",
+                errMsg);
+        if(!gCreds)
+        {
+            ERRORMSG(errMsg);
+            return 1;
+        }
+    }
+
     // Call gRpc service
-    if(!strcmp(cmd, "ping"))
+    if(!strcmp(testName, "ping"))
     {
         PingTest();
     }
-    else if(!strcmp(cmd, "serverstream"))
+    else if(!strcmp(testName, "serverstream"))
     {
         ServerStreamTest();
     }
-    else if(!strcmp(cmd, "clientstream"))
+    else if(!strcmp(testName, "clientstream"))
     {
         ClientStreamTest();
     }
-    else if(!strcmp(cmd, "shutdown"))
+    else if(!strcmp(testName, "shutdown"))
     {
         ShutdownTest();
     }
-    else if(!strcmp(cmd, "health"))
+    else if(!strcmp(testName, "health"))
     {
-        HealthTest(argc > 2 ? argv[2]: "");
+        std::string serviceName = (argc > 3 ? argv[3] : argc > 2 ? argv[2] : "");
+        HealthTest(serviceName);
     }
-    else if(!strcmp(cmd, "load"))
+    else if(!strcmp(testName, "load"))
     {
         LoadTest();
     }
     else
     {
-        PrintUsage(cmd);
+        PrintUsage(testName);
     }
 
     return 0;

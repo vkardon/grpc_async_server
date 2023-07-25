@@ -150,9 +150,11 @@ all: $(EXE_SRV) $(EXE_CLN) $(PROTOSET)
 
 $(EXE_SRV): $(PROTOC_CC) $(GRPC_CC) $(OBJS_SRV) 
 	$(LD) $(LDFLAGS) -o $(EXE_SRV) $(OBJS_SRV) $(LIBS)
+	ln -sf $(EXE_SRV) $(EXE_SRV)ssl
 
 $(EXE_CLN): $(PROTOC_CC) $(GRPC_CC) $(OBJS_CLN) 
 	$(LD) $(LDFLAGS) -o $(EXE_CLN) $(OBJS_CLN) $(LIBS)
+	ln -sf $(EXE_CLN) $(EXE_CLN)ssl
 
 # Compile source files
 # Add -MP to generate dependency list
@@ -185,7 +187,7 @@ $(PROTOSET): $(PROTO_SRCS)
 
 # Delete all intermediate files
 clean: 
-	rm -rf $(EXE_SRV) $(EXE_CLN) $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT) core
+	rm -rf $(EXE_SRV) $(EXE_SRV)ssl $(EXE_CLN) $(EXE_CLN)ssl $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT) core
 
 #
 # Read the dependency files.

@@ -10,6 +10,10 @@
 #include <grpcpp/grpcpp.h>
 #pragma GCC diagnostic pop
 
+#include <fstream>  // std::istream
+#include <sstream>  // std::ostringstream
+
+
 namespace gen {
 
 // Helper to format DNS address uri
@@ -74,6 +78,81 @@ inline const char* StatusToStr(grpc::StatusCode code)
     case grpc::StatusCode::DO_NOT_USE:          return "DO_NOT_USE";
     default:                                    return "INVALID_ERROR_CODE";
     }
+}
+
+// Build SSL/TLS Channel and Server credentials
+inline bool LoadFile(const char* fileName, std::string& buf, std::string& errMsg)
+{
+    if(!fileName || *fileName == '\0')
+        return true; // Nothing to load (not an error)
+
+    std::ifstream input(fileName);
+    if(!input)
+    {
+        errMsg = std::string("Failed to load '") + fileName + "': " + strerror(errno);
+        return false;
+    }
+
+    std::ostringstream ss;
+    ss << input.rdbuf();
+    buf = std::move(ss.str());
+    return true;
+}
+
+// Build channel credentials
+inline std::shared_ptr<grpc::ChannelCredentials> GetChannelCredentials(
+        const char* rootCert, const char* privateKey, const char* certChain,
+        std::string& errMsg)
+{
+    grpc::SslCredentialsOptions sslOpts;
+
+    if(!LoadFile(rootCert, sslOpts.pem_root_certs, errMsg))
+        return nullptr;
+
+    if(!LoadFile(privateKey, sslOpts.pem_private_key, errMsg))
+        return nullptr;
+
+    if(!LoadFile(certChain, sslOpts.pem_cert_chain, errMsg))
+        return nullptr;
+
+    return grpc::SslCredentials(sslOpts);
+}
+
+inline std::shared_ptr<grpc::ChannelCredentials> GetChannelCredentials(
+        const std::string& rootCert, const std::string& privateKey, const std::string& certChain,
+        std::string& errMsg)
+{
+    return GetChannelCredentials(rootCert.c_str(), privateKey.c_str(), certChain.c_str(), errMsg);
+}
+
+// Build server credentials
+inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
+        const char* rootCert, const char* privateKey, const char* certChain,
+        std::string& errMsg)
+{
+    grpc::SslServerCredentialsOptions sslOpts(GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY);
+
+    if(!LoadFile(rootCert, sslOpts.pem_root_certs, errMsg))
+        return nullptr;
+
+    grpc::SslServerCredentialsOptions::PemKeyCertPair pkcp;
+
+    if(!LoadFile(privateKey, pkcp.private_key, errMsg))
+        return nullptr;
+
+    if(!LoadFile(certChain, pkcp.cert_chain, errMsg))
+        return nullptr;
+
+    sslOpts.pem_key_cert_pairs.push_back(pkcp);
+
+    return grpc::SslServerCredentials(sslOpts);
+}
+
+inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
+        const std::string& rootCert, const std::string& privateKey, const std::string& certChain,
+        std::string& errMsg)
+{
+    return GetServerCredentials(rootCert.c_str(), privateKey.c_str(), certChain.c_str(), errMsg);
 }
 
 } //namespace gen
