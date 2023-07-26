@@ -61,49 +61,54 @@ INCS = -I../async_server \
 
 # Libraries
 LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) \
-       -lgrpc -lgrpc++ -lgrpc++_reflection \
-       -lgrpc_unsecure \
-       -lprotobuf -lcrypto -lssl \
-       -lgpr -lz -laddress_sorting -lcares \
-       -lre2 \
-       -lupb \
+       -lgrpc++ \
+       -lgrpc \
+       -lgpr \
        -labsl_synchronization \
-       -labsl_raw_logging_internal \
-       -labsl_base \
-       -labsl_spinlock_wait \
-       -labsl_malloc_internal \
-       -labsl_time \
-       -labsl_time_zone \
-       -labsl_int128 \
-       -labsl_str_format_internal \
-       -labsl_strings \
-       -labsl_throw_delegate \
-       -labsl_strings_internal \
-       -labsl_bad_optional_access \
        -labsl_status \
+       -labsl_strings \
        -labsl_statusor \
        -labsl_cord \
-       -labsl_symbolize \
-       -labsl_stacktrace \
-       -labsl_debugging_internal \
-       -labsl_demangle_internal \
+       -labsl_bad_optional_access \
+       -labsl_str_format_internal \
+       -labsl_throw_delegate \
        -labsl_bad_variant_access \
+       -lupb \
+       -labsl_hash \
+       -laddress_sorting \
+       -lcares \
+       -lre2 \
+       -labsl_time \
+       -lssl \
+       -labsl_time_zone \
+       -labsl_cordz_info \
+       -labsl_base \
+       -labsl_malloc_internal \
+       -labsl_spinlock_wait \
+       -labsl_raw_logging_internal \
+       -labsl_stacktrace \
+       -labsl_symbolize \
+       -labsl_int128 \
        -labsl_random_internal_randen_slow \
        -labsl_random_internal_randen_hwaes_impl \
        -labsl_random_internal_randen \
        -labsl_random_internal_pool_urbg \
-       -labsl_cordz_info \
        -labsl_cord_internal \
        -labsl_cordz_functions \
+       -lprotobuf \
+       -lz \
+       -labsl_strings_internal \
+       -labsl_city \
+       -labsl_low_level_hash \
+       -lcrypto \
+       -labsl_cordz_handle \
+       -labsl_debugging_internal \
+       -labsl_demangle_internal \
        -labsl_random_internal_platform \
        -labsl_random_internal_randen_hwaes \
        -labsl_random_internal_seed_material \
        -labsl_random_seed_gen_exception \
-       -labsl_cordz_handle \
-       -labsl_exponential_biased \
-       -labsl_hash \
-       -labsl_city \
-       -labsl_low_level_hash
+       -labsl_exponential_biased
 
 ifeq "$(OS)" "Darwin"
   LIBS += -framework CoreFoundation
