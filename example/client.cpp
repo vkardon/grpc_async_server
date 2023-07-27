@@ -170,7 +170,11 @@ bool HealthTest(const std::string& serviceName)
          status == grpc::health::v1::HealthCheckResponse::NOT_SERVING     ? "NOT_SERVING" :
          status == grpc::health::v1::HealthCheckResponse::SERVICE_UNKNOWN ? "SERVICE_UNKNOWN" : "INVALID");
 
-    INFOMSG(result);
+    if(serviceName.empty())
+        INFOMSG("Server status: " << result);
+    else
+        INFOMSG("Service '" << serviceName << "' status: " << result);
+
     return true;
 }
 
@@ -274,8 +278,11 @@ int main(int argc, char** argv)
     }
     else if(!strcmp(testName, "health"))
     {
-        std::string serviceName = (argc > 3 ? argv[3] : argc > 2 ? argv[2] : "");
-        HealthTest(serviceName);
+        // Check overall server status and status of each service
+        HealthTest("");                      // Ask for overall status
+        HealthTest("test.GrpcService");      // Ask for test.GrpcService service status
+        HealthTest("grpc.health.v1.Health"); // Ask for grpc.health.v1.Health service status
+        HealthTest("test.DummyService");     // Ask for not existing service
     }
     else if(!strcmp(testName, "load"))
     {
