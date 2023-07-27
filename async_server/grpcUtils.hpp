@@ -128,9 +128,10 @@ inline std::shared_ptr<grpc::ChannelCredentials> GetChannelCredentials(
 // Build server credentials
 inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
         const char* rootCert, const char* privateKey, const char* certChain,
+        grpc_ssl_client_certificate_request_type requestType,
         std::string& errMsg)
 {
-    grpc::SslServerCredentialsOptions sslOpts(GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY);
+    grpc::SslServerCredentialsOptions sslOpts(requestType);
 
     if(!LoadFile(rootCert, sslOpts.pem_root_certs, errMsg))
         return nullptr;
@@ -150,9 +151,10 @@ inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
 
 inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
         const std::string& rootCert, const std::string& privateKey, const std::string& certChain,
+        grpc_ssl_client_certificate_request_type requestType,
         std::string& errMsg)
 {
-    return GetServerCredentials(rootCert.c_str(), privateKey.c_str(), certChain.c_str(), errMsg);
+    return GetServerCredentials(rootCert.c_str(), privateKey.c_str(), certChain.c_str(), requestType, errMsg);
 }
 
 } //namespace gen

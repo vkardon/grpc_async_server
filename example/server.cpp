@@ -23,6 +23,7 @@ int main(int argc, char *argv[])
                 dir + "/ssl/ca-cert.pem",
                 dir + "/ssl/server-key.pem",
                 dir + "/ssl/server-cert.pem",
+                GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY,
                 errMsg);
         if(!creds)
         {

@@ -142,7 +142,7 @@ bool ShutdownTest()
         return false;
     }
 
-    const char* result = (resp.result() ? "success" : "error");
+    const char* result = (resp.result() ? "success" : resp.msg().c_str());
     INFOMSG(result);
     return true;
 }
