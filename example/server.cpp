@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 {
     int threadCount = 8;
 
-    // If server binary name ends with "ssl", then build server SSL/TSL credentials
+    // If server binary name ends with "ssl", then build server SSL/TLS credentials
     std::shared_ptr<grpc::ServerCredentials> creds;
     size_t len = strlen(argv[0]);
     if(len > 3 && !strcmp(argv[0] + len - 3, "ssl"))

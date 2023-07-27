@@ -10,7 +10,7 @@
 #include "health.grpc.pb.h"
 #include "logger.hpp"
 
-// Channel SSL/TSL credentials
+// Channel SSL/TLS credentials
 std::shared_ptr<grpc::ChannelCredentials> gCreds;
 std::string gHost = "localhost";
 
@@ -19,6 +19,7 @@ bool PingTest()
     test::PingRequest req;
     test::PingResponse resp;
 
+    // Note: metadata is optional. There is no-metadata version of Call() as well.
     std::map<std::string, std::string> metadata;
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
@@ -66,6 +67,7 @@ bool ServerStreamTest(bool silent = false)
 
     } respCallback;
 
+    // Note: metadata is optional. There is no-metadata version of Call() as well.
     std::map<std::string, std::string> metadata;
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
@@ -102,6 +104,7 @@ bool ClientStreamTest()
 
     test::ClientStreamTestResponse resp;
 
+    // Note: metadata is optional. There is no-metadata version of Call() as well.
     std::map<std::string, std::string> metadata;
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
@@ -124,6 +127,7 @@ bool ShutdownTest()
     test::ShutdownRequest req;
     test::ShutdownResponse resp;
 
+    // Note: metadata is optional. There is no-metadata version of Call() as well.
     std::map<std::string, std::string> metadata;
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
@@ -233,7 +237,7 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    // If client binary name ends with "ssl", then build client SSL/TSL credentials
+    // If client binary name ends with "ssl", then build client SSL/TLS credentials
     size_t len = strlen(argv[0]);
     if(len > 3 && !strcmp(argv[0] + len - 3, "ssl"))
     {
