@@ -81,9 +81,9 @@ inline const char* StatusToStr(grpc::StatusCode code)
 }
 
 // Build SSL/TLS Channel and Server credentials
-inline bool LoadFile(const char* fileName, std::string& buf, std::string& errMsg)
+inline bool LoadFile(const std::string& fileName, std::string& buf, std::string& errMsg)
 {
-    if(!fileName || *fileName == '\0')
+    if(fileName.empty())
         return true; // Nothing to load (not an error)
 
     std::ifstream input(fileName);
@@ -101,12 +101,14 @@ inline bool LoadFile(const char* fileName, std::string& buf, std::string& errMsg
 
 // Build channel credentials
 inline std::shared_ptr<grpc::ChannelCredentials> GetChannelCredentials(
-        const char* rootCert, const char* privateKey, const char* certChain,
+        const std::string& rootCerts,
+        const std::string& privateKey,
+        const std::string& certChain,
         std::string& errMsg)
 {
     grpc::SslCredentialsOptions sslOpts;
 
-    if(!LoadFile(rootCert, sslOpts.pem_root_certs, errMsg))
+    if(!LoadFile(rootCerts, sslOpts.pem_root_certs, errMsg))
         return nullptr;
 
     if(!LoadFile(privateKey, sslOpts.pem_private_key, errMsg))
@@ -118,16 +120,39 @@ inline std::shared_ptr<grpc::ChannelCredentials> GetChannelCredentials(
     return grpc::SslCredentials(sslOpts);
 }
 
-inline std::shared_ptr<grpc::ChannelCredentials> GetChannelCredentials(
-        const std::string& rootCert, const std::string& privateKey, const std::string& certChain,
+// Build server credentials
+inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
+        const std::string& rootCerts,
+        const std::vector<std::pair<std::string, std::string>>& keyCertPairs,
+        grpc_ssl_client_certificate_request_type requestType,
         std::string& errMsg)
 {
-    return GetChannelCredentials(rootCert.c_str(), privateKey.c_str(), certChain.c_str(), errMsg);
+    grpc::SslServerCredentialsOptions sslOpts(requestType);
+
+    if(!gen::LoadFile(rootCerts, sslOpts.pem_root_certs, errMsg))
+        return nullptr;
+
+    grpc::SslServerCredentialsOptions::PemKeyCertPair pkcp;
+
+    for(const std::pair<std::string, std::string>& pair : keyCertPairs)
+    {
+        if(!gen::LoadFile(pair.first, pkcp.private_key, errMsg))
+            return nullptr;
+
+        if(!gen::LoadFile(pair.second, pkcp.cert_chain, errMsg))
+            return nullptr;
+
+        sslOpts.pem_key_cert_pairs.push_back(pkcp);
+    }
+
+    return grpc::SslServerCredentials(sslOpts);
 }
 
 // Build server credentials
 inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
-        const char* rootCert, const char* privateKey, const char* certChain,
+        const std::string& rootCert,
+        const std::string& privateKey,
+        const std::string& certChain,
         grpc_ssl_client_certificate_request_type requestType,
         std::string& errMsg)
 {
@@ -149,13 +174,6 @@ inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
     return grpc::SslServerCredentials(sslOpts);
 }
 
-inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
-        const std::string& rootCert, const std::string& privateKey, const std::string& certChain,
-        grpc_ssl_client_certificate_request_type requestType,
-        std::string& errMsg)
-{
-    return GetServerCredentials(rootCert.c_str(), privateKey.c_str(), certChain.c_str(), requestType, errMsg);
-}
 
 } //namespace gen
 

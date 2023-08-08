@@ -19,12 +19,12 @@ int main(int argc, char *argv[])
     {
         std::string errMsg;
         std::string dir = dirname(argv[0]);
+
         creds = gen::GetServerCredentials(
-                dir + "/ssl/ca-cert.pem",
-                dir + "/ssl/server-key.pem",
-                dir + "/ssl/server-cert.pem",
-                GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY,
-                errMsg);
+                        dir + "/ssl/certs/bundleCA.cert",
+                        dir + "/ssl/certs/server.key",
+                        dir + "/ssl/certs/server.cert",
+                        GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY, errMsg);
         if(!creds)
         {
             ERRORMSG(errMsg);

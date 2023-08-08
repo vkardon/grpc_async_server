@@ -185,7 +185,7 @@ void LoadTest()
 
     // Start threads
     INFOMSG("Sending requests using " << numClientThreads
-               << " threads with " << numRpcs << " RPC requests per thread");
+            << " threads with " << numRpcs << " RPC requests per thread");
 
     CTimeElapsed elapsed(("Elapsed time [" + std::to_string(numClientThreads * numRpcs) + " calls]: ").c_str());
 
@@ -247,11 +247,12 @@ int main(int argc, char** argv)
     {
         std::string errMsg;
         std::string dir = dirname(argv[0]);
+
         gCreds = gen::GetChannelCredentials(
-                dir + "/ssl/ca-cert.pem",
-                dir + "/ssl/client-key.pem",
-                dir + "/ssl/client-cert.pem",
-                errMsg);
+                     dir + "/ssl/certs/bundleCA.cert",
+                     dir + "/ssl/certs/client.key",
+                     dir + "/ssl/certs/client.cert",
+                     errMsg);
         if(!gCreds)
         {
             ERRORMSG(errMsg);
