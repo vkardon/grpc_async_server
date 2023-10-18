@@ -19,6 +19,7 @@ bool PingTest()
     test::PingRequest req;
     test::PingResponse resp;
 
+    // Set metadata "key-value" data if you need/want any. 
     // Note: metadata is optional. There is no-metadata version of Call() as well.
     std::map<std::string, std::string> metadata;
     metadata["sessionid"] = std::to_string(rand() % 1000);
@@ -67,14 +68,9 @@ bool ServerStreamTest(bool silent = false)
 
     } respCallback;
 
-    // Note: metadata is optional. There is no-metadata version of Call() as well.
-    std::map<std::string, std::string> metadata;
-    metadata["sessionid"] = std::to_string(rand() % 1000);
-    metadata["requestid"] = std::to_string(rand() % 1000);
-
     std::string errMsg;
     gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, metadata, errMsg))
+    if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -104,14 +100,9 @@ bool ClientStreamTest()
 
     test::ClientStreamTestResponse resp;
 
-    // Note: metadata is optional. There is no-metadata version of Call() as well.
-    std::map<std::string, std::string> metadata;
-    metadata["sessionid"] = std::to_string(rand() % 1000);
-    metadata["requestid"] = std::to_string(rand() % 1000);
-
     std::string errMsg;
     gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, metadata, errMsg))
+    if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -127,16 +118,11 @@ bool ShutdownTest()
     test::ShutdownRequest req;
     test::ShutdownResponse resp;
 
-    // Note: metadata is optional. There is no-metadata version of Call() as well.
-    std::map<std::string, std::string> metadata;
-    metadata["sessionid"] = std::to_string(rand() % 1000);
-    metadata["requestid"] = std::to_string(rand() % 1000);
-
     req.set_reason("Shutdown Test");
 
     std::string errMsg;
     gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, metadata, errMsg))
+    if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
