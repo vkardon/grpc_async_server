@@ -14,7 +14,7 @@ else
   CC = g++
 endif
 
-CFLAGS = -std=c++17 -Wall -pthread -D NDEBUG -O3 -s
+CFLAGS = -std=c++20 -Wall -pthread -D NDEBUG -O3 -s
 #CFLAGS = -std=c++17 -Wall -pthread -g
 LD = $(CC) 
 LDFLAGS = -pthread
@@ -60,6 +60,13 @@ else
   PROTO_LIB_PATH = $(LD_LIBRARY_PATH):$(GRPC_HOME)/mac_shared/lib:$(GRPC_HOME)/mac_shared/lib64
 endif
 
+#
+# Note: The order of precedence for *.so search path are: rpath, LD_LIBRARY_PATH, runpath.
+# Set option -Wl,--disable-new-dtags to tell the new linker to use the old behavior, i.e. RPATH.
+# Set option -Wl,--enable-new-dtags to tell the old linker to use the new behavior, i.e. RUNPATH.
+# To verify: readelf -d <exefile> | grep PATH
+#
+LDFLAGS += -Wl,--disable-new-dtags
 LDFLAGS += -Wl,-rpath='$$ORIGIN/$(GRPC_LIB)' -Wl,-rpath='$$ORIGIN/$(GRPC_LIB64)'
 
 # Include directories
