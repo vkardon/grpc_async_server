@@ -5,8 +5,8 @@
 #include <string>
 #include <thread>
 #include "grpcClient.hpp"
-#include "testServerConfig.hpp"
-#include "test.grpc.pb.h"
+#include "serverConfig.hpp"
+#include "hello.grpc.pb.h"
 #include "health.grpc.pb.h"
 #include "logger.hpp"
 
@@ -26,8 +26,8 @@ bool PingTest()
     metadata["requestid"] = std::to_string(rand() % 1000);
 
     std::string errMsg;
-    gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.Call(&test::GrpcService::Stub::Ping, req, resp, metadata, errMsg))
+    gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
+    if(!grpcClient.Call(&test::Hello::Stub::Ping, req, resp, metadata, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -69,8 +69,8 @@ bool ServerStreamTest(bool silent = false)
     } respCallback;
 
     std::string errMsg;
-    gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.CallStream(&test::GrpcService::Stub::ServerStreamTest, req, respCallback, errMsg))
+    gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
+    if(!grpcClient.CallStream(&test::Hello::Stub::ServerStreamTest, req, respCallback, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -101,8 +101,8 @@ bool ClientStreamTest()
     test::ClientStreamTestResponse resp;
 
     std::string errMsg;
-    gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.CallClientStream(&test::GrpcService::Stub::ClientStreamTest, reqCallback, resp, errMsg))
+    gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
+    if(!grpcClient.CallClientStream(&test::Hello::Stub::ClientStreamTest, reqCallback, resp, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -121,8 +121,8 @@ bool ShutdownTest()
     req.set_reason("Shutdown Test");
 
     std::string errMsg;
-    gen::GrpcClient<test::GrpcService> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.Call(&test::GrpcService::Stub::Shutdown, req, resp, errMsg))
+    gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
+    if(!grpcClient.Call(&test::Hello::Stub::Shutdown, req, resp, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -267,7 +267,7 @@ int main(int argc, char** argv)
     {
         // Check overall server status and status of each service
         HealthTest("");                      // Ask for overall status
-        HealthTest("test.GrpcService");      // Ask for test.GrpcService service status
+        HealthTest("test.Hello");            // Ask for test.Hello service status
         HealthTest("grpc.health.v1.Health"); // Ask for grpc.health.v1.Health service status
         HealthTest("test.DummyService");     // Ask for not existing service
     }

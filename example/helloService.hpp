@@ -1,20 +1,20 @@
-#ifndef __TEST_SERVICE_HPP__
-#define __TEST_SERVICE_HPP__
+#ifndef __HELLO_SERVICE_HPP__
+#define __HELLO_SERVICE_HPP__
 
 #include "grpcServer.hpp"
-#include "test.grpc.pb.h"
+#include "hello.grpc.pb.h"
 
 // Forward declarations
-class TestServer;
+class MyServer;
 
 //
-// TestService declaration
+// HelloService declaration
 //
-class TestService : public gen::GrpcService<test::GrpcService>
+class HelloService : public gen::GrpcService<test::Hello>
 {
 public:
-    TestService(TestServer* server) : mServer(server) {}
-    virtual ~TestService() = default;
+    HelloService(MyServer* server) : mServer(server) {}
+    virtual ~HelloService() = default;
 
     // gen::GrpcService override
     virtual bool Init() override;
@@ -35,8 +35,8 @@ protected:
                           const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp);
 
 private:
-    TestServer* mServer = nullptr;
+    MyServer* mServer = nullptr;
 };
 
-#endif // __TEST_SERVICE_HPP__
+#endif // __HELLO_SERVICE_HPP__
 

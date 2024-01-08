@@ -1,5 +1,5 @@
-#ifndef __TEST_SERVER_CONFIG_HPP__
-#define __TEST_SERVER_CONFIG_HPP__
+#ifndef __SERVER_CONFIG_HPP__
+#define __SERVER_CONFIG_HPP__
 
 #define PORT_NUMBER                         50055
 #define UNIX_DOMAIN_SOCKET_PATH             "/tmp/grpc_server_test.sock"
@@ -41,4 +41,4 @@ public:
     }
 };
 
-#endif // __TEST_SERVER_CONFIG_HPP__
+#endif // __SERVER_CONFIG_HPP__

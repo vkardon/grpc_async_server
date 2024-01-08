@@ -1,34 +1,35 @@
 //
-// testService.cpp
+// helloService.cpp
 //
-#include "testService.hpp"
-#include "testServer.hpp"
+#include "helloService.hpp"
+#include "server.hpp"
 #include "logger.hpp"
 
-bool TestService::Init()
+bool HelloService::Init()
 {
-    // Add TestService RPCs
-    Bind(&TestService::Shutdown,
-         &test::GrpcService::AsyncService::RequestShutdown);
-    Bind(&TestService::Ping,
-         &test::GrpcService::AsyncService::RequestPing);
-    Bind(&TestService::ServerStreamTest,
-         &test::GrpcService::AsyncService::RequestServerStreamTest);
-    Bind(&TestService::ClientStreamTest,
-         &test::GrpcService::AsyncService::RequestClientStreamTest);
+    // Add HelloService RPCs
+    Bind(&HelloService::Shutdown,
+         &test::Hello::AsyncService::RequestShutdown);
+    Bind(&HelloService::Ping,
+         &test::Hello::AsyncService::RequestPing);
+    Bind(&HelloService::ServerStreamTest,
+         &test::Hello::AsyncService::RequestServerStreamTest);
+    Bind(&HelloService::ClientStreamTest,
+         &test::Hello::AsyncService::RequestClientStreamTest);
 
     return true;
 }
 
-bool TestService::IsServing()
+bool HelloService::IsServing()
 {
     // Add some service-specific code to determine
     // is the service is serving or not
     return true;
 }
 
-void TestService::Shutdown(const gen::RpcContext& ctx,
-                           const test::ShutdownRequest& req, test::ShutdownResponse& resp)
+void HelloService::Shutdown(const gen::RpcContext& ctx,
+                            const test::ShutdownRequest& req, 
+                            test::ShutdownResponse& resp)
 {
     std::string errMsg;
 
@@ -43,16 +44,18 @@ void TestService::Shutdown(const gen::RpcContext& ctx,
     }
 }
 
-void TestService::Ping(const gen::RpcContext& ctx,
-                       const test::PingRequest& req, test::PingResponse& resp)
+void HelloService::Ping(const gen::RpcContext& ctx,
+                        const test::PingRequest& req, 
+                        test::PingResponse& resp)
 {
     resp.set_result(true);
 
     INFOMSG("From " << ctx.Peer());
 }
 
-void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
-                                   const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp)
+void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
+                                    const test::ServerStreamTestRequest& req, 
+                                    test::ServerStreamTestResponse& resp)
 {
     // Statistics - track the total number of opened streams
     static std::atomic<int> opened_streams{0};
@@ -124,8 +127,9 @@ void TestService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
     OUTMSG("opened_streams=" << opened_streams);
 }
 
-void TestService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
-                                   const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp)
+void HelloService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
+                                    const test::ClientStreamTestRequest& req, 
+                                    test::ClientStreamTestResponse& resp)
 {
 //    static int count = 0;
 //    if(++count %12 == 0)

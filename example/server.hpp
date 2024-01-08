@@ -1,16 +1,16 @@
-#ifndef __TEST_SERVER_HPP__
-#define __TEST_SERVER_HPP__
+#ifndef __SERVER_HPP__
+#define __SERVER_HPP__
 
 #include "grpcServer.hpp"
-#include "testService.hpp"
+#include "helloService.hpp"
 #include "healthService.hpp"
 #include <atomic>
 
-class TestServer : public gen::GrpcServer
+class MyServer : public gen::GrpcServer
 {
 public:
-    TestServer() : testService(this) {}
-    virtual ~TestServer() = default;
+    MyServer() : helloService(this) {}
+    virtual ~MyServer() = default;
 
     // gen::GrpcServer overrides
     virtual bool OnInit(::grpc::ServerBuilder& builder) override;
@@ -23,8 +23,8 @@ public:
 private:
     std::atomic<bool> mStop{false};
 
-    TestService testService;
+    HelloService helloService;
     HealthService healthService;
 };
 
-#endif // __TEST_SERVER_HPP__
+#endif // __SERVER_HPP__

@@ -4,7 +4,7 @@ syntax = "proto3";
 package test;
 
 // Interface exported by the server.
-service GrpcService 
+service Hello 
 {
     // Shutdown the server
     rpc Shutdown (ShutdownRequest) returns (ShutdownResponse) {}
