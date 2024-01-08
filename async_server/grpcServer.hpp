@@ -803,7 +803,7 @@ public:
 
     // Add request for unary RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddRpc(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
+    void Bind(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
                 auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
@@ -817,7 +817,7 @@ public:
 
     // Add request for server-stream RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddRpc(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
+    void Bind(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
                 auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
@@ -831,7 +831,7 @@ public:
 
     // Add request for client-stream RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void AddRpc(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
+    void Bind(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
                 auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.

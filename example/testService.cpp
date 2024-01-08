@@ -1,4 +1,4 @@
-//D
+//
 // testService.cpp
 //
 #include "testService.hpp"
@@ -8,14 +8,14 @@
 bool TestService::Init()
 {
     // Add TestService RPCs
-    AddRpc(&TestService::Shutdown,
-           &test::GrpcService::AsyncService::RequestShutdown);
-    AddRpc(&TestService::Ping,
-           &test::GrpcService::AsyncService::RequestPing);
-    AddRpc(&TestService::ServerStreamTest,
-           &test::GrpcService::AsyncService::RequestServerStreamTest);
-    AddRpc(&TestService::ClientStreamTest,
-           &test::GrpcService::AsyncService::RequestClientStreamTest);
+    Bind(&TestService::Shutdown,
+         &test::GrpcService::AsyncService::RequestShutdown);
+    Bind(&TestService::Ping,
+         &test::GrpcService::AsyncService::RequestPing);
+    Bind(&TestService::ServerStreamTest,
+         &test::GrpcService::AsyncService::RequestServerStreamTest);
+    Bind(&TestService::ClientStreamTest,
+         &test::GrpcService::AsyncService::RequestClientStreamTest);
 
     return true;
 }

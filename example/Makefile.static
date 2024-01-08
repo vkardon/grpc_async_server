@@ -177,7 +177,7 @@ $(PROTOSET): $(PROTO_SRCS)
 
 # Delete all intermediate files
 clean: 
-	rm -rf $(EXE_SRV) $(EXE_SRV)ssl $(EXE_CLN) $(EXE_CLN)ssl $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT) core
+	rm -rf $(EXE_SRV) $(EXE_SRV)ssl $(EXE_CLN) $(EXE_CLN)ssl $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT)
 
 #
 # Read the dependency files.
