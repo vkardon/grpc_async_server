@@ -22,8 +22,6 @@ public:
     ~CTimeElapsed()
     {
         gettimeofday(&stop_tv, NULL);
-        //long long elapsed = (stop_tv.tv_sec - start_tv.tv_sec)*1000000 + (stop_tv.tv_usec - start_tv.tv_usec);
-        //printf("%lld microseconds\n", elapsed);
 
         timeval tmp;
         if(stop_tv.tv_usec < start_tv.tv_usec)
