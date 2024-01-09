@@ -194,7 +194,7 @@ bool GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
 
     // Create context and set metadata (if we have any...)
     grpc::ClientContext context;
-    for(const std::pair<const std::string, std::string>& p : metadata)
+    for(const auto& p : metadata)
         context.AddMetadata(p.first, p.second);
 
     // Set deadline of how long to wait for a server reply
@@ -232,7 +232,7 @@ bool GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
 
     // Create context and set metadata (if we have any...)
     grpc::ClientContext context;
-    for(const std::pair<const std::string, std::string>& p : metadata)
+    for(const auto& p : metadata)
         context.AddMetadata(p.first, p.second);
 
     // Set deadline of how long to wait for a server reply
@@ -279,7 +279,7 @@ bool GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
 
     // Create context and set metadata (if we have any...)
     grpc::ClientContext context;
-    for(const std::pair<const std::string, std::string>& p : metadata)
+    for(const auto& p : metadata)
         context.AddMetadata(p.first, p.second);
 
     // Set deadline of how long to wait for a server reply
