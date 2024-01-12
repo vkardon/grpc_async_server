@@ -5,16 +5,13 @@ EXE_CLN = client
 PROTOSET = protoset
 
 # Detect operating system
-OS = $(shell uname -s)
+#OS = $(shell uname -s)
+OS = $(shell lsb_release -a | grep "Distributor ID" | cut -f2)
 
 # Compiler and linker to use
-ifeq "$(OS)" "Linux"
-  CC = g++
-else
-  CC = g++
-endif
+CC = g++
 
-CFLAGS = -std=c++20 -Wall -pthread -D NDEBUG
+CFLAGS = -std=c++17 -Wall -pthread -D NDEBUG
 #CFLAGS = -std=c++17 -Wall -pthread -g
 LD = $(CC) 
 LDFLAGS = -pthread
@@ -36,18 +33,18 @@ PROTO_SRCS = $(PROTO_HOME)/hello.proto \
              $(PROTO_HOME)/health.proto 
 
 # gRPC support
-GRPC_HOME = $(PROJECT_HOME)/../grpc_1.46.6_install
-GRPC_INC = $(GRPC_HOME)/linux/include
-
-ifeq "$(OS)" "Linux"
-  GRPC_BIN = $(GRPC_HOME)/linux/bin
-  GRPC_LIB = $(GRPC_HOME)/linux/lib
-  GRPC_LIB64 = $(GRPC_HOME)/linux/lib64
+ifeq "$(OS)" "Ubuntu"
+   GRPC_HOME = $(PROJECT_HOME)/../grpc_1.46.6_install.ubuntu
+else ifeq "$(OS)" "RedHatEnterpriseServer"
+   GRPC_HOME = $(PROJECT_HOME)/../grpc_1.46.6_install.rhel
 else
-  GRPC_BIN = $(GRPC_HOME)/mac/bin
-  GRPC_LIB = $(GRPC_HOME)/mac/lib
-  GRPC_LIB64 = $(GRPC_HOME)/mac/lib64
+   GRPC_HOME =
 endif
+GRPC_INC = $(GRPC_HOME)/static/include
+
+GRPC_BIN = $(GRPC_HOME)/static/bin
+GRPC_LIB = $(GRPC_HOME)/static/lib
+GRPC_LIB64 = $(GRPC_HOME)/static/lib64
 
 PROTOC = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
