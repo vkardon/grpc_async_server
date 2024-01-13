@@ -172,7 +172,7 @@ void LoadTest()
     INFOMSG("Sending requests using " << numClientThreads
             << " threads with " << numRpcs << " RPC requests per thread");
 
-    CTimeElapsed elapsed(("Elapsed time [" + std::to_string(numClientThreads * numRpcs) + " calls]: ").c_str());
+    StopWatch duration(("Duration [" + std::to_string(numClientThreads * numRpcs) + " calls]: ").c_str());
 
     std::vector<std::thread> threads(numClientThreads);
 

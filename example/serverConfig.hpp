@@ -40,36 +40,28 @@ do{                                                             \
 #define ERRORMSG(msg)  __MSG__("ERROR", msg)
 
 //
-// Helper CTimeElapsed class to measure elapsed time
+// Helper StopWatch class to measure elapsed time
 //
-#include <string>	// std::string
-#include <sys/time.h>   // gettimeofday()
+#include <string>   // std::string
+#include <chrono>   // std:chrono
+#include <iomanip>  // std::setw
 
-class CTimeElapsed
+class StopWatch
 {
-    struct timeval start_tv;
-    struct timeval stop_tv;
+    std::chrono::time_point<std::chrono::high_resolution_clock> start;
+    std::chrono::time_point<std::chrono::high_resolution_clock> stop;
     std::string prefix;
 
 public:
-    CTimeElapsed(const char* _prefix="") : prefix(_prefix) { gettimeofday(&start_tv, NULL); }
-    ~CTimeElapsed()
+    StopWatch(const char* _prefix="") : prefix(_prefix) 
+    { 
+        start = std::chrono::high_resolution_clock::now();
+    }
+    ~StopWatch()
     {
-        gettimeofday(&stop_tv, NULL);
-
-        timeval tmp;
-        if(stop_tv.tv_usec < start_tv.tv_usec)
-        {
-            tmp.tv_sec = stop_tv.tv_sec - start_tv.tv_sec - 1;
-            tmp.tv_usec = 1000000 + stop_tv.tv_usec - start_tv.tv_usec;
-        }
-        else
-        {
-            tmp.tv_sec = stop_tv.tv_sec - start_tv.tv_sec;
-            tmp.tv_usec = stop_tv.tv_usec - start_tv.tv_usec;
-        }
-
-        printf("%s%ld.%06lu sec\n", prefix.c_str(), tmp.tv_sec, (long)tmp.tv_usec);
+        stop = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = stop - start;
+        std::cout << prefix << duration.count() << " sec" << std::endl;
     }
 };
 
