@@ -2,7 +2,7 @@
 // server.cpp
 //
 #include "server.hpp"
-#include "logger.hpp"
+#include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
 
 // MyServer implementation
 //

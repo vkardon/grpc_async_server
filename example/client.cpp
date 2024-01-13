@@ -8,7 +8,6 @@
 #include "serverConfig.hpp"
 #include "hello.grpc.pb.h"
 #include "health.grpc.pb.h"
-#include "logger.hpp"
 
 // Channel SSL/TLS credentials
 std::shared_ptr<grpc::ChannelCredentials> gCreds;

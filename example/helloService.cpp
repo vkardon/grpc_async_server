@@ -3,7 +3,7 @@
 //
 #include "helloService.hpp"
 #include "server.hpp"
-#include "logger.hpp"
+#include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
 
 bool HelloService::Init()
 {
