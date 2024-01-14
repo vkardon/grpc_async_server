@@ -1,0 +1,4 @@
+# Select linkage type (shared or static)
+LINKING_TYPE = shared
+#LINKING_TYPE = static
+
