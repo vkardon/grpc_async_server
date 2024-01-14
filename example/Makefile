@@ -1,5 +1,5 @@
 # Get LINKING_TYPE - shared or static
-include Makefile.linking
+include Makefile.conf
 
 # Target(s) to build
 EXE_SRV = server
@@ -36,9 +36,9 @@ PROTO_SRCS = $(PROTO_HOME)/hello.proto \
 
 # gRPC support
 ifeq "$(OS)" "Ubuntu"
-   GRPC_HOME = $(PROJECT_HOME)/../grpc_1.46.6_ubuntu
+   GRPC_HOME = $(PROJECT_HOME)/../$(GRPC_VER)/ubuntu
 else ifeq "$(OS)" "RedHatEnterpriseServer"
-   GRPC_HOME = $(PROJECT_HOME)/../grpc_1.46.6_rhel
+   GRPC_HOME = $(PROJECT_HOME)/../$(GRPC_VER)/rhel
 else
    GRPC_HOME =
 endif
@@ -122,9 +122,9 @@ LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) \
        -labsl_random_seed_gen_exception \
        -labsl_exponential_biased
 
-ifeq "$(OS)" "Darwin"
-  LIBS += -framework CoreFoundation
-endif
+#ifeq "$(OS)" "Darwin"
+#  LIBS += -framework CoreFoundation
+#endif
 
 #  For gRpc reflection, use --no-as-needed flag for dynamic linking:
 #       -Wl,--no-as-needed -lgrpc++_reflection -Wl,--as-needed
