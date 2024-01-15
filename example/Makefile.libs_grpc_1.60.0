@@ -69,12 +69,15 @@ GRPC_LIBS = \
        -labsl_log_internal_conditions \
        -labsl_log_internal_nullguard \
        -labsl_log_internal_check_op \
-       -labsl_strings \
-       -labsl_strings_internal \
        -lutf8_validity \
        -labsl_cord \
        -labsl_cord_internal \
        -labsl_crc_cord_state \
        -labsl_crc32c \
-       -labsl_crc_internal
+       -labsl_crc_internal \
+       -labsl_strings \
+       -labsl_string_view \
+       -labsl_strings_internal \
+       -labsl_bad_optional_access \
+       -labsl_bad_variant_access
 

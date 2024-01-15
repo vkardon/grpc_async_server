@@ -1,0 +1,12 @@
+prefix=/home/vkardons/victor/gRpc/grpc_1.60.0_install/shared
+exec_prefix=${prefix}
+libdir=/home/vkardons/victor/gRpc/grpc_1.60.0_install/shared/lib64
+includedir=/home/vkardons/victor/gRpc/grpc_1.60.0_install/shared/include
+
+Name: absl_hashtablez_sampler
+Description: Abseil hashtablez_sampler library
+URL: https://abseil.io/
+Version: 20230802
+Requires: absl_base = 20230802, absl_config = 20230802, absl_exponential_biased = 20230802, absl_raw_logging_internal = 20230802, absl_sample_recorder = 20230802, absl_synchronization = 20230802, absl_time = 20230802
+Libs: -L${libdir}  -labsl_hashtablez_sampler 
+Cflags: -I${includedir} -DNOMINMAX

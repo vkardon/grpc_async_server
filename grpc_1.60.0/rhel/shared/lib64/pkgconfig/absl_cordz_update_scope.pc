@@ -1,0 +1,12 @@
+prefix=/home/vkardons/victor/gRpc/grpc_1.60.0_install/shared
+exec_prefix=${prefix}
+libdir=/home/vkardons/victor/gRpc/grpc_1.60.0_install/shared/lib64
+includedir=/home/vkardons/victor/gRpc/grpc_1.60.0_install/shared/include
+
+Name: absl_cordz_update_scope
+Description: Abseil cordz_update_scope library
+URL: https://abseil.io/
+Version: 20230802
+Requires: absl_config = 20230802, absl_cord_internal = 20230802, absl_cordz_info = 20230802, absl_cordz_update_tracker = 20230802, absl_core_headers = 20230802
+Libs: -L${libdir}  
+Cflags: -I${includedir} -DNOMINMAX
