@@ -1,0 +1,13 @@
+prefix=/home/victor/Projects/gRpc/grpc_1.60.0_install/shared
+exec_prefix=/home/victor/Projects/gRpc/grpc_1.60.0_install/shared
+libdir=/home/victor/Projects/gRpc/grpc_1.60.0_install/shared/lib
+sharedlibdir=/home/victor/Projects/gRpc/grpc_1.60.0_install/shared/lib
+includedir=/home/victor/Projects/gRpc/grpc_1.60.0_install/shared/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.2.13
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

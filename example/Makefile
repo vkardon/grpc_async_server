@@ -1,5 +1,6 @@
-# Get LINKING_TYPE - shared or static
+# Get LINKING_TYPE (shared or static), GRPC_VER, GRPC_LIBS, etc.
 include Makefile.conf
+include Makefile.libs_$(GRPC_VER)
 
 # Target(s) to build
 EXE_SRV = server
@@ -71,56 +72,7 @@ INCS = -I../async_server \
        -I$(PROTO_OUT)
 
 # Libraries
-LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) \
-       -lgrpc++ \
-       -lgrpc \
-       -lgpr \
-       -labsl_synchronization \
-       -labsl_status \
-       -labsl_strings \
-       -labsl_statusor \
-       -labsl_cord \
-       -labsl_bad_optional_access \
-       -labsl_str_format_internal \
-       -labsl_throw_delegate \
-       -labsl_bad_variant_access \
-       -lupb \
-       -labsl_hash \
-       -laddress_sorting \
-       -lcares \
-       -lre2 \
-       -labsl_time \
-       -lssl \
-       -labsl_time_zone \
-       -labsl_cordz_info \
-       -labsl_base \
-       -labsl_malloc_internal \
-       -labsl_spinlock_wait \
-       -labsl_raw_logging_internal \
-       -labsl_stacktrace \
-       -labsl_symbolize \
-       -labsl_int128 \
-       -labsl_random_internal_randen_slow \
-       -labsl_random_internal_randen_hwaes_impl \
-       -labsl_random_internal_randen \
-       -labsl_random_internal_pool_urbg \
-       -labsl_cord_internal \
-       -labsl_cordz_functions \
-       -lprotobuf \
-       -lz \
-       -labsl_strings_internal \
-       -labsl_city \
-       -labsl_low_level_hash \
-       -labsl_raw_hash_set \
-       -lcrypto \
-       -labsl_cordz_handle \
-       -labsl_debugging_internal \
-       -labsl_demangle_internal \
-       -labsl_random_internal_platform \
-       -labsl_random_internal_randen_hwaes \
-       -labsl_random_internal_seed_material \
-       -labsl_random_seed_gen_exception \
-       -labsl_exponential_biased
+LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) $(GRPC_LIBS)
 
 #ifeq "$(OS)" "Darwin"
 #  LIBS += -framework CoreFoundation
