@@ -54,7 +54,7 @@ GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
 ifeq "$(LINKING_TYPE)" "shared"
    # Note: Add libs requred by protoc to LD_LIBRARY_PATH
-   export LD_LIBRARY_PATH += $(GRPC_LIB):$(GRPC_LIB64)
+   export LD_LIBRARY_PATH += :$(GRPC_LIB):$(GRPC_LIB64)
 
    # Note: The order of precedence for *.so search path are: rpath, LD_LIBRARY_PATH, runpath.
    # Set option -Wl,--disable-new-dtags to tell the new linker to use the old behavior, i.e. RPATH.
