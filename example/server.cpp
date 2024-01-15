@@ -41,6 +41,24 @@ bool MyServer::Shutdown(const gen::RpcContext& ctx, std::string& errMsg)
     // Get client IP addr
     std::string clientAddr = ctx.Peer();
 
+    // Helper lambda to replace all occurrences of substring
+    // with another substring
+    auto Replace = [](std::string& str, const char* substr1, const char* substr2)
+    {
+        size_t len1 = (substr1 ? strlen(substr1) : 0);
+        size_t len2 = (substr2 ? strlen(substr2) : 0);
+        if(len1 == 0)
+            return;
+
+        for(size_t i = str.find(substr1, 0); i != std::string::npos; i = str.find(substr1, i + len2))
+            str.replace(i, len1, substr2);
+    };
+
+    // Note: Un-escape clientAddr by replacing "%5B" and "%5D" with "[" and "]"
+    // respectively in order to support older gRpc releases
+    Replace(clientAddr, "%5B", "[");
+    Replace(clientAddr, "%5D", "]");
+
     // Check if this request is from a local host
     // Note: Based on grpc_1.0.0/test/cpp/end2end/end2end_test.cc
     const std::string kIpv6("ipv6:[::1]:");
