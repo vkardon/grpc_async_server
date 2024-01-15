@@ -56,13 +56,32 @@ public:
     std::string Peer() const
     {
         assert(srvCtx);
-        return srvCtx->peer();
+        //return srvCtx->peer();
+        std::string peer = srvCtx->peer();
+
+        // Note: Un-escape peer by replacing "%5B" and "%5D" with "[" and "]"
+        // respectively in order to support older gRpc releases
+        Replace(peer, "%5B", "[");
+        Replace(peer, "%5D", "]");
+        return peer;
     }
 
     // Get application-level data set by AddUnaryRpcRequest/AddStreamRpcRequest
     const void* GetRpcParam() const { return rpcParam; }
 
 private:
+    // Helper method to replace all occurrences of substring with another substring
+    void Replace(std::string& str, const char* substr1, const char* substr2) const
+    {
+        size_t len1 = (substr1 ? strlen(substr1) : 0);
+        size_t len2 = (substr2 ? strlen(substr2) : 0);
+        if(len1 == 0)
+            return;
+
+        for(size_t i = str.find(substr1, 0); i != std::string::npos; i = str.find(substr1, i + len2))
+            str.replace(i, len1, substr2);
+    };
+
     ::grpc::ServerContext* srvCtx = nullptr;
     const void* rpcParam{nullptr};
     //mutable ::grpc::StatusCode grpcStatusCode{grpc::UNKNOWN};
