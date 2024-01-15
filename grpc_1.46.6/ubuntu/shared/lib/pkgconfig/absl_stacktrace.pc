@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/gRpc/grpc_1.46.6_install/shared
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/gRpc/grpc_1.46.6_install/shared/lib
+includedir=/home/victor/Projects/gRpc/grpc_1.46.6_install/shared/include
+
+Name: absl_stacktrace
+Description: Abseil stacktrace library
+URL: https://abseil.io/
+Version: 20211102
+Requires: absl_debugging_internal = 20211102, absl_config = 20211102, absl_core_headers = 20211102
+Libs: -L${libdir}  -labsl_stacktrace
+Cflags: -I${includedir} -DNOMINMAX

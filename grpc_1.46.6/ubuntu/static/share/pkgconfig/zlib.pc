@@ -1,8 +1,8 @@
-prefix=/home/victor/Projects/gRpc/grpc_1.46.6_install/linux
-exec_prefix=/home/victor/Projects/gRpc/grpc_1.46.6_install/linux
-libdir=/home/victor/Projects/gRpc/grpc_1.46.6_install/linux/lib
-sharedlibdir=/home/victor/Projects/gRpc/grpc_1.46.6_install/linux/lib
-includedir=/home/victor/Projects/gRpc/grpc_1.46.6_install/linux/include
+prefix=/home/victor/Projects/gRpc/grpc_1.46.6_install/static
+exec_prefix=/home/victor/Projects/gRpc/grpc_1.46.6_install/static
+libdir=/home/victor/Projects/gRpc/grpc_1.46.6_install/static/lib
+sharedlibdir=/home/victor/Projects/gRpc/grpc_1.46.6_install/static/lib
+includedir=/home/victor/Projects/gRpc/grpc_1.46.6_install/static/include
 
 Name: zlib
 Description: zlib compression library

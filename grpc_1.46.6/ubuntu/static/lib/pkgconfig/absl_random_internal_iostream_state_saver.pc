@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/gRpc/grpc_1.46.6_install/static
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/gRpc/grpc_1.46.6_install/static/lib
+includedir=/home/victor/Projects/gRpc/grpc_1.46.6_install/static/include
+
+Name: absl_random_internal_iostream_state_saver
+Description: Abseil random_internal_iostream_state_saver library
+URL: https://abseil.io/
+Version: 20211102
+Requires: absl_int128 = 20211102, absl_type_traits = 20211102
+Libs: -L${libdir}  
+Cflags: -I${includedir} -DNOMINMAX

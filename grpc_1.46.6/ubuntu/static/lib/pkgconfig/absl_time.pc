@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/gRpc/grpc_1.46.6_install/static
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/gRpc/grpc_1.46.6_install/static/lib
+includedir=/home/victor/Projects/gRpc/grpc_1.46.6_install/static/include
+
+Name: absl_time
+Description: Abseil time library
+URL: https://abseil.io/
+Version: 20211102
+Requires: absl_base = 20211102, absl_civil_time = 20211102, absl_core_headers = 20211102, absl_int128 = 20211102, absl_raw_logging_internal = 20211102, absl_strings = 20211102, absl_time_zone = 20211102
+Libs: -L${libdir}  -labsl_time
+Cflags: -I${includedir} -DNOMINMAX
