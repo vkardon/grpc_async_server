@@ -1,6 +1,5 @@
 # Get LINKING_TYPE (shared or static), GRPC_VER, GRPC_LIBS, etc.
-include Makefile.conf
-include Makefile.libs_$(GRPC_VER)
+include Makefile.conf    
 
 # Target(s) to build
 EXE_SRV = server
@@ -52,7 +51,20 @@ GRPC_LIB64 = $(GRPC_HOME)/$(LINKING_TYPE)/lib64
 PROTOC = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
+# Include directories
+INCS = -I../async_server \
+       -I$(PROJECT_HOME) \
+       -I$(GRPC_INC) \
+       -I$(PROTO_OUT)
+
+# Libraries
+LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64)
 ifeq "$(LINKING_TYPE)" "shared"
+   # Shared linking.
+   # Note: Using pkg-config only works for shared linking, it doesn't work for static
+   export PKG_CONFIG_PATH=$(GRPC_LIB)/pkgconfig:$(GRPC_LIB64)/pkgconfig
+   LIBS += `pkg-config --libs-only-l protobuf grpc++ grpc`
+
    # Note: Add libs requred by protoc to LD_LIBRARY_PATH
    export LD_LIBRARY_PATH += :$(GRPC_LIB):$(GRPC_LIB64)
 
@@ -63,20 +75,11 @@ ifeq "$(LINKING_TYPE)" "shared"
    #
    LDFLAGS += -Wl,--disable-new-dtags
    LDFLAGS += -Wl,-rpath='$$ORIGIN/$(GRPC_LIB)' -Wl,-rpath='$$ORIGIN/$(GRPC_LIB64)'
+else
+   # Static linking.
+   # Note: GRPC_LIBS is defined in Makefile.conf
+   LIBS += $(GRPC_LIBS)
 endif
-
-# Include directories
-INCS = -I../async_server \
-       -I$(PROJECT_HOME) \
-       -I$(GRPC_INC) \
-       -I$(PROTO_OUT)
-
-# Libraries
-LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) $(GRPC_LIBS)
-
-# Note: Using pkg-config only works for shared linking, it doesn't work for static
-#export PKG_CONFIG_PATH=$(GRPC_LIB)/pkgconfig:$(GRPC_LIB64)/pkgconfig
-#LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) `pkg-config --libs-only-l protobuf grpc++ grpc`
 
 #ifeq "$(OS)" "Darwin"
 #  LIBS += -framework CoreFoundation
