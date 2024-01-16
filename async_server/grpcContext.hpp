@@ -73,13 +73,12 @@ private:
     // Helper method to replace all occurrences of substring with another substring
     void Replace(std::string& str, const char* substr1, const char* substr2) const
     {
-        size_t len1 = (substr1 ? strlen(substr1) : 0);
-        size_t len2 = (substr2 ? strlen(substr2) : 0);
-        if(len1 == 0)
-            return;
-
-        for(size_t i = str.find(substr1, 0); i != std::string::npos; i = str.find(substr1, i + len2))
-            str.replace(i, len1, substr2);
+        if(size_t len1 = (substr1 ? strlen(substr1) : 0); len1 > 0)
+        {
+            size_t len2 = (substr2 ? strlen(substr2) : 0);
+            for(size_t i = str.find(substr1, 0); i != std::string::npos; i = str.find(substr1, i + len2))
+                str.replace(i, len1, substr2);
+        }
     };
 
     ::grpc::ServerContext* srvCtx = nullptr;
