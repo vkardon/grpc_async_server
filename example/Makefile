@@ -74,6 +74,10 @@ INCS = -I../async_server \
 # Libraries
 LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) $(GRPC_LIBS)
 
+# Note: Using pkg-config only works for shared linking, it doesn't work for static
+#export PKG_CONFIG_PATH=$(GRPC_LIB)/pkgconfig:$(GRPC_LIB64)/pkgconfig
+#LIBS = -L$(GRPC_LIB) -L$(GRPC_LIB64) `pkg-config --libs-only-l protobuf grpc++ grpc`
+
 #ifeq "$(OS)" "Darwin"
 #  LIBS += -framework CoreFoundation
 #endif
