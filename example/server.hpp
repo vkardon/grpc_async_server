@@ -9,7 +9,12 @@
 class MyServer : public gen::GrpcServer
 {
 public:
-    MyServer() : helloService(this) {}
+    MyServer()
+    {
+        // Add all services
+        AddService<HelloService>(this);
+        AddService<HealthService>();
+    }
     virtual ~MyServer() = default;
 
     // gen::GrpcServer overrides
@@ -22,9 +27,6 @@ public:
 
 private:
     std::atomic<bool> mStop{false};
-
-    HelloService helloService;
-    HealthService healthService;
 };
 
 #endif // __SERVER_HPP__

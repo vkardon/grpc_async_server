@@ -16,8 +16,7 @@ bool MyServer::OnInit(::grpc::ServerBuilder& builder)
     // Note: this is optional. The default 2 secs interval
     // will be used otherwise, that is fine most of the time.
     SetIdleInterval(1000);
-
-    return (AddService(&helloService) && AddService(&healthService));
+    return true;
 }
 
 bool MyServer::OnRun()

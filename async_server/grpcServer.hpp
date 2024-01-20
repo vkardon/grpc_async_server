@@ -159,16 +159,13 @@ public:
         return RunImpl(addressUriArr, threadCount);
     }
 
-    bool AddService(GrpcServiceBase* grpcService)
+    template<class GRPC_SERVICE, class... SERVICE_ARGS>
+    GRPC_SERVICE* AddService(SERVICE_ARGS...args)
     {
-        if(grpcService->srv != nullptr)
-        {
-            OnError("Double inialization of service " + std::string(grpcService->GetName()));
-            return false;
-        }
+        GRPC_SERVICE* grpcService = new (std::nothrow) GRPC_SERVICE(args...);
         grpcService->srv = this;
         serviceMap[grpcService->GetName()] = grpcService;
-        return grpcService->Init();
+        return grpcService;
     }
 
     GrpcServiceBase* GetService(const std::string& serviceName)
@@ -198,12 +195,32 @@ private:
                 OnError("Server inialization failed");
                 break;
             }
-            else if(serviceMap.empty())
+
+            // Do we have any services?
+            if(serviceMap.empty())
             {
                 OnError("Server inialization failed: no services registered");
                 break;
             }
-            else if(requestContextList.empty())
+
+            // Call services derived class initialization
+            bool serviceInitResult = true;
+            for(auto& pair : serviceMap)
+            {
+                GrpcServiceBase* grpcService = pair.second;
+                if(!grpcService->Init())
+                {
+                    serviceInitResult = false;
+                    const std::string& serviceName = pair.first;
+                    OnError("Init() failed for service '" + serviceName + "'");
+                    break;
+                }
+            }
+            if(!serviceInitResult)
+                break; // Some service failed to initialize
+
+            // Make sure we have registered RPC requests
+            if(requestContextList.empty())
             {
                 OnError("Server inialization failed: no RPC request registered");
                 break;
@@ -219,8 +236,8 @@ private:
             // Register services
             for(auto& pair : serviceMap)
             {
-                GrpcServiceBase* srv = pair.second;
-                builder.RegisterService(srv->service);
+                GrpcServiceBase* grpcService = pair.second;
+                builder.RegisterService(grpcService->service);
             }
 
             // Add Completion Queues - one queue per a thread for a best performance
@@ -287,9 +304,8 @@ private:
         // Clean up...
         for(auto& pair : serviceMap)
         {
-            GrpcServiceBase* srv = pair.second;
-            delete srv->service;
-            srv->service = nullptr;
+            GrpcServiceBase* grpcService = pair.second;
+            delete grpcService;
         }
         serviceMap.clear();
 
@@ -799,6 +815,12 @@ public:
 //        std::cout << ">>> " << __func__ << ":"
 //                << " name='" << serviceName << "',"
 //                << " service=" << service << std::endl;
+    }
+
+    virtual ~GrpcService()
+    {
+        if(service)
+            delete service;
     }
 
     // Add request for unary RPC
