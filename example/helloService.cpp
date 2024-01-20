@@ -28,7 +28,7 @@ bool HelloService::IsServing()
 }
 
 void HelloService::Shutdown(const gen::RpcContext& ctx,
-                            const test::ShutdownRequest& req, 
+                            const test::ShutdownRequest& req,
                             test::ShutdownResponse& resp)
 {
     std::string errMsg;
@@ -45,7 +45,7 @@ void HelloService::Shutdown(const gen::RpcContext& ctx,
 }
 
 void HelloService::Ping(const gen::RpcContext& ctx,
-                        const test::PingRequest& req, 
+                        const test::PingRequest& req,
                         test::PingResponse& resp)
 {
     resp.set_result(true);
@@ -54,7 +54,7 @@ void HelloService::Ping(const gen::RpcContext& ctx,
 }
 
 void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
-                                    const test::ServerStreamTestRequest& req, 
+                                    const test::ServerStreamTestRequest& req,
                                     test::ServerStreamTestResponse& resp)
 {
     // Statistics - track the total number of opened streams
@@ -73,9 +73,9 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
             ctx.GetStreamStatus() == gen::StreamStatus::ERROR)
     {
         OUTMSG((ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ? "SUCCESS" : "ERROR")
-                  << ", stream=" << ctx.GetParam()
-                  << ", sent "  << (respList ? respList->sentRows  : 0)
-                  << " out of " << (respList ? respList->rows.size() : 0) << " rows");
+               << ", stream=" << ctx.GetParam()
+               << ", sent "  << (respList ? respList->sentRows  : 0)
+               << " out of " << (respList ? respList->rows.size() : 0) << " rows");
 
         // Clean up...
         if(respList)
@@ -128,7 +128,7 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 }
 
 void HelloService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
-                                    const test::ClientStreamTestRequest& req, 
+                                    const test::ClientStreamTestRequest& req,
                                     test::ClientStreamTestResponse& resp)
 {
 //    static int count = 0;

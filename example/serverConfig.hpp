@@ -53,8 +53,8 @@ class StopWatch
     std::string prefix;
 
 public:
-    StopWatch(const char* _prefix="") : prefix(_prefix) 
-    { 
+    StopWatch(const char* _prefix="") : prefix(_prefix)
+    {
         start = std::chrono::high_resolution_clock::now();
     }
     ~StopWatch()

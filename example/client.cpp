@@ -18,7 +18,7 @@ bool PingTest()
     test::PingRequest req;
     test::PingResponse resp;
 
-    // Set metadata "key-value" data if you need/want any. 
+    // Set metadata "key-value" data if you need/want any.
     // Note: metadata is optional. There is no-metadata version of Call() as well.
     std::map<std::string, std::string> metadata;
     metadata["sessionid"] = std::to_string(rand() % 1000);
