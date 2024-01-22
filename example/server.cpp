@@ -12,17 +12,18 @@ bool MyServer::OnInit(::grpc::ServerBuilder& builder)
     // Note: Check other channel arguments here
     builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
 
-    // Set OnRun idle interval to 1 sec (in milliseconds)
-    // Note: this is optional. The default 2 secs interval
+    // Set OnRun idle interval to 0.5 sec (in milliseconds)
+    // Note: this is optional. The default 1 sec interval
     // will be used otherwise, that is fine most of the time.
-    SetIdleInterval(1000);
+    SetIdleInterval(500);
     return true;
 }
 
-bool MyServer::OnRun()
+void MyServer::OnRun()
 {
-    // Return true to keep running, false to shutdown
-    return !mStop;
+    // OnRun is called on periodically with the interval set
+    // in OnInit() by SetIdleInterval(). You can use it for
+    // anything you want.
 }
 
 void MyServer::OnError(const std::string& err) const
@@ -33,35 +34,6 @@ void MyServer::OnError(const std::string& err) const
 void MyServer::OnInfo(const std::string& info) const
 {
     INFOMSG(info);
-}
-
-bool MyServer::Shutdown(const gen::RpcContext& ctx, std::string& errMsg)
-{
-    // Get client IP addr
-    std::string clientAddr = ctx.Peer();
-
-    // Check if this request is from a local host
-    // Note: Based on grpc_1.0.0/test/cpp/end2end/end2end_test.cc
-    const std::string kIpv6("ipv6:[::1]:");
-    const std::string kIpv4MappedIpv6("ipv6:[::ffff:127.0.0.1]:");
-    const std::string kIpv4("ipv4:127.0.0.1:");
-
-    bool isLocalHost = (clientAddr.substr(0, kIpv4.size()) == kIpv4 ||
-                        clientAddr.substr(0, kIpv4MappedIpv6.size()) == kIpv4MappedIpv6 ||
-                        clientAddr.substr(0, kIpv6.size()) == kIpv6);
-
-    if(isLocalHost)
-    {
-        INFOMSG("From local client " << clientAddr);
-        mStop = true; // Force OnRun() to return false
-        return true;
-    }
-    else
-    {
-        INFOMSG("From remote client " << clientAddr << ": remote shutdown is not allowed");
-        errMsg = "Shutdown from remote client is not allowed";
-        return false;
-    }
 }
 
 //

@@ -137,7 +137,7 @@ public:
     GrpcServer(const GrpcServer&) = delete;
     GrpcServer& operator=(const GrpcServer&) = delete;
 
-    // Run() is blocked. It doesn't return until OnRun() returns false.
+    // Run() is blocked. It doesn't return until Shutdown() is called.
     bool Run(unsigned short port, int threadCount,
              std::shared_ptr<grpc::ServerCredentials> credentials = nullptr)
     {
@@ -158,6 +158,9 @@ public:
     {
         return RunImpl(addressUriArr, threadCount);
     }
+
+    void Shutdown() { runService = false; }
+    bool IsRunning() { return runService; }
 
     template<class GRPC_SERVICE, class... SERVICE_ARGS>
     GRPC_SERVICE* AddService(SERVICE_ARGS...args)
@@ -264,6 +267,7 @@ private:
             }
 
             // Start threads
+            runThreads = true;
             std::vector<std::thread> threads;
             for(int i = 0; i < threadCount; i++)
             {
@@ -272,9 +276,11 @@ private:
 
             OnInfo("GrpcServer is running with " + std::to_string(threads.size()) + " threads");
 
-            // Loop until OnRun()returns
-            while(OnRun())
+            // Loop until runService is true
+            runService = true;
+            while(runService)
             {
+                OnRun();
                 usleep(idleIntervalMicroseconds);
             }
 
@@ -284,10 +290,10 @@ private:
             std::chrono::time_point<std::chrono::system_clock> deadline =
                     std::chrono::system_clock::now() + std::chrono::milliseconds(200);
             server->Shutdown(deadline);
-            stop = true;
 
             OnInfo("Waiting for server threads to complete...");
 
+            runThreads = false;
             for(std::thread& thread : threads)
             {
                 thread.join();
@@ -310,6 +316,8 @@ private:
         serviceMap.clear();
 
         requestContextList.clear();
+        runService = false;
+        runThreads = false;
 
         return result;
     }
@@ -345,7 +353,7 @@ private:
         // in progress (grpc asserts). Non-blocking AsyncNext() works fine.
         // while(cq->Next(&tag, &eventReadSuccess))
 
-        while(!stop)
+        while(runThreads)
         {
             deadline = std::chrono::system_clock::now() + timeout;
             const grpc::CompletionQueue::NextStatus status = cq->AsyncNext(&tag, &eventReadSuccess, deadline);
@@ -445,13 +453,14 @@ private:
 
     // For derived class to override
     virtual bool OnInit(::grpc::ServerBuilder& builder) = 0;
-    virtual bool OnRun() = 0;
+    virtual void OnRun() = 0;
 
     // Class data
     std::map<std::string, GrpcServiceBase*> serviceMap;
     std::list<std::unique_ptr<RequestContext>> requestContextList;
-    std::atomic<bool> stop{false};
-    unsigned int idleIntervalMicroseconds{2000000}; // 2 secs default
+    std::atomic<bool> runService{false};            // Initially, since we are not running yet
+    std::atomic<bool> runThreads{false};            // Initially, since we don't have any threads yet
+    unsigned int idleIntervalMicroseconds{1000000}; // 1 secs default
 
     template<class RPC_SERVICE>
     friend class GrpcService;

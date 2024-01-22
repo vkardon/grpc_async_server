@@ -12,21 +12,17 @@ public:
     MyServer()
     {
         // Add all services
-        AddService<HelloService>(this);
+        AddService<HelloService>();
         AddService<HealthService>();
     }
     virtual ~MyServer() = default;
 
+private:
     // gen::GrpcServer overrides
     virtual bool OnInit(::grpc::ServerBuilder& builder) override;
-    virtual bool OnRun() override;
+    virtual void OnRun() override;
     virtual void OnError(const std::string& err) const override;
     virtual void OnInfo(const std::string& info) const override;
-
-    bool Shutdown(const gen::RpcContext& ctx, std::string& errMsg);
-
-private:
-    std::atomic<bool> mStop{false};
 };
 
 #endif // __SERVER_HPP__

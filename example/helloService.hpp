@@ -13,10 +13,10 @@ class MyServer;
 class HelloService : public gen::GrpcService<test::Hello>
 {
 public:
-    HelloService(MyServer* server) : mServer(server) {}
+    HelloService() = default;
     virtual ~HelloService() = default;
 
-    // gen::GrpcService override
+    // gen::GrpcService overrides
     virtual bool Init() override;
     virtual bool IsServing() override;
 
@@ -33,9 +33,6 @@ protected:
 
     void ClientStreamTest(const gen::RpcClientStreamContext& ctx,
                           const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp);
-
-private:
-    MyServer* mServer = nullptr;
 };
 
 #endif // __HELLO_SERVICE_HPP__

@@ -80,6 +80,26 @@ inline const char* StatusToStr(grpc::StatusCode code)
     }
 }
 
+inline bool IsLocalhost(const std::string& ipAddr)
+{
+    // Check if this is request from a localhost
+    // Note: Based on grpc_1.0.0/test/cpp/end2end/end2end_test.cc
+    // Note: Calls over unix domain socket are considered local
+    const std::string_view kIpv6("ipv6:[::1]:");
+    const std::string_view kIpv4MappedIpv6("ipv6:[::ffff:127.0.0.1]:");
+    const std::string_view kIpv4("ipv4:127.0.0.1:");
+    const std::string_view kUnix("unix:");
+    const std::string_view kUnixAbstract("unix-abstract:");
+
+    bool isLocalHost = (ipAddr.substr(0, kIpv4.size()) == kIpv4 ||
+                        ipAddr.substr(0, kIpv4MappedIpv6.size()) == kIpv4MappedIpv6 ||
+                        ipAddr.substr(0, kIpv6.size()) == kIpv6 ||
+                        ipAddr.substr(0, kUnix.size()) == kUnix ||
+                        ipAddr.substr(0, kUnixAbstract.size()) == kUnixAbstract);
+
+    return isLocalHost;
+}
+
 // Build SSL/TLS Channel and Server credentials
 inline bool LoadFile(const std::string& fileName, std::string& buf, std::string& errMsg)
 {
