@@ -163,7 +163,7 @@ public:
     bool IsRunning() { return runService; }
 
     template<class GRPC_SERVICE, class... SERVICE_ARGS>
-    GRPC_SERVICE* AddService(SERVICE_ARGS...args)
+    GRPC_SERVICE* AddService(SERVICE_ARGS&&...args)
     {
         GRPC_SERVICE* grpcService = new (std::nothrow) GRPC_SERVICE(args...);
         grpcService->srv = this;
