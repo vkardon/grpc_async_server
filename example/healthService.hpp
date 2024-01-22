@@ -13,8 +13,11 @@ public:
     HealthService() = default;
     virtual ~HealthService() = default;
 
+    // gen::GrpcService overrides
     virtual bool Init() override;
 
+protected:
+    // Supported RPCs
     void Check(const gen::RpcContext& rpcCtx,
                const grpc::health::v1::HealthCheckRequest& req,
                grpc::health::v1::HealthCheckResponse& resp);

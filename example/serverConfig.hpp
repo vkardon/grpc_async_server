@@ -1,3 +1,6 @@
+//
+// serverConfig.hpp
+//
 #ifndef __SERVER_CONFIG_HPP__
 #define __SERVER_CONFIG_HPP__
 

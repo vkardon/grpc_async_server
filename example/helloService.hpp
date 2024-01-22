@@ -1,15 +1,12 @@
+//
+// helloService.hpp
+//
 #ifndef __HELLO_SERVICE_HPP__
 #define __HELLO_SERVICE_HPP__
 
 #include "grpcServer.hpp"
 #include "hello.grpc.pb.h"
 
-// Forward declarations
-class MyServer;
-
-//
-// HelloService declaration
-//
 class HelloService : public gen::GrpcService<test::Hello>
 {
 public:
@@ -21,7 +18,7 @@ public:
     virtual bool IsServing() override;
 
 protected:
-    // RPC methods
+    // Supported RPCs
     void Shutdown(const gen::RpcContext& ctx,
                   const test::ShutdownRequest& req, test::ShutdownResponse& resp);
 

@@ -1,5 +1,5 @@
 //
-// client
+// client.cpp
 //
 #include <libgen.h>     // dirname()
 #include <string>
@@ -18,8 +18,8 @@ bool PingTest()
     test::PingRequest req;
     test::PingResponse resp;
 
-    // Set metadata "key-value" data if you need/want any.
-    // Note: metadata is optional. There is no-metadata version of Call() as well.
+    // Set optional metadata "key-value" data if you need/want any.
+    // If you don't need any metadata, then use no-metadata version of Call().
     std::map<std::string, std::string> metadata;
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);

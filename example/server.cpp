@@ -4,26 +4,25 @@
 #include "server.hpp"
 #include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
 
-// MyServer implementation
-//
 bool MyServer::OnInit(::grpc::ServerBuilder& builder)
 {
-    // Don't allow reusing port
-    // Note: Check other channel arguments here
+    // Note: Use OnInit for any additional server initialization.
+    // For example, to don't allow reusing port:
     builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
 
-    // Set OnRun idle interval to 0.5 sec (in milliseconds)
-    // Note: this is optional. The default 1 sec interval
-    // will be used otherwise, that is fine most of the time.
+    // Set how often OnRun() should be called. The default interval is 1 sec,
+    // but it can be reset by calling SetIdleInterval() with desired time
+    // interval in milliseconds.
+    // For example, to receive OnRun() every 0.5 seconds:
     SetIdleInterval(500);
     return true;
 }
 
 void MyServer::OnRun()
 {
-    // OnRun is called on periodically with the interval set
-    // in OnInit() by SetIdleInterval(). You can use it for
-    // anything you want.
+    // OnRun is called periodically in the context of the thread that started
+    // gRpc server. The default call interval is 1 sec or whatever is set by
+    // SetIdleInterval(). Use OnRun for any periodic tasks you might have.
 }
 
 void MyServer::OnError(const std::string& err) const
