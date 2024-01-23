@@ -4,7 +4,7 @@
 #include "helloService.hpp"
 #include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
 
-bool HelloService::Init()
+bool HelloService::OnInit()
 {
     // Add HelloService RPCs
     Bind(&HelloService::Shutdown,

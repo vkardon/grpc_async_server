@@ -14,7 +14,7 @@ public:
     virtual ~HelloService() = default;
 
     // gen::GrpcService overrides
-    virtual bool Init() override;
+    virtual bool OnInit() override;
     virtual bool IsServing() override;
 
 protected:

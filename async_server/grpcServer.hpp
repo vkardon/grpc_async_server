@@ -24,6 +24,15 @@
 
 namespace gen {
 
+#if 0
+#define TRACE(msg) \
+do{ \
+    std::stringstream buf; \
+    buf << "[INTERNAL] " << msg; \
+    OnInfo(buf.str()); \
+}while(0)
+#endif
+
 class GrpcServer;
 
 //
@@ -55,9 +64,12 @@ class GrpcServiceBase
 {
 public:
     virtual ~GrpcServiceBase() = default;
-    virtual bool Init() = 0;
+    virtual bool OnInit() = 0;
     virtual bool IsServing() { return true; }
     const char* GetName() { return serviceName; }
+
+private:
+    virtual bool Init() = 0;
 
 protected:
     ::grpc::Service* service = nullptr;
@@ -167,18 +179,18 @@ public:
     {
         GRPC_SERVICE* grpcService = new (std::nothrow) GRPC_SERVICE(args...);
         grpcService->srv = this;
-        serviceMap[grpcService->GetName()] = grpcService;
+        serviceMap[grpcService->GetName()].reset(grpcService);
         return grpcService;
     }
 
     GrpcServiceBase* GetService(const std::string& serviceName)
     {
         auto it = serviceMap.find(serviceName);
-        return (it == serviceMap.end() ? nullptr : it->second);
+        return (it == serviceMap.end() ? nullptr : it->second.get());
     }
 
-    // Set OnRun() idle interval in milliseconds
-    void SetIdleInterval(int milliseconds) { idleIntervalMicroseconds = milliseconds * 1000; }
+    // Set OnRun() call interval in milliseconds
+    void SetRunInterval(int milliseconds) { runIntervalMicroseconds = milliseconds * 1000; }
 
     // For derived class to override (Error and Info reporting)
     virtual void OnError(const std::string& /*err*/) const {}
@@ -210,7 +222,7 @@ private:
             bool serviceInitResult = true;
             for(auto& pair : serviceMap)
             {
-                GrpcServiceBase* grpcService = pair.second;
+                GrpcServiceBase* grpcService = pair.second.get();
                 if(!grpcService->Init())
                 {
                     serviceInitResult = false;
@@ -239,7 +251,9 @@ private:
             // Register services
             for(auto& pair : serviceMap)
             {
-                GrpcServiceBase* grpcService = pair.second;
+                // Note: Only register service once. This would be the case
+                // when gRpc server stopped and then started again.
+                GrpcServiceBase* grpcService = pair.second.get();
                 builder.RegisterService(grpcService->service);
             }
 
@@ -281,7 +295,7 @@ private:
             while(runService)
             {
                 OnRun();
-                usleep(idleIntervalMicroseconds);
+                usleep(runIntervalMicroseconds);
             }
 
             OnInfo("Stopping GrpcServer ...");
@@ -308,13 +322,6 @@ private:
         }
 
         // Clean up...
-        for(auto& pair : serviceMap)
-        {
-            GrpcServiceBase* grpcService = pair.second;
-            delete grpcService;
-        }
-        serviceMap.clear();
-
         requestContextList.clear();
         runService = false;
         runThreads = false;
@@ -386,7 +393,7 @@ private:
             RequestContext* ctx = static_cast<RequestContext*>(tag);
 
     //        // victor test
-    //        OUTMSG("Next Event: tag='" << tag << "', eventReadSuccess=" << eventReadSuccess << ", "
+    //        TRACE("Next Event: tag='" << tag << "', eventReadSuccess=" << eventReadSuccess << ", "
     //                << "state=" << (ctx->state == RequestContext::REQUEST ? "REQUEST" :
     //                                ctx->state == RequestContext::READ    ? "READ"    :
     //                                ctx->state == RequestContext::WRITE   ? "WRITE"   :
@@ -456,14 +463,36 @@ private:
     virtual void OnRun() = 0;
 
     // Class data
-    std::map<std::string, GrpcServiceBase*> serviceMap;
+    std::map<std::string, std::unique_ptr<GrpcServiceBase>> serviceMap;
     std::list<std::unique_ptr<RequestContext>> requestContextList;
     std::atomic<bool> runService{false};            // Initially, since we are not running yet
     std::atomic<bool> runThreads{false};            // Initially, since we don't have any threads yet
-    unsigned int idleIntervalMicroseconds{1000000}; // 1 secs default
+    unsigned int runIntervalMicroseconds{1000000};  // 1 secs default
 
     template<class RPC_SERVICE>
     friend class GrpcService;
+};
+
+//
+// Simple (basic) implementation of gRpc server
+//
+class SimpleGrpcServer : public GrpcServer
+{
+public:
+    SimpleGrpcServer() = default;
+    virtual ~SimpleGrpcServer() = default;
+
+private:
+    // GrpcServer overrides
+    virtual bool OnInit(::grpc::ServerBuilder& builder) override
+    {
+        builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+        SetRunInterval(200); // Set run interval in milliseconds
+        return true;
+    }
+    virtual void OnRun() override { return; }
+    virtual void OnError(const std::string& err) const override { std::cerr << err << std::endl; }
+    virtual void OnInfo(const std::string& info) const override { std::cout << info << std::endl; }
 };
 
 //
@@ -568,7 +597,7 @@ struct ServerStreamRequestContext : public RequestContext
         req.Clear();
 
 //            // victor test
-//            OUTMSG("Calling requestFunc(), tag='" << this << "', "
+//            TRACE("Calling requestFunc(), tag='" << this << "', "
 //                    << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
 //                                    state == RequestContext::WRITE   ? "WRITE"   :
 //                                    state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
@@ -601,7 +630,7 @@ struct ServerStreamRequestContext : public RequestContext
         if(stream_ctx->streamHasMore)
         {
 //                // victor test
-//                OUTMSG("Calling Write(), tag='" << this << "', "
+//                TRACE("Calling Write(), tag='" << this << "', "
 //                        << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
 //                                        state == RequestContext::WRITE   ? "WRITE"   :
 //                                        state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
@@ -620,7 +649,7 @@ struct ServerStreamRequestContext : public RequestContext
             state = RequestContext::FINISH;
 
 //                // victor test
-//                OUTMSG("Calling Finish(), tag='" << this << "', "
+//                TRACE("Calling Finish(), tag='" << this << "', "
 //                        << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
 //                                        state == RequestContext::WRITE   ? "WRITE"   :
 //                                        state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
@@ -731,7 +760,7 @@ struct ClientStreamRequestContext : public RequestContext
             stream_ctx->streamHasMore = true;
 
             // Start reading
-            //OUTMSG("this=" << this << ", ASK TO READ");  // victor test
+            //TRACE("this=" << this << ", ASK TO READ");  // victor test
 
             state = RequestContext::READ;
             req.Clear();
@@ -739,14 +768,14 @@ struct ClientStreamRequestContext : public RequestContext
         }
         else if(state == RequestContext::READ)
         {
-            //OUTMSG("this=" << this << ", READ COMPLETE");    // victor test
+            //TRACE("this=" << this << ", READ COMPLETE");    // victor test
 
             (grpcService->*processFunc)(*stream_ctx, req, resp);
 
             // Is processing failed?
             if(stream_ctx->GetStatus() != ::grpc::OK)
             {
-                //OUTMSG("this=" << this << ", Processing returned error " << stream_ctx->GetStatus());    // victor test
+                //TRACE("this=" << this << ", Processing returned error " << stream_ctx->GetStatus());    // victor test
 
                 // Processing returned error
                 state = RequestContext::FINISH;
@@ -756,14 +785,14 @@ struct ClientStreamRequestContext : public RequestContext
             }
 
             // Continue reading
-            //OUTMSG("this=" << this << ", ASK TO READ");  // victor test
+            //TRACE("this=" << this << ", ASK TO READ");  // victor test
 
             req.Clear();
             req_reader->Read(&req, this);
         }
         else if(state == RequestContext::READEND)
         {
-            //OUTMSG("this=" << this << ", READ END");     // victor test
+            //TRACE("this=" << this << ", READ END");     // victor test
 
             // And we are done!
             req.Clear();
@@ -789,7 +818,7 @@ struct ClientStreamRequestContext : public RequestContext
 
     void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError)
     {
-        //OUTMSG("Done");  // victor test
+        //TRACE("Done");  // victor test
 
         // Ask the system start processing requests
         StartProcessing(cq);
@@ -820,10 +849,15 @@ public:
         // is generated for every service class. It might need to
         // be replaced if/when it's no longer generated.
         serviceName = RPC_SERVICE::service_full_name();
-        service = new (std::nothrow) typename RPC_SERVICE::AsyncService;
-//        std::cout << ">>> " << __func__ << ":"
-//                << " name='" << serviceName << "',"
-//                << " service=" << service << std::endl;
+//        std::cout << ">>> " << __func__ << ": name='" << serviceName << std::endl;
+
+        // Note: We don't create the corresponding AsyncService here.
+        // We do it in dedicated Init() method, that we called later in RunImpl(),
+        // when we actually need AsyncService. This is to workaround gRpc limitation
+        // to register AsyncService just once and without any way to unregister.
+        // Because of that, gRpc server cannot be restarted after shutdown.
+        // By calling AsyncService from RunImpl(), we destroy existing AsyncService
+        // and create new one that we can register.
     }
 
     virtual ~GrpcService()
@@ -835,7 +869,7 @@ public:
     // Add request for unary RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
     void Bind(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
-                auto requestFunc, const void* processParam = nullptr)
+              auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>;
@@ -849,7 +883,7 @@ public:
     // Add request for server-stream RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
     void Bind(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
-                auto requestFunc, const void* processParam = nullptr)
+              auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>;
@@ -863,7 +897,7 @@ public:
     // Add request for client-stream RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
     void Bind(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
-                auto requestFunc, const void* processParam = nullptr)
+              auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>;
@@ -872,6 +906,21 @@ public:
         ctx->processFunc = (ProcessClientStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
         ctx->processParam = processParam;
         srv->AddRpcRequest(ctx);
+    }
+
+private:
+    virtual bool Init() override final
+    {
+        if(service)
+            delete service;
+        service = new (std::nothrow) typename RPC_SERVICE::AsyncService;
+
+//        std::cout << ">>> " << __func__ << ":"
+//                << " name='" << serviceName << "',"
+//                << " service=" << service << std::endl;
+
+        // Call derived class initialization
+        return OnInit();
     }
 };
 

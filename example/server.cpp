@@ -11,10 +11,10 @@ bool MyServer::OnInit(::grpc::ServerBuilder& builder)
     builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
 
     // Set how often OnRun() should be called. The default interval is 1 sec,
-    // but it can be reset by calling SetIdleInterval() with desired time
+    // but it can be reset by calling SetRunInterval() with desired time
     // interval in milliseconds.
     // For example, to receive OnRun() every 0.5 seconds:
-    SetIdleInterval(500);
+    SetRunInterval(500);
     return true;
 }
 
@@ -22,7 +22,7 @@ void MyServer::OnRun()
 {
     // OnRun is called periodically in the context of the thread that started
     // gRpc server. The default call interval is 1 sec or whatever is set by
-    // SetIdleInterval(). Use OnRun for any periodic tasks you might have.
+    // SetRunInterval(). Use OnRun for any periodic tasks you might have.
 }
 
 void MyServer::OnError(const std::string& err) const
@@ -67,7 +67,17 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Build & start gRpc server
+    // Build & start gRpc server.
+    // Note: The simple gRpc server uses basic initialization and writes
+    // info and error messages into std::cout and stc::cerr respectively.
+    // gen::SimpleGrpcServer srv;
+    // srv.AddService<HelloService>();
+    // srv.AddService<HealthService>();
+    // srv.Run(PORT_NUMBER, threadCount, creds);
+
+    // If we need any customization, like using desired loggers for
+    // info and error messages, using OnRun() calls, etc., then we need
+    // to have our own service class that is derived from gen::GrpcServer.
     MyServer srv;
 
     // Net socket

@@ -14,7 +14,7 @@ public:
     virtual ~HealthService() = default;
 
     // gen::GrpcService overrides
-    virtual bool Init() override;
+    virtual bool OnInit() override;
 
 protected:
     // Supported RPCs

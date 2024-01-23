@@ -3,7 +3,7 @@
 //
 #include "healthService.hpp"
 
-bool HealthService::Init()
+bool HealthService::OnInit()
 {
     // Add Health service RPCs
     Bind(&HealthService::Check,
