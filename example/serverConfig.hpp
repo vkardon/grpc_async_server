@@ -16,7 +16,8 @@
 //
 #include <iostream>         // cout
 #include <mutex>            // mutex, unique_lock
-#include <sys/syscall.h>    // syscall()
+#include <unistd.h>         // syscall()
+#include <sys/syscall.h>    // __NR_gettid
 
 namespace logger
 {
