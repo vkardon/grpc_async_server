@@ -29,8 +29,8 @@ SRCS_SRV = $(PROJECT_HOME)/server.cpp \
 SRCS_CLN = $(PROJECT_HOME)/client.cpp 
 
 # gRPC proto files 
+PROTO_OUT  = $(OBJ_DIR)/_generate
 PROTO_HOME = $(PROJECT_HOME)
-PROTO_OUT  = $(PROJECT_HOME)/_generate
 PROTO_SRCS = $(PROTO_HOME)/hello.proto \
              $(PROTO_HOME)/health.proto 
 
@@ -142,7 +142,7 @@ $(PROTO_OUT)/%.pb.cc: $(PROTO_HOME)/%.proto Makefile
 	$(PROTOC) --cpp_out=$(PROTO_OUT) --proto_path=$(PROTO_HOME) $<
 
 # Generate protoset file
-$(PROTOSET): $(PROTO_SRCS)
+$(PROTOSET):
 	@echo ">>> Generating protoset ..."
 	$(PROTOC) -I $(PROTO_HOME) --descriptor_set_out=$(PROTOSET) $(PROTO_SRCS)
 
