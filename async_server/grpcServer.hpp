@@ -474,28 +474,6 @@ private:
 };
 
 //
-// Simple (basic) implementation of gRpc server
-//
-class SimpleGrpcServer : public GrpcServer
-{
-public:
-    SimpleGrpcServer() = default;
-    virtual ~SimpleGrpcServer() = default;
-
-private:
-    // GrpcServer overrides
-    virtual bool OnInit(::grpc::ServerBuilder& builder) override
-    {
-        builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
-        SetRunInterval(200); // Set run interval in milliseconds
-        return true;
-    }
-    virtual void OnRun() override { return; }
-    virtual void OnError(const std::string& err) const override { std::cerr << err << std::endl; }
-    virtual void OnInfo(const std::string& info) const override { std::cout << info << std::endl; }
-};
-
-//
 // Template class to handle unary respone
 //
 template<class RPC_SERVICE, class REQ, class RESP>
