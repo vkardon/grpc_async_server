@@ -6,10 +6,6 @@ EXE_SRV = server
 EXE_CLN = client
 PROTOSET = protoset
 
-# Detect operating system
-#OS = $(shell uname -s)
-OS = $(shell lsb_release -a | grep "Distributor ID" | cut -f2)
-
 # Compiler and linker to use
 CC = g++
 
@@ -33,15 +29,6 @@ PROTO_OUT  = $(OBJ_DIR)/_generate
 PROTO_HOME = $(PROJECT_HOME)
 PROTO_SRCS = $(PROTO_HOME)/hello.proto \
              $(PROTO_HOME)/health.proto 
-
-# gRPC support
-ifeq "$(OS)" "Ubuntu"
-   GRPC_HOME = ../grpc_$(GRPC_VER)/ubuntu
-else ifeq "$(OS)" "RedHatEnterpriseServer"
-   GRPC_HOME = ../grpc_$(GRPC_VER)/rhel
-else
-   GRPC_HOME =
-endif
 
 GRPC_INC = $(GRPC_HOME)/$(LINKING_TYPE)/include
 GRPC_BIN = $(GRPC_HOME)/$(LINKING_TYPE)/bin
