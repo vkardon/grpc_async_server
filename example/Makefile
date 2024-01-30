@@ -146,8 +146,8 @@ $(PROTOSET):
 	$(PROTOC) -I $(PROTO_HOME) --descriptor_set_out=$(PROTOSET) $(PROTO_SRCS)
 
 # Delete all intermediate files
-clean: 
-	rm -rf $(EXE_SRV) $(EXE_SRV)ssl $(EXE_CLN) $(EXE_CLN)ssl $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT)
+clean clear:
+	rm -rf $(EXE_SRV) $(EXE_SRV)ssl $(EXE_CLN) $(EXE_CLN)ssl $(PROTOSET) $(OBJ_DIR)
 
 # Read the dependency files.
 # Note: use '-' prefix to don't display error or warning
