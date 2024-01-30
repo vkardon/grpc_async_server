@@ -72,7 +72,6 @@ ifeq "$(LINKING_TYPE)" "shared"
    # Set option -Wl,--disable-new-dtags to tell the new linker to use the old behavior, i.e. RPATH.
    # Set option -Wl,--enable-new-dtags to tell the old linker to use the new behavior, i.e. RUNPATH.
    # To verify: readelf -d <exefile> | grep PATH
-   #
    LDFLAGS += -Wl,--disable-new-dtags
    LDFLAGS += -Wl,-rpath='$$ORIGIN/$(GRPC_LIB)' -Wl,-rpath='$$ORIGIN/$(GRPC_LIB64)'
 else
@@ -150,11 +149,9 @@ $(PROTOSET):
 clean: 
 	rm -rf $(EXE_SRV) $(EXE_SRV)ssl $(EXE_CLN) $(EXE_CLN)ssl $(PROTOSET) $(OBJ_DIR) $(PROTO_OUT)
 
-#
 # Read the dependency files.
 # Note: use '-' prefix to don't display error or warning
 # if include file do not exist (just remade it)
-#
 -include $(OBJS_SRV:.o=.d)
 -include $(OBJS_CLN:.o=.d)
 
