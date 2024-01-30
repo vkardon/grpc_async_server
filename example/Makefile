@@ -36,9 +36,9 @@ PROTO_SRCS = $(PROTO_HOME)/hello.proto \
 
 # gRPC support
 ifeq "$(OS)" "Ubuntu"
-   GRPC_HOME = $(PROJECT_HOME)/../$(GRPC_VER)/ubuntu
+   GRPC_HOME = ../grpc_$(GRPC_VER)/ubuntu
 else ifeq "$(OS)" "RedHatEnterpriseServer"
-   GRPC_HOME = $(PROJECT_HOME)/../$(GRPC_VER)/rhel
+   GRPC_HOME = ../grpc_$(GRPC_VER)/rhel
 else
    GRPC_HOME =
 endif
