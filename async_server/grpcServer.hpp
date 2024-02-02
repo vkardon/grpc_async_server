@@ -72,7 +72,7 @@ private:
     virtual bool Init() = 0;
 
 protected:
-    ::grpc::Service* service = nullptr;
+    std::unique_ptr<::grpc::Service> service;
     const char* serviceName = "";
     GrpcServer* srv = nullptr;
 
@@ -254,7 +254,7 @@ private:
                 // Note: Only register service once. This would be the case
                 // when gRpc server stopped and then started again.
                 GrpcServiceBase* grpcService = pair.second.get();
-                builder.RegisterService(grpcService->service);
+                builder.RegisterService(grpcService->service.get());
             }
 
             // Add Completion Queues - one queue per a thread for a best performance
@@ -504,7 +504,7 @@ struct UnaryRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service;
+        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service.get();
         (asyncService->*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
@@ -585,7 +585,7 @@ struct ServerStreamRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service;
+        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service.get();
         (asyncService->*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
@@ -724,7 +724,7 @@ struct ClientStreamRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service;
+        AsyncService<RPC_SERVICE>* asyncService = (AsyncService<RPC_SERVICE>*)grpcService->service.get();
         (asyncService->*requestFunc)(srv_ctx.get(), req_reader.get(), cq, cq, this);
     }
 
@@ -838,11 +838,7 @@ public:
         // and create new one that we can register.
     }
 
-    virtual ~GrpcService()
-    {
-        if(service)
-            delete service;
-    }
+    virtual ~GrpcService() = default;
 
     // Add request for unary RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
@@ -889,13 +885,11 @@ public:
 private:
     virtual bool Init() override final
     {
-        if(service)
-            delete service;
-        service = new (std::nothrow) typename RPC_SERVICE::AsyncService;
+        service.reset(new (std::nothrow) typename RPC_SERVICE::AsyncService);
 
 //        std::cout << ">>> " << __func__ << ":"
 //                << " name='" << serviceName << "',"
-//                << " service=" << service << std::endl;
+//                << " service=" << service.get() << std::endl;
 
         // Call derived class initialization
         return OnInit();
