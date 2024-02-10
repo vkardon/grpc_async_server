@@ -4,27 +4,19 @@
 #include "helloService.hpp"
 #include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
 
-bool HelloService::OnInit()
+// ResponseList is used to demonstrate server-side streaming
+struct ResponseList
 {
-    // Add HelloService RPCs
-    Bind(&HelloService::Shutdown,
-         &test::Hello::AsyncService::RequestShutdown);
-    Bind(&HelloService::Ping,
-         &test::Hello::AsyncService::RequestPing);
-    Bind(&HelloService::ServerStreamTest,
-         &test::Hello::AsyncService::RequestServerStreamTest);
-    Bind(&HelloService::ClientStreamTest,
-         &test::Hello::AsyncService::RequestClientStreamTest);
+    std::vector<std::string> rows;
+    size_t sentRows = 0;
 
-    return true;
-}
-
-bool HelloService::IsServing()
-{
-    // Add some service-specific code to determine
-    // is the service is serving or not
-    return true;
-}
+    ResponseList()
+    {
+        // Initialize responses with some data
+        for(size_t i = 0; i < 10; ++i)
+            rows.push_back("ReponseList row #" + std::to_string(i+1));
+    }
+};
 
 void HelloService::Shutdown(const gen::RpcContext& ctx,
                             const test::ShutdownRequest& req,
@@ -64,12 +56,6 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
     // Statistics - track the total number of opened streams
     static std::atomic<int> opened_streams{0};
 
-    struct ResponseList
-    {
-        std::vector<std::string> rows;
-        size_t sentRows = 0;
-    };
-
     ResponseList* respList = (ResponseList*)ctx.GetParam();
 
     // Are we done?
@@ -87,7 +73,7 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 
         respList = nullptr;
         ctx.SetParam(nullptr);
-        opened_streams--;   // The total number of opened streams
+        opened_streams--;   // Statistics: The total number of opened streams
     }
     else
     {
@@ -95,16 +81,13 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
         // (ctx.GetStreamStatus() == gen::StreamStatus::STREAMING)
         if(!respList)
         {
-            // This is very first response, create list of empty responses to be streammed
+            // This is very first response. 
             OUTMSG("Req = '" << req.msg() << "'");
-
+  
+            // Initialize some data to stream back to the client 
             respList = new ResponseList;
             ctx.SetParam(respList);
-            opened_streams++;   // The total number of opened streams
-
-            // Initialize responses with some data
-            for(size_t i = 0; i < 10; ++i)
-                respList->rows.push_back("ServerStreamTestResponse #" + std::to_string(i+1));
+            opened_streams++;   // Statistics: The total number of opened streams
         }
 
         // Get rows to send

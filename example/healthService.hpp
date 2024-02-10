@@ -14,7 +14,13 @@ public:
     virtual ~HealthService() = default;
 
     // gen::GrpcService overrides
-    virtual bool OnInit() override;
+    virtual bool OnInit() override
+    {
+        // Bind Health service RPCs
+        Bind(&HealthService::Check,
+             &grpc::health::v1::Health::AsyncService::RequestCheck);
+        return true;
+    }
 
 protected:
     // Supported RPCs

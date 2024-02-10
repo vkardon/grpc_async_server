@@ -3,14 +3,6 @@
 //
 #include "healthService.hpp"
 
-bool HealthService::OnInit()
-{
-    // Add Health service RPCs
-    Bind(&HealthService::Check,
-         &grpc::health::v1::Health::AsyncService::RequestCheck);
-
-    return true;
-}
 
 void HealthService::Check(const gen::RpcContext& rpcCtx,
                           const grpc::health::v1::HealthCheckRequest& req,

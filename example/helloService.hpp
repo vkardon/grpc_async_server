@@ -14,8 +14,26 @@ public:
     virtual ~HelloService() = default;
 
     // gen::GrpcService overrides
-    virtual bool OnInit() override;
-    virtual bool IsServing() override;
+    virtual bool OnInit() override
+    {
+        // Bind all HelloService RPCs
+        Bind(&HelloService::Shutdown,
+             &test::Hello::AsyncService::RequestShutdown);
+        Bind(&HelloService::Ping,
+             &test::Hello::AsyncService::RequestPing);
+        Bind(&HelloService::ServerStreamTest,
+             &test::Hello::AsyncService::RequestServerStreamTest);
+        Bind(&HelloService::ClientStreamTest,
+             &test::Hello::AsyncService::RequestClientStreamTest);
+        return true;
+    }
+
+    // You can override IsServing for some service-specific check 
+    // if service is serving. 
+    //virtual bool IsServing() override 
+    //{
+    //    return true;
+    //}
 
 protected:
     // Supported RPCs
