@@ -19,7 +19,7 @@ namespace gen {
 // Helper to format DNS address uri
 inline std::string FormatDnsAddressUri(const char* host, unsigned short port)
 {
-    return "dns:" + std::string(host) + ":" + std::to_string(port);
+    return std::string("dns:") + host + ":" + std::to_string(port);
 }
 
 // Helper to format Unix Domain Socket address uri
@@ -37,7 +37,7 @@ inline std::string FormatUnixDomainSocketAddressUri(const char* domainSocketPath
         //    The underlying implementation of Abstract sockets uses a null byte ('\0') as the first character.
         //    The implementation will prepend this null. Do not include the null in abstract_path.
         //    abstract_path cannot contain null bytes.
-        return "unix-abstract:" + std::string(domainSocketPath + 1);
+        return std::string("unix-abstract:") + (domainSocketPath + 1);
     }
     else
     {
@@ -49,7 +49,7 @@ inline std::string FormatUnixDomainSocketAddressUri(const char* domainSocketPath
         //    In the second form, the path must be absolute
         //    (i.e., there will actually be three slashes, two prior to the path and another to begin the absolute path).
         //
-        return "unix://" + std::string(domainSocketPath);
+        return std::string("unix://") + domainSocketPath;
     }
 }
 
