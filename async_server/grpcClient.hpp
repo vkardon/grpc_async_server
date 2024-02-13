@@ -164,6 +164,10 @@ bool GrpcClient<RPC_SERVICE>::InitFromAddressUri(const std::string& addressUriIn
     grpc::ChannelArguments channelArgs;
     channelArgs.SetMaxSendMessageSize(INT_MAX);
     channelArgs.SetMaxReceiveMessageSize(INT_MAX);
+
+    // If set to zero, disables use of http proxies. Enabled by default.
+    //channelArgs.SetInt(GRPC_ARG_ENABLE_HTTP_PROXY, 0);
+
     auto channel = grpc::CreateCustomChannel(addressUri, creds, channelArgs);
 
     stub = RPC_SERVICE::NewStub(channel);
