@@ -885,7 +885,7 @@ public:
 private:
     virtual bool Init() override final
     {
-        service.reset(new (std::nothrow) typename RPC_SERVICE::AsyncService);
+        service.reset(new (std::nothrow) AsyncService<RPC_SERVICE>);
 
 //        std::cout << ">>> " << __func__ << ":"
 //                << " name='" << serviceName << "',"
