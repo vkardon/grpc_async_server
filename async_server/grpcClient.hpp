@@ -30,6 +30,24 @@ struct ReqCallbackFunctor
     virtual bool operator()(REQ& resp) = 0;
 };
 
+// Wrapper class to add overload bool() operator that grpc::Status doesn't have.
+// This allows to simplify the code when grpc::Status is NOT required:
+// if(!grpcClient.Call(...))
+// {
+//      ....
+// }
+// However, if grpc::Status is required, then it can be obtained:
+// grpc::Status s = grpcClient.Call(...);
+// if(!s.ok())
+// {
+//      ....
+// }
+struct StatusEx : public grpc::Status
+{
+    StatusEx(const grpc::Status& s) : grpc::Status(s) {}
+    operator bool() { return grpc::Status::ok(); }
+};
+
 //
 // Helper class to call UNARY/STREAM gRpc service
 //
@@ -76,48 +94,48 @@ public:
 
     // Thread-save UNARY gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    bool Call(GRPC_STUB_FUNC grpcStubFunc,
-              const REQ& req, RESP& resp,
-              const std::map<std::string, std::string>& metadata,
-              std::string& errMsg, unsigned long timeout = 0);
+    StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
+                  const REQ& req, RESP& resp,
+                  const std::map<std::string, std::string>& metadata,
+                  std::string& errMsg, unsigned long timeout = 0);
 
     // Thread-save UNARY gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    bool Call(GRPC_STUB_FUNC grpcStubFunc,
-              const REQ& req, RESP& resp,
-              std::string& errMsg, unsigned long timeout = 0)
+    StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
+                  const REQ& req, RESP& resp,
+                  std::string& errMsg, unsigned long timeout = 0)
     {
         return Call(grpcStubFunc, req, resp, dummy_metadata, errMsg, timeout);
     }
 
     // Thread-save server-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    bool CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                    const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                    const std::map<std::string, std::string>& metadata,
-                    std::string& errMsg, unsigned long timeout = 0);
+    StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
+                        const REQ& req, RespCallbackFunctor<RESP>& respCallback,
+                        const std::map<std::string, std::string>& metadata,
+                        std::string& errMsg, unsigned long timeout = 0);
 
     // Thread-save server-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    bool CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                    const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                    std::string& errMsg, unsigned long timeout = 0)
+    StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
+                        const REQ& req, RespCallbackFunctor<RESP>& respCallback,
+                        std::string& errMsg, unsigned long timeout = 0)
     {
         return CallStream(grpcStubFunc, req, respCallback, dummy_metadata, errMsg, timeout);
     }
 
     // Thread-save client-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    bool CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
-                          ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                          const std::map<std::string, std::string>& metadata,
-                          std::string& errMsg, unsigned long timeout = 0);
+    StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
+                              ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
+                              const std::map<std::string, std::string>& metadata,
+                              std::string& errMsg, unsigned long timeout = 0);
 
     // Thread-save client-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    bool CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
-                          ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                          std::string& errMsg, unsigned long timeout = 0)
+    StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
+                              ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
+                              std::string& errMsg, unsigned long timeout = 0)
     {
         return CallClientStream(grpcStubFunc, reqCallback, resp, dummy_metadata, errMsg, timeout);
     }
@@ -131,7 +149,7 @@ private:
     GrpcClient(const GrpcClient&) = delete;
     GrpcClient& operator=(const GrpcClient&) = delete;
 
-    void SetError(std::string& errOut, const std::string& errIn, const grpc::Status& status = grpc::Status())
+    void SetError(std::string& errOut, const std::string& errIn, const grpc::Status& status)
     {
         errOut = errIn + ", addressUri='" + addressUri + "'";
 
@@ -185,15 +203,16 @@ void GrpcClient<RPC_SERVICE>::Reset()
 // Thread-save UNARY gRpc
 template <class RPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
-                                   const REQ& req, RESP& resp,
-                                   const std::map<std::string, std::string>& metadata,
-                                   std::string& errMsg, unsigned long timeout)
+StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
+                                       const REQ& req, RESP& resp,
+                                       const std::map<std::string, std::string>& metadata,
+                                       std::string& errMsg, unsigned long timeout)
 {
     if(!stub)
     {
-        SetError(errMsg, "Invalid (null) gRpc service stub");
-        return false;
+        grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
+        SetError(errMsg, "Failed to make unary call", s);
+        return s;
     }
 
     // Create context and set metadata (if we have any...)
@@ -212,26 +231,24 @@ bool GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
     // Call service
     grpc::Status s = (stub.get()->*grpcStubFunc)(&context, req, &resp);
     if(!s.ok())
-    {
         SetError(errMsg, "Failed to make unary call", s);
-        return false;
-    }
 
-    return true;
+    return s;
 }
 
 // Thread-save server-side STREAM gRpc
 template <class RPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                                         const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                                         const std::map<std::string, std::string>& metadata,
-                                         std::string& errMsg, unsigned long timeout)
+StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
+                                             const REQ& req, RespCallbackFunctor<RESP>& respCallback,
+                                             const std::map<std::string, std::string>& metadata,
+                                             std::string& errMsg, unsigned long timeout)
 {
     if(!stub)
     {
-        SetError(errMsg, "Invalid (null) gRpc service stub");
-        return false;
+        grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
+        SetError(errMsg, "Failed to make server-side stream call", s);
+        return s;
     }
 
     // Create context and set metadata (if we have any...)
@@ -259,26 +276,24 @@ bool GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
 
     grpc::Status s = reader->Finish();
     if(!s.ok())
-    {
         SetError(errMsg, "Failed to make server-side stream call", s);
-        return false;
-    }
 
-    return true;
+    return s;
 }
 
 // Thread-save client-side STREAM gRpc
 template <class RPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-bool GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
-                                               ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                                               const std::map<std::string, std::string>& metadata,
-                                               std::string& errMsg, unsigned long timeout)
+StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
+                                                   ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
+                                                   const std::map<std::string, std::string>& metadata,
+                                                   std::string& errMsg, unsigned long timeout)
 {
     if(!stub)
     {
-        SetError(errMsg, "Invalid (null) gRpc service stub");
-        return false;
+        grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
+        SetError(errMsg, "Failed to make client-side stream call", s);
+        return s;
     }
 
     // Create context and set metadata (if we have any...)
@@ -302,8 +317,9 @@ bool GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
         if(!writer->Write(req))
         {
             // Broken stream
-            SetError(errMsg, "Failed to make client-side stream call");
-            return false;
+            grpc::Status s(grpc::StatusCode::INTERNAL, "Writer (output) stream is broken");
+            SetError(errMsg, "Failed to make client-side stream call", s);
+            return s;
         }
         req.Clear();
     }
@@ -311,12 +327,9 @@ bool GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
 
     grpc::Status s = writer->Finish();
     if(!s.ok())
-    {
         SetError(errMsg, "Failed to make client-side stream call", s);
-        return false;
-    }
 
-    return true;
+    return s;
 }
 
 // Experimantal...
