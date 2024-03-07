@@ -28,9 +28,9 @@ public:
         return true;
     }
 
-    // You can override IsServing for some service-specific check 
-    // if service is serving. 
-    //virtual bool IsServing() override 
+    // You can override IsServing for some service-specific check
+    // if service is serving.
+    //virtual bool IsServing() override
     //{
     //    return true;
     //}

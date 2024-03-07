@@ -41,7 +41,7 @@ private:
         // OnRun is called periodically in the context of the thread that started
         // gRpc server. The default call interval is 1 sec or whatever is set by
         // SetRunInterval(). You can use OnRun for any periodic tasks you might have.
-        // Note: OnRun is stopped being called after you call Shutdown. 
+        // Note: OnRun is stopped being called after you call Shutdown.
     }
 
     virtual void OnError(const std::string& err) const override
@@ -50,7 +50,7 @@ private:
         ERRORMSG(err);
     }
 
-    virtual void OnInfo(const std::string& info) const override 
+    virtual void OnInfo(const std::string& info) const override
     {
         // Info messages produced by gen::GrpcServer
         INFOMSG(info);

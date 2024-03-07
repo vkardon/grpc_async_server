@@ -81,10 +81,10 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
         // (ctx.GetStreamStatus() == gen::StreamStatus::STREAMING)
         if(!respList)
         {
-            // This is very first response. 
+            // This is very first response.
             OUTMSG("Req = '" << req.msg() << "'");
-  
-            // Initialize some data to stream back to the client 
+
+            // Initialize some data to stream back to the client
             respList = new ResponseList;
             ctx.SetParam(respList);
             opened_streams++;   // Statistics: The total number of opened streams
