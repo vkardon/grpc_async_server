@@ -149,17 +149,14 @@ private:
     GrpcClient(const GrpcClient&) = delete;
     GrpcClient& operator=(const GrpcClient&) = delete;
 
-    void SetError(std::string& errOut, const std::string& errIn, const grpc::Status& status)
+    void SetError(std::string& errOut, const char* fname, const grpc::Status& status)
     {
-        errOut = errIn + ", addressUri='" + addressUri + "'";
-
-        if(!status.ok())
-        {
-            std::string status_err = status.error_message();
-            if(status_err.empty())
-                status_err = StatusToStr(status.error_code());
-            errOut += ", err='" + status_err + "'";
-        }
+        errOut = std::string(fname) + "() to uri='" + addressUri + "' error: '";
+        if(!status.error_message().empty())
+            errOut += status.error_message();
+        else
+            errOut += StatusToStr(status.error_code());
+        errOut += "'";
     }
 
 private:
@@ -211,7 +208,7 @@ StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
     if(!stub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        SetError(errMsg, "Failed to make unary call", s);
+        SetError(errMsg, __func__, s);
         return s;
     }
 
@@ -231,7 +228,7 @@ StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
     // Call service
     grpc::Status s = (stub.get()->*grpcStubFunc)(&context, req, &resp);
     if(!s.ok())
-        SetError(errMsg, "Failed to make unary call", s);
+        SetError(errMsg, __func__, s);
 
     return s;
 }
@@ -247,7 +244,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
     if(!stub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        SetError(errMsg, "Failed to make server-side stream call", s);
+        SetError(errMsg, __func__, s);
         return s;
     }
 
@@ -276,7 +273,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
 
     grpc::Status s = reader->Finish();
     if(!s.ok())
-        SetError(errMsg, "Failed to make server-side stream call", s);
+        SetError(errMsg, __func__, s);
 
     return s;
 }
@@ -292,7 +289,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
     if(!stub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        SetError(errMsg, "Failed to make client-side stream call", s);
+        SetError(errMsg, __func__, s);
         return s;
     }
 
@@ -310,24 +307,21 @@ StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
     }
 
     // Call service
-    REQ req;
     std::unique_ptr<grpc::ClientWriter<REQ>> writer((stub.get()->*grpcStubFunc)(&context, &resp));
+
+    REQ req;
     while(reqCallback(req))
     {
         if(!writer->Write(req))
-        {
-            // Broken stream
-            grpc::Status s(grpc::StatusCode::INTERNAL, "Writer (output) stream is broken");
-            SetError(errMsg, "Failed to make client-side stream call", s);
-            return s;
-        }
+            break;
         req.Clear();
     }
+
     writer->WritesDone();
 
     grpc::Status s = writer->Finish();
     if(!s.ok())
-        SetError(errMsg, "Failed to make client-side stream call", s);
+        SetError(errMsg, __func__, s);
 
     return s;
 }
