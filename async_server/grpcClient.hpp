@@ -93,13 +93,13 @@ public:
     StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
                   const REQ& req, RESP& resp,
                   const std::map<std::string, std::string>& metadata,
-                  std::string& errMsg, unsigned long timeout = 0);
+                  std::string& errMsg, unsigned long timeout = 0) const;
 
     // Thread-save UNARY gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
                   const REQ& req, RESP& resp,
-                  std::string& errMsg, unsigned long timeout = 0)
+                  std::string& errMsg, unsigned long timeout = 0) const
     {
         return Call(grpcStubFunc, req, resp, dummy_metadata, errMsg, timeout);
     }
@@ -109,13 +109,13 @@ public:
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
                         const REQ& req, RespCallbackFunctor<RESP>& respCallback,
                         const std::map<std::string, std::string>& metadata,
-                        std::string& errMsg, unsigned long timeout = 0);
+                        std::string& errMsg, unsigned long timeout = 0) const;
 
     // Thread-save server-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
                         const REQ& req, RespCallbackFunctor<RESP>& respCallback,
-                        std::string& errMsg, unsigned long timeout = 0)
+                        std::string& errMsg, unsigned long timeout = 0) const
     {
         return CallStream(grpcStubFunc, req, respCallback, dummy_metadata, errMsg, timeout);
     }
@@ -125,13 +125,13 @@ public:
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                               ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
                               const std::map<std::string, std::string>& metadata,
-                              std::string& errMsg, unsigned long timeout = 0);
+                              std::string& errMsg, unsigned long timeout = 0) const;
 
     // Thread-save client-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                               ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
-                              std::string& errMsg, unsigned long timeout = 0)
+                              std::string& errMsg, unsigned long timeout = 0) const
     {
         return CallClientStream(grpcStubFunc, reqCallback, resp, dummy_metadata, errMsg, timeout);
     }
@@ -145,7 +145,7 @@ private:
     GrpcClient(const GrpcClient&) = delete;
     GrpcClient& operator=(const GrpcClient&) = delete;
 
-    void SetError(std::string& errOut, const char* fname, const grpc::Status& status)
+    void SetError(std::string& errOut, const char* fname, const grpc::Status& status) const
     {
         errOut = std::string(fname) + "() to uri='" + addressUri + "' error: '";
         if(!status.error_message().empty())
@@ -153,6 +153,17 @@ private:
         else
             errOut += StatusToStr(status.error_code());
         errOut += "'";
+    }
+
+    // Set deadline of how long to wait for a server reply
+    void SetDeadline(grpc::ClientContext& context,  unsigned long timeout) const
+    {
+        if(timeout > 0)
+        {
+            std::chrono::time_point<std::chrono::system_clock> deadline =
+                    std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
+            context.set_deadline(deadline);
+        }
     }
 
 private:
@@ -199,7 +210,7 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
                                        const REQ& req, RESP& resp,
                                        const std::map<std::string, std::string>& metadata,
-                                       std::string& errMsg, unsigned long timeout)
+                                       std::string& errMsg, unsigned long timeout) const
 {
     if(!stub)
     {
@@ -214,12 +225,7 @@ StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
         context.AddMetadata(p.first, p.second);
 
     // Set deadline of how long to wait for a server reply
-    if(timeout > 0)
-    {
-        std::chrono::time_point<std::chrono::system_clock> deadline =
-                std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
-        context.set_deadline(deadline);
-    }
+    SetDeadline(context, timeout);
 
     // Call service
     grpc::Status s = (stub.get()->*grpcStubFunc)(&context, req, &resp);
@@ -235,7 +241,7 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
                                              const REQ& req, RespCallbackFunctor<RESP>& respCallback,
                                              const std::map<std::string, std::string>& metadata,
-                                             std::string& errMsg, unsigned long timeout)
+                                             std::string& errMsg, unsigned long timeout) const
 {
     if(!stub)
     {
@@ -250,12 +256,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
         context.AddMetadata(p.first, p.second);
 
     // Set deadline of how long to wait for a server reply
-    if(timeout > 0)
-    {
-        std::chrono::time_point<std::chrono::system_clock> deadline =
-                std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
-        context.set_deadline(deadline);
-    }
+    SetDeadline(context, timeout);
 
     // Call service
     RESP resp;
@@ -280,7 +281,7 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                                                    ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
                                                    const std::map<std::string, std::string>& metadata,
-                                                   std::string& errMsg, unsigned long timeout)
+                                                   std::string& errMsg, unsigned long timeout) const
 {
     if(!stub)
     {
@@ -295,12 +296,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
         context.AddMetadata(p.first, p.second);
 
     // Set deadline of how long to wait for a server reply
-    if(timeout > 0)
-    {
-        std::chrono::time_point<std::chrono::system_clock> deadline =
-                std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
-        context.set_deadline(deadline);
-    }
+    SetDeadline(context, timeout);
 
     // Call service
     std::unique_ptr<grpc::ClientWriter<REQ>> writer((stub.get()->*grpcStubFunc)(&context, &resp));
