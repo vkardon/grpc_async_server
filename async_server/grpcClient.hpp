@@ -33,15 +33,11 @@ struct ReqCallbackFunctor
 // Wrapper class to add overload bool() operator that grpc::Status doesn't have.
 // This allows to simplify the code when grpc::Status is NOT required:
 // if(!grpcClient.Call(...))
-// {
 //      ....
-// }
 // However, if grpc::Status is required, then it can be obtained:
 // grpc::Status s = grpcClient.Call(...);
 // if(!s.ok())
-// {
 //      ....
-// }
 struct StatusEx : public grpc::Status
 {
     StatusEx(const grpc::Status& s) : grpc::Status(s) {}
