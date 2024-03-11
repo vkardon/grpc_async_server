@@ -8,11 +8,11 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <grpcpp/grpcpp.h>
+#include <google/protobuf/util/json_util.h> // Protobuf to/from Json support
 #pragma GCC diagnostic pop
 
 #include <fstream>  // std::istream
 #include <sstream>  // std::ostringstream
-
 
 namespace gen {
 
@@ -194,6 +194,60 @@ inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
     return grpc::SslServerCredentials(sslOpts);
 }
 
+// Serialize protobuf::Message to json
+inline bool ProbufToJson(
+        const ::google::protobuf::Message& msg,
+        std::string& json,
+        std::string& errMsg, bool compact=true)
+{
+    google::protobuf::util::JsonPrintOptions jsonOptions;
+    jsonOptions.always_print_primitive_fields = true;
+
+    if(!compact)
+        jsonOptions.add_whitespace = true;
+
+    google::protobuf::util::Status status = google::protobuf::util::MessageToJsonString(msg, &json, jsonOptions);
+
+    if(!status.ok())
+    {
+        errMsg = status.ToString();
+        return false;
+    }
+
+    return true;
+}
+
+// De-Serialize json to protobuf::Message
+inline bool JsonToProtobuf(
+        ::google::protobuf::Message& msg,
+         const std::string& json,
+         std::string& errMsg)
+{
+    google::protobuf::util::Status status = google::protobuf::util::JsonStringToMessage(json, &msg);
+    if(!status.ok())
+    {
+        errMsg = status.ToString();
+        return false;
+    }
+    return true;
+}
+
+// Print out protobuf::Message as json to std::stream
+inline bool PrintAsJson(
+        const ::google::protobuf::Message& msg,
+        bool compact=true,
+        std::ostream& out=std::cout)
+{
+    std::string errMsg;
+    std::string json;
+    if(!ProbufToJson(msg, json, errMsg, compact))
+    {
+        out << errMsg << std::endl;
+        return false;
+    }
+    out << json.c_str() << std::endl;
+    return true;
+}
 
 } //namespace gen
 
