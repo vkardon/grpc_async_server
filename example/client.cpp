@@ -32,8 +32,7 @@ bool PingTest()
         return false;
     }
 
-    const char* result = (resp.result() ? "success" : "error");
-    INFOMSG(result);
+    INFOMSG(resp);
     return true;
 }
 
@@ -57,9 +56,7 @@ bool ServerStreamTest(bool silent = false)
             std::unique_lock<std::mutex> lock(logger::sLogMutex);
             std::cout << "BEGIN" << std::endl;
             for(const test::ServerStreamTestResponse& resp : respList)
-            {
-                std::cout << resp.msg() << std::endl;
-            }
+                std::cout << resp << std::endl;
             std::cout << "END: " << respList.size() << " responses" << std::endl;
         }
 
@@ -107,8 +104,7 @@ bool ClientStreamTest()
         return false;
     }
 
-    const char* result = (resp.result() ? "success" : "error");
-    INFOMSG(result);
+    INFOMSG(resp);
     return true;
 }
 
@@ -127,8 +123,7 @@ bool ShutdownTest()
         return false;
     }
 
-    const char* result = (resp.result() ? "success" : resp.msg().c_str());
-    INFOMSG(result);
+    INFOMSG(resp);
     return true;
 }
 

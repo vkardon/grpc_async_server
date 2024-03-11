@@ -53,8 +53,8 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
                                     const test::ServerStreamTestRequest& req,
                                     test::ServerStreamTestResponse& resp)
 {
-    // Statistics - track the total number of opened streams
-    static std::atomic<int> opened_streams{0};
+//    // Statistics - track the total number of opened streams
+//    static std::atomic<int> opened_streams{0};
 
     ResponseList* respList = (ResponseList*)ctx.GetParam();
 
@@ -73,7 +73,7 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 
         respList = nullptr;
         ctx.SetParam(nullptr);
-        opened_streams--;   // Statistics: The total number of opened streams
+//        opened_streams--;   // Statistics: The total number of opened streams
     }
     else
     {
@@ -87,7 +87,7 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
             // Initialize some data to stream back to the client
             respList = new ResponseList;
             ctx.SetParam(respList);
-            opened_streams++;   // Statistics: The total number of opened streams
+//            opened_streams++;   // Statistics: The total number of opened streams
         }
 
         // Get rows to send
@@ -110,8 +110,8 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
     //usleep(500000);   // sleep for half second to simulate processing
     //usleep(1000000);  // sleep for one second to simulate processing
 
-    // Print statistics.
-    OUTMSG("opened_streams=" << opened_streams);
+//    // Print statistics.
+//    OUTMSG("opened_streams=" << opened_streams);
 }
 
 void HelloService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
@@ -129,7 +129,7 @@ void HelloService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
 
     if(ctx.GetHasMore())
     {
-        INFOMSG("req.msg='" << req.msg() << "'");
+        INFOMSG(req);
     }
     else
     {

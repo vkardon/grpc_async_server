@@ -231,24 +231,17 @@ inline bool JsonToProtobuf(
     return true;
 }
 
-// Print out protobuf::Message as json to std::stream
-inline bool PrintAsJson(
-        const ::google::protobuf::Message& msg,
-        bool compact=true,
-        std::ostream& out=std::cout)
-{
-    std::string errMsg;
-    std::string json;
-    if(!ProtobufToJson(msg, json, errMsg, compact))
-    {
-        out << errMsg << std::endl;
-        return false;
-    }
-    out << json.c_str() << std::endl;
-    return true;
-}
-
 } //namespace gen
+
+inline std::ostream& operator<<(std::ostream& out, const ::google::protobuf::Message& msg)
+{
+    google::protobuf::util::JsonPrintOptions jsonOptions;
+    jsonOptions.always_print_primitive_fields = true;
+    std::string json;
+    auto status = google::protobuf::util::MessageToJsonString(msg, &json, jsonOptions);
+    out << (status.ok() ? json : status.ToString());
+    return out;
+}
 
 #endif // __GRPC_UTILS_HPP__
 // *INDENT-ON*
