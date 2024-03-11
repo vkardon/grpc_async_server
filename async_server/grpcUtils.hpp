@@ -195,7 +195,7 @@ inline std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
 }
 
 // Serialize protobuf::Message to json
-inline bool ProbufToJson(
+inline bool ProtobufToJson(
         const ::google::protobuf::Message& msg,
         std::string& json,
         std::string& errMsg, bool compact=true)
@@ -206,8 +206,7 @@ inline bool ProbufToJson(
     if(!compact)
         jsonOptions.add_whitespace = true;
 
-    google::protobuf::util::Status status = google::protobuf::util::MessageToJsonString(msg, &json, jsonOptions);
-
+    auto status = google::protobuf::util::MessageToJsonString(msg, &json, jsonOptions);
     if(!status.ok())
     {
         errMsg = status.ToString();
@@ -223,7 +222,7 @@ inline bool JsonToProtobuf(
          const std::string& json,
          std::string& errMsg)
 {
-    google::protobuf::util::Status status = google::protobuf::util::JsonStringToMessage(json, &msg);
+    auto status = google::protobuf::util::JsonStringToMessage(json, &msg);
     if(!status.ok())
     {
         errMsg = status.ToString();
@@ -240,7 +239,7 @@ inline bool PrintAsJson(
 {
     std::string errMsg;
     std::string json;
-    if(!ProbufToJson(msg, json, errMsg, compact))
+    if(!ProtobufToJson(msg, json, errMsg, compact))
     {
         out << errMsg << std::endl;
         return false;
