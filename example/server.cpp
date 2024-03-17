@@ -37,15 +37,17 @@ int main(int argc, char* argv[])
     srv.Run(PORT_NUMBER, threadCount, creds);
 
 //    // Listen on Unix Domain socket
-//    srv.Run(UNIX_DOMAIN_SOCKET_PATH, threadCount, creds);
-//
+//    std::string addressUri = gen::FormatDomainSocketAddressUri(UNIX_DOMAIN_SOCKET_PATH);
+//    srv.Run(addressUri, threadCount, creds);
+
 //    // Listen on Unix Domain socket in abstract namespace
-//    srv.Run(UNIX_DOMAIN_ABSTRACT_SOCKET_PATH, threadCount, creds);
+//    std::string addressUri = gen::FormatAbstractSocketAddressUri(UNIX_ABSTRACT_SOCKET_PATH);
+//    srv.Run(addressUri, threadCount, creds);
 
 //    // Listen on both Net socket and Unix Domain socket
 //    std::vector<gen::AddressUri> addressUriArr;
 //    addressUriArr.push_back({ gen::FormatDnsAddressUri("0.0.0.0", PORT_NUMBER), creds });
-//    addressUriArr.push_back({ gen::FormatUnixDomainSocketAddressUri(UNIX_DOMAIN_SOCKET_PATH) });
+//    addressUriArr.push_back({ gen::FormatDomainSocketAddressUri(UNIX_DOMAIN_SOCKET_PATH) });
 //    srv.Run(addressUriArr, threadCount);
 
     INFOMSG("Grpc Server has stopped");

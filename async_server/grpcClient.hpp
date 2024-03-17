@@ -60,10 +60,10 @@ public:
         Init(host, port, creds);
     }
 
-    GrpcClient(const char* domainSocketPath,
+    GrpcClient(const std::string& addressUri,
                const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
     {
-        Init(domainSocketPath, creds);
+        Init(addressUri);
     }
 
     // To call the server, we need to instantiate a channel, out of which the actual RPCs
@@ -73,17 +73,11 @@ public:
     bool Init(const std::string& host, unsigned short port,
               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
     {
-        return InitFromAddressUri(FormatDnsAddressUri(host.c_str(), port), creds);
+        return Init(FormatDnsAddressUri(host, port), creds);
     }
 
-    bool Init(const char* domainSocketPath,
-              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
-    {
-        return InitFromAddressUri(FormatUnixDomainSocketAddressUri(domainSocketPath), creds);
-    }
-
-    bool InitFromAddressUri(const std::string& addressUriIn,
-                            const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr);
+    bool Init(const std::string& addressUriIn,
+              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr);
 
     // Terminate a channel (if created) and reset GrpcClient to initial state
     void Reset();
@@ -176,8 +170,8 @@ private:
 };
 
 template <class RPC_SERVICE>
-bool GrpcClient<RPC_SERVICE>::InitFromAddressUri(const std::string& addressUriIn,
-                                                 const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*=nullptr*/)
+bool GrpcClient<RPC_SERVICE>::Init(const std::string& addressUriIn,
+                                   const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*=nullptr*/)
 {
     addressUri = addressUriIn;
     creds = (credsIn ? credsIn : grpc::InsecureChannelCredentials());
@@ -336,7 +330,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
 //
 //    // gRpc fork support: Re-Initialize GrpcClient after fork()
 //    if(!addressUri.empty())
-//        grpcClient.InitFromAddressUri(addressUri, creds);
+//        grpcClient.Init(addressUri, creds);
 //
 //    return pid;
 //}

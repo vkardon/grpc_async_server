@@ -17,40 +17,36 @@
 namespace gen {
 
 // Helper to format DNS address uri
-inline std::string FormatDnsAddressUri(const char* host, unsigned short port)
+inline std::string FormatDnsAddressUri(const std::string& host, unsigned short port)
 {
-    return std::string("dns:") + host + ":" + std::to_string(port);
+    return ("dns:" + host + ":" + std::to_string(port));
 }
 
 // Helper to format Unix Domain Socket address uri
-inline std::string FormatUnixDomainSocketAddressUri(const char* domainSocketPath)
+inline std::string FormatDomainSocketAddressUri(const std::string& domainSocketPath)
 {
-    if(domainSocketPath[0] == '\0')
-    {
-        // NOTE: Supported since GRPC 1.37.0
+    // For Unix domain sockets (Unix systems only)
+    // unix:path
+    // unix://absolute_path
+    //    path indicates the location of the desired socket.
+    //    In the first form, the path may be relative or absolute;
+    //    In the second form, the path must be absolute
+    //    (i.e., there will actually be three slashes, two prior to the path and another to begin the absolute path).
+    //
+    return ("unix://" + domainSocketPath);
+}
 
-        // For Unix domain socket in abstract namespace (Unix systems only)
-        // unix-abstract:abstract_path
-        //    abstract_path indicates a name in the abstract namespace.
-        //    The name has no connection with filesystem pathnames.
-        //    No permissions will apply to the socket - any process/user may access the socket.
-        //    The underlying implementation of Abstract sockets uses a null byte ('\0') as the first character.
-        //    The implementation will prepend this null. Do not include the null in abstract_path.
-        //    abstract_path cannot contain null bytes.
-        return std::string("unix-abstract:") + (domainSocketPath + 1);
-    }
-    else
-    {
-        // For Unix domain sockets (Unix systems only)
-        // unix:path
-        // unix://absolute_path
-        //    path indicates the location of the desired socket.
-        //    In the first form, the path may be relative or absolute;
-        //    In the second form, the path must be absolute
-        //    (i.e., there will actually be three slashes, two prior to the path and another to begin the absolute path).
-        //
-        return std::string("unix://") + domainSocketPath;
-    }
+inline std::string FormatAbstractSocketAddressUri(const std::string& abstractSocketPath)
+{
+    // For Unix domain socket in abstract namespace (Unix systems only)
+    // unix-abstract:abstract_path
+    //    abstract_path indicates a name in the abstract namespace.
+    //    The name has no connection with filesystem pathnames.
+    //    No permissions will apply to the socket - any process/user may access the socket.
+    //    The underlying implementation of Abstract sockets uses a null byte ('\0') as the first character.
+    //    The implementation will prepend this null. Do not include the null in abstract_path.
+    //    abstract_path cannot contain null bytes.
+    return ("unix-abstract:" + abstractSocketPath);
 }
 
 // Helper routine to convert grpc::StatusCode to string
