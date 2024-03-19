@@ -63,7 +63,7 @@ public:
     GrpcClient(const std::string& addressUri,
                const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
     {
-        Init(addressUri);
+        Init(addressUri, creds);
     }
 
     // To call the server, we need to instantiate a channel, out of which the actual RPCs
