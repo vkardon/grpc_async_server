@@ -162,7 +162,7 @@ public:
              std::shared_ptr<grpc::ServerCredentials> credentials = nullptr)
     {
         std::vector<AddressUri> addressUriArr;
-        addressUriArr.push_back(addressUri);
+        addressUriArr.push_back({ addressUri, credentials });
         return RunImpl(addressUriArr, threadCount);
     }
 
