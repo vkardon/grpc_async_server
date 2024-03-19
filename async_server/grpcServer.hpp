@@ -158,8 +158,7 @@ public:
         return RunImpl(addressUriArr, threadCount);
     }
 
-    bool Run(const std::string& addressUri, int threadCount,
-             std::shared_ptr<grpc::ServerCredentials> credentials = nullptr)
+    bool Run(const std::string& addressUri, int threadCount)
     {
         std::vector<AddressUri> addressUriArr;
         addressUriArr.push_back(addressUri);
