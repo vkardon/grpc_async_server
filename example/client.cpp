@@ -198,7 +198,7 @@ void PrintUsage(const char* arg = nullptr)
     if(arg)
         printf("Unwknown test name '%s'\n", arg);
 
-    printf("Usage: client <ssl:hostname (optional)> <test name>\n");
+    printf("Usage: client <hostname (optional)> <test name>\n");
     printf("       client ping\n");
     printf("       client serverstream\n");
     printf("       client clientstream\n");
