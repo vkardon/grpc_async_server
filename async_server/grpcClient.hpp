@@ -139,9 +139,10 @@ private:
     GrpcClient(const GrpcClient&) = delete;
     GrpcClient& operator=(const GrpcClient&) = delete;
 
-    void SetError(std::string& errOut, const char* fname, const grpc::Status& status) const
+    void SetError(std::string& errOut, const std::string& fname,
+                  const google::protobuf::Message& req, const grpc::Status& status) const
     {
-        errOut = std::string(fname) + "() to uri='" + addressUri + "' error: '";
+        errOut = fname + "(" + req.GetTypeName() + ") to uri='" + addressUri + "' error: '";
         if(!status.error_message().empty())
             errOut += status.error_message();
         else
@@ -209,7 +210,7 @@ StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
     if(!stub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        SetError(errMsg, __func__, s);
+        SetError(errMsg, __func__, req, s);
         return s;
     }
 
@@ -224,7 +225,7 @@ StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
     // Call service
     grpc::Status s = (stub.get()->*grpcStubFunc)(&context, req, &resp);
     if(!s.ok())
-        SetError(errMsg, __func__, s);
+        SetError(errMsg, __func__, req, s);
 
     return s;
 }
@@ -240,7 +241,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
     if(!stub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        SetError(errMsg, __func__, s);
+        SetError(errMsg, __func__, req, s);
         return s;
     }
 
@@ -264,7 +265,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
 
     grpc::Status s = reader->Finish();
     if(!s.ok())
-        SetError(errMsg, __func__, s);
+        SetError(errMsg, __func__, req, s);
 
     return s;
 }
@@ -280,7 +281,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
     if(!stub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        SetError(errMsg, __func__, s);
+        SetError(errMsg, __func__, REQ(), s);
         return s;
     }
 
@@ -307,7 +308,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
 
     grpc::Status s = writer->Finish();
     if(!s.ok())
-        SetError(errMsg, __func__, s);
+        SetError(errMsg, __func__, req, s);
 
     return s;
 }
