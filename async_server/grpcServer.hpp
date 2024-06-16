@@ -55,6 +55,7 @@ struct RequestContext
     virtual void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) = 0;
 
     virtual RequestContext* Clone() = 0;
+    virtual std::string GetRequestName() const = 0;
 };
 
 //
@@ -415,7 +416,8 @@ private:
                 else if(ctx->state != RequestContext::REQUEST)
                 {
                     std::stringstream ss;
-                    ss << "Server Completion Queue failed to read event for tag '" << tag << "'";
+                    ss << "Server Completion Queue failed to read event for tag=" << tag << ", "
+                       << "req=" << ctx->GetRequestName();
                     OnError(ss.str());
 
                     // Abort processing if we failed reading event
@@ -441,7 +443,8 @@ private:
 
             default:
                 std::stringstream ss;
-                ss << "Unknown Completion Queue event: ctx->state=" << ctx->state << ", tag='" << tag << "'";
+                ss << "Unknown Completion Queue event: ctx->state=" << ctx->state << ", tag=" << tag << ", "
+                   << "req=" << ctx->GetRequestName();
                 OnError(ss.str());
                 break;
             } // end of switch
@@ -492,7 +495,7 @@ struct UnaryRequestContext : public RequestContext
     // Pointer to function that *request* the system to start processing given requests
     UnaryRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
 
-    void StartProcessing(::grpc::ServerCompletionQueue* cq)
+    void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
         srv_ctx.reset(new ::grpc::ServerContext);
@@ -508,7 +511,7 @@ struct UnaryRequestContext : public RequestContext
         (asyncService->*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
-    void Process()
+    void Process() override
     {
         // The actual processing
         RpcContext rpc_ctx(srv_ctx.get(), processParam);
@@ -526,7 +529,7 @@ struct UnaryRequestContext : public RequestContext
         resp_writer->Finish(resp, grpcStatus, this);
     }
 
-    void EndProcessing(const GrpcServer* /*serv*/, ::grpc::ServerCompletionQueue* cq, bool /*isError*/)
+    void EndProcessing(const GrpcServer* /*serv*/, ::grpc::ServerCompletionQueue* cq, bool /*isError*/) override
     {
         // TODO
         // Handle processing errors ...
@@ -535,7 +538,7 @@ struct UnaryRequestContext : public RequestContext
         StartProcessing(cq);
     }
 
-    virtual RequestContext* Clone()
+    virtual RequestContext* Clone() override
     {
         auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>;
         ctx->grpcService = grpcService;
@@ -544,6 +547,8 @@ struct UnaryRequestContext : public RequestContext
         ctx->processParam = processParam;
         return ctx;
     }
+
+    std::string GetRequestName() const override { return req.GetTypeName(); }
 };
 
 //
@@ -566,7 +571,7 @@ struct ServerStreamRequestContext : public RequestContext
     // Pointer to function that *request* the system to start processing given requests
     ServerStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
 
-    void StartProcessing(::grpc::ServerCompletionQueue* cq)
+    void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
         srv_ctx.reset(new ::grpc::ServerContext);
@@ -589,7 +594,7 @@ struct ServerStreamRequestContext : public RequestContext
         (asyncService->*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
-    void Process()
+    void Process() override
     {
         if(state == RequestContext::REQUEST)
         {
@@ -636,7 +641,7 @@ struct ServerStreamRequestContext : public RequestContext
         }
     }
 
-    void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError)
+    void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) override
     {
         if(stream_ctx)
         {
@@ -648,8 +653,8 @@ struct ServerStreamRequestContext : public RequestContext
                      state == RequestContext::FINISH  ? "FINISH (ServerAsyncWriter::Finish() failed)" : "UNKNOWN");
 
                 std::stringstream ss;
-                ss << "Error streaming for tag '" << this << "', "
-                   << "streamParam='" << stream_ctx->streamParam << "', state=" << stateStr;
+                ss << "Error streaming for tag=" << this << ", req=" << GetRequestName() << ", "
+                   << "streamParam=" << stream_ctx->streamParam << ", state=" << stateStr;
                 serv->OnError(ss.str());
             }
 
@@ -671,7 +676,7 @@ struct ServerStreamRequestContext : public RequestContext
                  state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN");
 
             std::stringstream ss;
-            ss << "Ending streaming for tag '" << this << "', "
+            ss << "Ending streaming for tag=" << this << ", req=" << GetRequestName() << ", "
                << "stream='Not Started', state=" << stateStr;
             serv->OnError(ss.str());
         }
@@ -680,7 +685,7 @@ struct ServerStreamRequestContext : public RequestContext
         StartProcessing(cq);
     }
 
-    virtual RequestContext* Clone()
+    virtual RequestContext* Clone() override
     {
         auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>;
         ctx->grpcService = grpcService;
@@ -689,6 +694,8 @@ struct ServerStreamRequestContext : public RequestContext
         ctx->processParam = processParam;
         return ctx;
     }
+
+    std::string GetRequestName() const override { return req.GetTypeName(); }
 };
 
 //
@@ -712,7 +719,7 @@ struct ClientStreamRequestContext : public RequestContext
     // Pointer to function that *request* the system to start processing given requests
     ClientStreamRequestFuncPtr<RPC_SERVICE, REQ, RESP> requestFunc = nullptr;
 
-    void StartProcessing(::grpc::ServerCompletionQueue* cq)
+    void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
         srv_ctx.reset(new ::grpc::ServerContext);
@@ -728,7 +735,7 @@ struct ClientStreamRequestContext : public RequestContext
         (asyncService->*requestFunc)(srv_ctx.get(), req_reader.get(), cq, cq, this);
     }
 
-    void Process()
+    void Process() override
     {
         if(state == RequestContext::REQUEST)
         {
@@ -794,7 +801,7 @@ struct ClientStreamRequestContext : public RequestContext
         }
     }
 
-    void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError)
+    void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) override
     {
         //TRACE("Done");  // victor test
 
@@ -802,7 +809,7 @@ struct ClientStreamRequestContext : public RequestContext
         StartProcessing(cq);
     }
 
-    virtual RequestContext* Clone()
+    virtual RequestContext* Clone() override
     {
         auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>;
         ctx->grpcService = grpcService;
@@ -811,6 +818,8 @@ struct ClientStreamRequestContext : public RequestContext
         ctx->processParam = processParam;
         return ctx;
     }
+
+    std::string GetRequestName() const override { return req.GetTypeName(); }
 };
 
 //
