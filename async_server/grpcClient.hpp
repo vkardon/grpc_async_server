@@ -55,15 +55,17 @@ public:
     ~GrpcClient() = default;
 
     GrpcClient(const std::string& host, unsigned short port,
-               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
+               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
+               const grpc::ChannelArguments* channelArgs = nullptr)
     {
-        Init(host, port, creds);
+        Init(host, port, creds, channelArgs);
     }
 
     GrpcClient(const std::string& addressUri,
-               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
+               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
+               const grpc::ChannelArguments* channelArgs = nullptr)
     {
-        Init(addressUri, creds);
+        Init(addressUri, creds, channelArgs);
     }
 
     // To call the server, we need to instantiate a channel, out of which the actual RPCs
@@ -71,15 +73,17 @@ public:
     // Note: The channel isn't authenticated by default (use of InsecureChannelCredentials()).
 
     bool Init(const std::string& host, unsigned short port,
-              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr)
+              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
+              const grpc::ChannelArguments* channelArgs = nullptr)
     {
-        return Init(FormatDnsAddressUri(host, port), creds);
+        return Init(FormatDnsAddressUri(host, port), creds, channelArgs);
     }
 
     bool Init(const std::string& addressUriIn,
-              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr);
+              const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
+              const grpc::ChannelArguments* channelArgs = nullptr);
 
-    // Terminate a channel (if created) and reset GrpcClient to initial state
+    // Terminate a channel (if created) and reset GrpcClient to the initial state
     void Reset();
 
     // Thread-save UNARY gRpc
@@ -172,20 +176,15 @@ private:
 
 template <class RPC_SERVICE>
 bool GrpcClient<RPC_SERVICE>::Init(const std::string& addressUriIn,
-                                   const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*=nullptr*/)
+                                   const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*= nullptr*/,
+                                   const grpc::ChannelArguments* channelArgsIn /*= nullptr*/)
 {
     addressUri = addressUriIn;
     creds = (credsIn ? credsIn : grpc::InsecureChannelCredentials());
 
-    // Set the max send and receive message sizes
-    grpc::ChannelArguments channelArgs;
-    channelArgs.SetMaxSendMessageSize(INT_MAX);
-    channelArgs.SetMaxReceiveMessageSize(INT_MAX);
-
-    // If set to zero, disables use of http proxies. Enabled by default.
-    //channelArgs.SetInt(GRPC_ARG_ENABLE_HTTP_PROXY, 0);
-
-    auto channel = grpc::CreateCustomChannel(addressUri, creds, channelArgs);
+    auto channel = (channelArgsIn ?
+            grpc::CreateCustomChannel(addressUri, creds, *channelArgsIn) :
+            grpc::CreateChannel(addressUri, creds));
 
     stub = RPC_SERVICE::NewStub(channel);
     return (stub != nullptr);
