@@ -182,9 +182,19 @@ bool GrpcClient<RPC_SERVICE>::Init(const std::string& addressUriIn,
     addressUri = addressUriIn;
     creds = (credsIn ? credsIn : grpc::InsecureChannelCredentials());
 
-    auto channel = (channelArgsIn ?
-            grpc::CreateCustomChannel(addressUri, creds, *channelArgsIn) :
-            grpc::CreateChannel(addressUri, creds));
+    std::shared_ptr<grpc::Channel> channel;
+    if(channelArgsIn)
+    {
+        channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgsIn);
+    }
+    else
+    {
+        // Maximise sent/receive mesage size (instead of 4MB default)
+        grpc::ChannelArguments channelArgs;
+        channelArgs.SetMaxSendMessageSize(INT_MAX);
+        channelArgs.SetMaxReceiveMessageSize(INT_MAX);
+        channel = grpc::CreateCustomChannel(addressUri, creds, channelArgs);
+    }
 
     stub = RPC_SERVICE::NewStub(channel);
     return (stub != nullptr);
