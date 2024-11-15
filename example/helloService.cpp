@@ -40,11 +40,11 @@ void HelloService::Shutdown(const gen::RpcContext& ctx,
     }
 }
 
-void HelloService::Ping(const gen::RpcContext& ctx,
-                        const test::PingRequest& req,
-                        test::PingResponse& resp)
+void HelloService::PingTest(const gen::RpcContext& ctx,
+                            const test::PingRequest& req,
+                            test::PingResponse& resp)
 {
-    resp.set_result(true);
+    resp.set_msg("Pong");
 
     INFOMSG("From " << ctx.Peer());
 }

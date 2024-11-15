@@ -19,7 +19,7 @@ public:
         // Bind all HelloService RPCs
         Bind(&HelloService::Shutdown,
              &test::Hello::AsyncService::RequestShutdown);
-        Bind(&HelloService::Ping,
+        Bind(&HelloService::PingTest,
              &test::Hello::AsyncService::RequestPing);
         Bind(&HelloService::ServerStreamTest,
              &test::Hello::AsyncService::RequestServerStreamTest);
@@ -40,8 +40,8 @@ protected:
     void Shutdown(const gen::RpcContext& ctx,
                   const test::ShutdownRequest& req, test::ShutdownResponse& resp);
 
-    void Ping(const gen::RpcContext& ctx,
-              const test::PingRequest& req, test::PingResponse& resp);
+    void PingTest(const gen::RpcContext& ctx,
+                  const test::PingRequest& req, test::PingResponse& resp);
 
     void ServerStreamTest(const gen::RpcServerStreamContext& ctx,
                           const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp);

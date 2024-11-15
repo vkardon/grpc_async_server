@@ -37,7 +37,7 @@ message PingRequest
 
 message PingResponse
 {
-    bool result = 1;
+    string msg = 1;
 }
 
 message ServerStreamTestRequest
