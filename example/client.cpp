@@ -7,7 +7,7 @@
 #include "grpcClient.hpp"
 #include "serverConfig.hpp"
 #include "hello.grpc.pb.h"
-#include "health.grpc.pb.h"
+#include "control.grpc.pb.h"
 
 // Channel SSL/TLS credentials
 std::shared_ptr<grpc::ChannelCredentials> gCreds;
@@ -116,8 +116,8 @@ bool ShutdownTest()
     req.set_reason("Shutdown Test");
 
     std::string errMsg;
-    gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.Call(&test::Hello::Stub::Shutdown, req, resp, errMsg))
+    gen::GrpcClient<test::Control> grpcClient(gHost, PORT_NUMBER, gCreds);
+    if(!grpcClient.Call(&test::Control::Stub::Shutdown, req, resp, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -127,34 +127,22 @@ bool ShutdownTest()
     return true;
 }
 
-bool HealthTest(const std::string& serviceName)
+bool StatusTest(const std::string& serviceName)
 {
-    grpc::health::v1::HealthCheckRequest req;
-    grpc::health::v1::HealthCheckResponse resp;
+    test::StatusRequest req;
+    test::StatusResponse resp;
 
-    req.set_service(serviceName);
+    req.set_service_name(serviceName);
 
     std::string errMsg;
-    gen::GrpcClient<grpc::health::v1::Health> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.Call(&grpc::health::v1::Health::Stub::Check, req, resp, errMsg))
+    gen::GrpcClient<test::Control> grpcClient(gHost, PORT_NUMBER, gCreds);
+    if(!grpcClient.Call(&test::Control::Stub::Status, req, resp, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
     }
 
-    grpc::health::v1::HealthCheckResponse::ServingStatus status = resp.status();
-
-    const char* result =
-        (status == grpc::health::v1::HealthCheckResponse::UNKNOWN         ? "UNKWONW" :
-         status == grpc::health::v1::HealthCheckResponse::SERVING         ? "SERVING" :
-         status == grpc::health::v1::HealthCheckResponse::NOT_SERVING     ? "NOT_SERVING" :
-         status == grpc::health::v1::HealthCheckResponse::SERVICE_UNKNOWN ? "SERVICE_UNKNOWN" : "INVALID");
-
-    if(serviceName.empty())
-        INFOMSG("Server status: " << result);
-    else
-        INFOMSG("Service '" << serviceName << "' status: " << result);
-
+    INFOMSG(resp);
     return true;
 }
 
@@ -203,7 +191,7 @@ void PrintUsage(const char* arg = nullptr)
     printf("       client serverstream\n");
     printf("       client clientstream\n");
     printf("       client shutdown\n");
-    printf("       client health\n");
+    printf("       client status\n");
     printf("       client load\n");
 }
 
@@ -257,13 +245,13 @@ int main(int argc, char** argv)
     {
         ShutdownTest();
     }
-    else if(!strcmp(testName, "health"))
+    else if(!strcmp(testName, "status"))
     {
-        // Check overall server status and status of each service
-        HealthTest("");                      // Ask for overall status
-        HealthTest("test.Hello");            // Ask for test.Hello service status
-        HealthTest("grpc.health.v1.Health"); // Ask for grpc.health.v1.Health service status
-        HealthTest("test.DummyService");     // Ask for not existing service
+        // Check the status of the given service
+        StatusTest("");                     // Ask for overall status
+        StatusTest("test.Hello");           // Ask for test.Hello service status
+        StatusTest("test.Control");         // Ask for test.Control service status
+        StatusTest("test.DummyService");    // Ask for not existing service
     }
     else if(!strcmp(testName, "load"))
     {

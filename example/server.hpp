@@ -6,7 +6,7 @@
 
 #include "grpcServer.hpp"
 #include "helloService.hpp"
-#include "healthService.hpp"
+#include "controlService.hpp"
 #include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
 
 class MyServer : public gen::GrpcServer
@@ -16,7 +16,7 @@ public:
     {
         // Add all services
         AddService<HelloService>();
-        AddService<HealthService>();
+        AddService<ControlService>();
     }
     virtual ~MyServer() = default;
 

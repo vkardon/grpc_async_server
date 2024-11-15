@@ -18,35 +18,13 @@ struct ResponseList
     }
 };
 
-void HelloService::Shutdown(const gen::RpcContext& ctx,
-                            const test::ShutdownRequest& req,
-                            test::ShutdownResponse& resp)
-{
-    // Get client IP address
-    std::string clientAddr = ctx.Peer();
-
-    // Check if this request is from a local host
-    if(gen::IsLocalhost(clientAddr))
-    {
-        INFOMSG("From the local client " << clientAddr);
-        srv->Shutdown();
-        resp.set_result(true);
-    }
-    else
-    {
-        INFOMSG("From the remote client " << clientAddr << ": Remote shutdown is not allowed");
-        resp.set_result(false);
-        resp.set_msg("Shutdown from a remote client is not allowed");
-    }
-}
-
 void HelloService::PingTest(const gen::RpcContext& ctx,
                             const test::PingRequest& req,
                             test::PingResponse& resp)
 {
-    resp.set_msg("Pong");
-
     INFOMSG("From " << ctx.Peer());
+
+    resp.set_msg("Pong");
 }
 
 void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,

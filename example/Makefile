@@ -20,7 +20,7 @@ OBJ_DIR = $(PROJECT_HOME)/_obj
 
 SRCS_SRV = $(PROJECT_HOME)/server.cpp \
            $(PROJECT_HOME)/helloService.cpp \
-           $(PROJECT_HOME)/healthService.cpp 
+           $(PROJECT_HOME)/controlService.cpp
 
 SRCS_CLN = $(PROJECT_HOME)/client.cpp 
 
@@ -28,7 +28,7 @@ SRCS_CLN = $(PROJECT_HOME)/client.cpp
 PROTO_OUT  = $(OBJ_DIR)/_generate
 PROTO_HOME = $(PROJECT_HOME)
 PROTO_SRCS = $(PROTO_HOME)/hello.proto \
-             $(PROTO_HOME)/health.proto 
+             $(PROTO_HOME)/control.proto
 
 GRPC_INC = $(GRPC_HOME)/$(LINKING_TYPE)/include
 GRPC_BIN = $(GRPC_HOME)/$(LINKING_TYPE)/bin

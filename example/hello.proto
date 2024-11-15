@@ -6,9 +6,6 @@ package test;
 // Interface exported by the server.
 service Hello 
 {
-    // Shutdown the server
-    rpc Shutdown (ShutdownRequest) returns (ShutdownResponse) {}
-
     // Ping the server 
     rpc Ping (PingRequest) returns (PingResponse) {}
 
@@ -17,17 +14,6 @@ service Hello
 
     // Client-side streaming
     rpc ClientStream (stream ClientStreamRequest) returns (ClientStreamResponse) {}
-}
-
-message ShutdownRequest
-{
-    string reason = 1;
-}
-
-message ShutdownResponse
-{
-    bool result = 1;
-    string msg = 2;
 }
 
 message PingRequest

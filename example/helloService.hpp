@@ -17,8 +17,6 @@ public:
     virtual bool OnInit() override
     {
         // Bind all HelloService RPCs
-        Bind(&HelloService::Shutdown,
-             &test::Hello::AsyncService::RequestShutdown);
         Bind(&HelloService::PingTest,
              &test::Hello::AsyncService::RequestPing);
         Bind(&HelloService::ServerStreamTest,
@@ -37,9 +35,6 @@ public:
 
 protected:
     // Supported RPCs
-    void Shutdown(const gen::RpcContext& ctx,
-                  const test::ShutdownRequest& req, test::ShutdownResponse& resp);
-
     void PingTest(const gen::RpcContext& ctx,
                   const test::PingRequest& req, test::PingResponse& resp);
 
