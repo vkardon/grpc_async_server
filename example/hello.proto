@@ -12,11 +12,11 @@ service Hello
     // Ping the server 
     rpc Ping (PingRequest) returns (PingResponse) {}
 
-    // Test server-side streaming
-    rpc ServerStreamTest (ServerStreamTestRequest) returns (stream ServerStreamTestResponse) {}
+    // Server-side streaming
+    rpc ServerStream (ServerStreamRequest) returns (stream ServerStreamResponse) {}
 
-    // Test client-side streaming
-    rpc ClientStreamTest (stream ClientStreamTestRequest) returns (ClientStreamTestResponse) {}
+    // Client-side streaming
+    rpc ClientStream (stream ClientStreamRequest) returns (ClientStreamResponse) {}
 }
 
 message ShutdownRequest
@@ -40,23 +40,23 @@ message PingResponse
     string msg = 1;
 }
 
-message ServerStreamTestRequest
+message ServerStreamRequest
 {
     string msg = 1; // The string to be included in every response message
 }
 
-message ServerStreamTestResponse
+message ServerStreamResponse
 {
     string msg = 1; 
     bool result = 2;
 }
 
-message ClientStreamTestRequest
+message ClientStreamRequest
 {
     string msg = 1; // The string to be included in every response message
 }
 
-message ClientStreamTestResponse
+message ClientStreamResponse
 {
     bool result = 1;
 }

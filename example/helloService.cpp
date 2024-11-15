@@ -50,8 +50,8 @@ void HelloService::PingTest(const gen::RpcContext& ctx,
 }
 
 void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
-                                    const test::ServerStreamTestRequest& req,
-                                    test::ServerStreamTestResponse& resp)
+                                    const test::ServerStreamRequest& req,
+                                    test::ServerStreamResponse& resp)
 {
 //    // Statistics - track the total number of opened streams
 //    static std::atomic<int> opened_streams{0};
@@ -115,8 +115,8 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 }
 
 void HelloService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
-                                    const test::ClientStreamTestRequest& req,
-                                    test::ClientStreamTestResponse& resp)
+                                    const test::ClientStreamRequest& req,
+                                    test::ClientStreamResponse& resp)
 {
 //    static int count = 0;
 //    if(++count %12 == 0)

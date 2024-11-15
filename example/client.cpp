@@ -38,12 +38,12 @@ bool PingTest()
 
 bool ServerStreamTest(bool silent = false)
 {
-    test::ServerStreamTestRequest req;
-    req.set_msg("ServerStreamTestRequest");
+    test::ServerStreamRequest req;
+    req.set_msg("ServerStreamRequest");
 
-    struct ResponseCallback : public gen::RespCallbackFunctor<test::ServerStreamTestResponse>
+    struct ResponseCallback : public gen::RespCallbackFunctor<test::ServerStreamResponse>
     {
-        bool operator()(const test::ServerStreamTestResponse& resp) override
+        bool operator()(const test::ServerStreamResponse& resp) override
         {
 //            std::cout << resp.msg() << std::endl;
             respList.push_back(resp);
@@ -55,18 +55,18 @@ bool ServerStreamTest(bool silent = false)
             // Dump all collected responses
             std::unique_lock<std::mutex> lock(logger::sLogMutex);
             std::cout << "BEGIN" << std::endl;
-            for(const test::ServerStreamTestResponse& resp : respList)
+            for(const test::ServerStreamResponse& resp : respList)
                 std::cout << resp << std::endl;
             std::cout << "END: " << respList.size() << " responses" << std::endl;
         }
 
-        std::list<test::ServerStreamTestResponse> respList;
+        std::list<test::ServerStreamResponse> respList;
 
     } respCallback;
 
     std::string errMsg;
     gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.CallStream(&test::Hello::Stub::ServerStreamTest, req, respCallback, errMsg))
+    if(!grpcClient.CallStream(&test::Hello::Stub::ServerStream, req, respCallback, errMsg))
     {
         ERRORMSG(errMsg);
         return false;
@@ -80,25 +80,25 @@ bool ServerStreamTest(bool silent = false)
 
 bool ClientStreamTest()
 {
-    struct RequestCallback : public gen::ReqCallbackFunctor<test::ClientStreamTestRequest>
+    struct RequestCallback : public gen::ReqCallbackFunctor<test::ClientStreamRequest>
     {
-        bool operator()(test::ClientStreamTestRequest& req) override
+        bool operator()(test::ClientStreamRequest& req) override
         {
             if(++count > 20)
                 return false;
             INFOMSG("Client-side streaming message " + std::to_string(count));
-            req.set_msg("ClientStreamTestRequest " + std::to_string(count));
+            req.set_msg("ClientStreamRequest " + std::to_string(count));
             return true;
         }
 
         int count{0};
     } reqCallback;
 
-    test::ClientStreamTestResponse resp;
+    test::ClientStreamResponse resp;
 
     std::string errMsg;
     gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
-    if(!grpcClient.CallClientStream(&test::Hello::Stub::ClientStreamTest, reqCallback, resp, errMsg))
+    if(!grpcClient.CallClientStream(&test::Hello::Stub::ClientStream, reqCallback, resp, errMsg))
     {
         ERRORMSG(errMsg);
         return false;

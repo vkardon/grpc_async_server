@@ -22,9 +22,9 @@ public:
         Bind(&HelloService::PingTest,
              &test::Hello::AsyncService::RequestPing);
         Bind(&HelloService::ServerStreamTest,
-             &test::Hello::AsyncService::RequestServerStreamTest);
+             &test::Hello::AsyncService::RequestServerStream);
         Bind(&HelloService::ClientStreamTest,
-             &test::Hello::AsyncService::RequestClientStreamTest);
+             &test::Hello::AsyncService::RequestClientStream);
         return true;
     }
 
@@ -44,10 +44,10 @@ protected:
                   const test::PingRequest& req, test::PingResponse& resp);
 
     void ServerStreamTest(const gen::RpcServerStreamContext& ctx,
-                          const test::ServerStreamTestRequest& req, test::ServerStreamTestResponse& resp);
+                          const test::ServerStreamRequest& req, test::ServerStreamResponse& resp);
 
     void ClientStreamTest(const gen::RpcClientStreamContext& ctx,
-                          const test::ClientStreamTestRequest& req, test::ClientStreamTestResponse& resp);
+                          const test::ClientStreamRequest& req, test::ClientStreamResponse& resp);
 };
 
 #endif // __HELLO_SERVICE_HPP__
