@@ -5,7 +5,7 @@
 #include "serverConfig.hpp"  // for PORT_NUMBER
 #include "hello.grpc.pb.h"
 
-bool PingTest(const char* addressUri)
+void PingTest(const char* addressUri)
 {
     // Instantiate a channel, out of which the actual RPCs are created
     std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
@@ -15,20 +15,18 @@ bool PingTest(const char* addressUri)
     test::PingRequest req;
     test::PingResponse resp;
 
-    grpc::Status s = stub->Ping(&context, req, &resp);
-
-    if(!s.ok())
+    if(grpc::Status s = stub->Ping(&context, req, &resp); !s.ok())
     {
         std::cerr << "PintTest failed with error code: " 
             << s.error_code() << " (" << s.error_message() << ")" << std::endl;
-        return false;
     }
-
-    std::cout << "PingTest response: " << resp.msg() << std::endl;
-    return true;
+    else
+    {
+        std::cout << "PingTest response: " << resp.msg() << std::endl;
+    }
 }
 
-bool ShutdownTest(const char* addressUri)
+void ShutdownTest(const char* addressUri)
 {
     // Instantiate a channel, out of which the actual RPCs are created
     std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
@@ -39,17 +37,16 @@ bool ShutdownTest(const char* addressUri)
     test::ShutdownResponse resp;
 
     req.set_reason("Shutdown Test");
-    grpc::Status s = stub->Shutdown(&context, req, &resp);
 
-    if(!s.ok())
+    if(grpc::Status s = stub->Shutdown(&context, req, &resp); !s.ok())
     {
         std::cerr << "ShutdownTest failed with error code: " 
             << s.error_code() << " (" << s.error_message() << ")" << std::endl;
-        return false;
     }
-
-    std::cout << "ShutdownTest response: " << resp.msg() << std::endl;
-    return true;
+    else
+    {
+        std::cout << "ShutdownTest response: " << resp.msg() << std::endl;
+    }
 }
 
 void PrintUsage()
