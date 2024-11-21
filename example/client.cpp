@@ -181,18 +181,15 @@ void LoadTest()
     INFOMSG("All client threads are completed");
 }
 
-void PrintUsage(const char* arg = nullptr)
+void PrintUsage()
 {
-    if(arg)
-        printf("Unwknown test name '%s'\n", arg);
-
-    printf("Usage: client <hostname (optional)> <test name>\n");
-    printf("       client ping\n");
-    printf("       client serverstream\n");
-    printf("       client clientstream\n");
-    printf("       client shutdown\n");
-    printf("       client status\n");
-    printf("       client load\n");
+    std::cout << "Usage: client <hostname (optional)> <test name>" << std::endl;
+    std::cout << "       client ping" << std::endl;
+    std::cout << "       client serverstream" << std::endl;
+    std::cout << "       client clientstream" << std::endl;
+    std::cout << "       client shutdown" << std::endl;
+    std::cout << "       client status" << std::endl;
+    std::cout << "       client load" << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -259,7 +256,8 @@ int main(int argc, char** argv)
     }
     else
     {
-        PrintUsage(testName);
+        std::cout << "Unwknown test name '" << testName << "'" << std::endl;
+        PrintUsage();
     }
 
     return 0;
