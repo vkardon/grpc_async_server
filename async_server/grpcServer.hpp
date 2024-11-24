@@ -179,6 +179,11 @@ public:
     GRPC_SERVICE* AddService(SERVICE_ARGS&&...args)
     {
         GRPC_SERVICE* grpcService = new (std::nothrow) GRPC_SERVICE(args...);
+        if(!grpcService)
+        {
+            OnError("AddService() out of memory allocating GRPC_SERVICE");
+            return nullptr;
+        }
         grpcService->srv = this;
         serviceMap[grpcService->GetName()].reset(grpcService);
         return grpcService;
@@ -345,6 +350,11 @@ private:
         for(const std::unique_ptr<RequestContext>& ctx : requestContextList)
         {
             RequestContext* threadRequestContext = ctx->Clone();
+            if(!threadRequestContext)
+            {
+                OnError("Thread " + std::to_string(threadIndex) + " failed to start");
+                return;
+            }
             threadRequestContextList.emplace_back(threadRequestContext);
             threadRequestContext->StartProcessing(cq);
         }
@@ -541,6 +551,11 @@ struct UnaryRequestContext : public RequestContext
     virtual RequestContext* Clone() override
     {
         auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>;
+        if(!ctx)
+        {
+            grpcService->srv->OnError("Clone() out of memory allocating UnaryRequestContext");
+            return nullptr;
+        }
         ctx->grpcService = grpcService;
         ctx->requestFunc = requestFunc;
         ctx->processFunc = processFunc;
@@ -688,6 +703,11 @@ struct ServerStreamRequestContext : public RequestContext
     virtual RequestContext* Clone() override
     {
         auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+        if(!ctx)
+        {
+            grpcService->srv->OnError("Clone() out of memory allocating ServerStreamRequestContext");
+            return nullptr;
+        }
         ctx->grpcService = grpcService;
         ctx->requestFunc = requestFunc;
         ctx->processFunc = processFunc;
@@ -812,6 +832,11 @@ struct ClientStreamRequestContext : public RequestContext
     virtual RequestContext* Clone() override
     {
         auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+        if(!ctx)
+        {
+            grpcService->srv->OnError("Clone() out of memory allocating ClientStreamRequestContext");
+            return nullptr;
+        }
         ctx->grpcService = grpcService;
         ctx->requestFunc = requestFunc;
         ctx->processFunc = processFunc;
@@ -856,6 +881,11 @@ public:
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>;
+        if(!ctx)
+        {
+            srv->OnError("Bind() out of memory allocating UnaryRequestContext");
+            return;
+        }
         ctx->grpcService = this;
         ctx->requestFunc = requestFunc;
         ctx->processFunc = (ProcessUnaryFunc<RPC_SERVICE, REQ, RESP>)processFunc;
@@ -870,6 +900,11 @@ public:
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+        if(!ctx)
+        {
+            srv->OnError("Bind() out of memory allocating ServerStreamRequestContext");
+            return;
+        }
         ctx->grpcService = this;
         ctx->requestFunc = requestFunc;
         ctx->processFunc = (ProcessServerStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
@@ -884,6 +919,11 @@ public:
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>;
+        if(!ctx)
+        {
+            srv->OnError("Bind() out of memory allocating ClientStreamRequestContext");
+            return;
+        }
         ctx->grpcService = this;
         ctx->requestFunc = requestFunc;
         ctx->processFunc = (ProcessClientStreamFunc<RPC_SERVICE, REQ, RESP>)processFunc;
@@ -895,6 +935,11 @@ private:
     virtual bool Init() override final
     {
         service.reset(new (std::nothrow) AsyncService<RPC_SERVICE>);
+        if(!service)
+        {
+            srv->OnError("Init() out of memory allocating AsyncService");
+            return false;
+        }
 
 //        std::cout << ">>> " << __func__ << ":"
 //                << " name='" << serviceName << "',"
