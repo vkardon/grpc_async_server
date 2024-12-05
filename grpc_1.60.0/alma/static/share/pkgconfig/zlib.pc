@@ -1,0 +1,13 @@
+prefix=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/static
+exec_prefix=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/static
+libdir=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/static/lib
+sharedlibdir=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/static/lib
+includedir=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/static/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.2.13
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

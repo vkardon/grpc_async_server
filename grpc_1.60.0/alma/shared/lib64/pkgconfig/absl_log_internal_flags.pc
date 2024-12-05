@@ -1,0 +1,12 @@
+prefix=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/shared
+exec_prefix=${prefix}
+libdir=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/shared/lib64
+includedir=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/shared/include
+
+Name: absl_log_internal_flags
+Description: Abseil log_internal_flags library
+URL: https://abseil.io/
+Version: 20230802
+Requires: absl_flags = 20230802
+Libs: -L${libdir}  
+Cflags: -I${includedir} -DNOMINMAX

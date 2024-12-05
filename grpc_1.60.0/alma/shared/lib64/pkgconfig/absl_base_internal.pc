@@ -1,0 +1,12 @@
+prefix=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/shared
+exec_prefix=${prefix}
+libdir=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/shared/lib64
+includedir=/home/vkardons/dellse11rh1/victor/gRpc/grpc_1.60.0_install/shared/include
+
+Name: absl_base_internal
+Description: Abseil base_internal library
+URL: https://abseil.io/
+Version: 20230802
+Requires: absl_config = 20230802, absl_type_traits = 20230802
+Libs: -L${libdir}  
+Cflags: -I${includedir} -DNOMINMAX
