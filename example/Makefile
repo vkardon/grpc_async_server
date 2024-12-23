@@ -5,14 +5,24 @@ include Makefile.conf
 EXE_SRV = server
 EXE_CLN = client
 PROTOSET = protoset
+DEBUG = true
 
 # Compiler and linker to use
 CC = g++
-
-CFLAGS = -std=c++17 -Wall -pthread -D NDEBUG -O3 -s
-#CFLAGS = -std=c++17 -Wall -pthread -g
 LD = $(CC) 
+
+# Configure Debug or Release build
+CFLAGS = -std=gnu++17 -Wall -pthread
 LDFLAGS = -pthread
+
+ifeq "$(DEBUG)" "true"
+  # Debug build
+  CFLAGS += -g
+else
+  # Release build (-s to remove all symbol table and relocation info)
+  CFLAGS += -O3 -DNDEBUG
+  LDFLAGS += -s
+endif
 
 # Sources
 PROJECT_HOME = .
