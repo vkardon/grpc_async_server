@@ -178,7 +178,8 @@ public:
     template<class GRPC_SERVICE, class... SERVICE_ARGS>
     GRPC_SERVICE* AddService(SERVICE_ARGS&&...args)
     {
-        GRPC_SERVICE* grpcService = new (std::nothrow) GRPC_SERVICE(args...);
+        // Note: Use std::forward<Args>(args) to ensures that rvalue references are preserved correctly
+        GRPC_SERVICE* grpcService = new (std::nothrow) GRPC_SERVICE(std::forward<SERVICE_ARGS>(args)...);
         if(!grpcService)
         {
             OnError("AddService() out of memory allocating GRPC_SERVICE");
