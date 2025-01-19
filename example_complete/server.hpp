@@ -28,6 +28,10 @@ private:
         // For example, to don't allow reusing port:
         builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
 
+        // Set the maximum message size for both inbound and outbound messages
+        builder.SetMaxReceiveMessageSize(INT_MAX);
+        builder.SetMaxSendMessageSize(INT_MAX);
+
         // Set how often OnRun() should be called. The default interval is 1 sec,
         // but it can be reset by calling SetRunInterval() with desired time
         // interval in milliseconds.
