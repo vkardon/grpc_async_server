@@ -25,13 +25,6 @@ public:
         return true;
     }
 
-    // You can override IsServing for some service-specific check
-    // if service is serving.
-    //virtual bool IsServing() override
-    //{
-    //    return true;
-    //}
-
 protected:
     // Supported RPCs
     void PingTest(const gen::RpcContext& ctx,

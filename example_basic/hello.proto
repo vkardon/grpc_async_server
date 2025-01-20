@@ -6,10 +6,7 @@ package test;
 // Interface exported by the server.
 service Hello 
 {
-    // Ping the server 
     rpc Ping (PingRequest) returns (PingResponse) {}
-
-    // Shutdown the server
     rpc Shutdown (ShutdownRequest) returns (ShutdownResponse) {}
 }
 

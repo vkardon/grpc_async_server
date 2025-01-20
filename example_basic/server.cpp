@@ -2,8 +2,20 @@
 // server.cpp
 //
 #include <stdio.h>
+#include "grpcServer.hpp"
+#include "helloService.hpp"
 #include "serverConfig.hpp"  // for PORT_NUMBER
-#include "server.hpp"
+
+class MyServer : public gen::GrpcServer
+{
+public:
+    MyServer()
+    {
+        // Add all services
+        AddService<HelloService>();
+    }
+    virtual ~MyServer() = default;
+};
 
 int main(int argc, char* argv[])
 {

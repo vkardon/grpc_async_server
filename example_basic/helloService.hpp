@@ -19,24 +19,25 @@ public:
         // Bind all HelloService RPCs
         Bind(&HelloService::Ping, &HelloService::RequestPing);
         Bind(&HelloService::Shutdown, &HelloService::RequestShutdown);
-
         return true;
     }
-
-    // You can override IsServing for some service-specific check
-    // if service is serving.
-    //virtual bool IsServing() override
-    //{
-    //    return true;
-    //}
 
 protected:
     // Supported RPCs
     void Ping(const gen::RpcContext& ctx,
-              const test::PingRequest& req, test::PingResponse& resp);
+              const test::PingRequest& req, test::PingResponse& resp)
+    {
+        std::cout << "From " << ctx.Peer() << std::endl;
+        resp.set_msg("Pong");
+    }
 
     void Shutdown(const gen::RpcContext& ctx,
-                  const test::ShutdownRequest& req, test::ShutdownResponse& resp);
+                  const test::ShutdownRequest& req, test::ShutdownResponse& resp)
+    {
+        std::cout << "From " << ctx.Peer() << ", reason: " << req.reason() << std::endl;
+        resp.set_msg("Goodbye");
+        srv->Shutdown(); // Shutdown the server
+    }
 };
 
 #endif // __HELLO_SERVICE_HPP__

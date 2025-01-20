@@ -31,8 +31,7 @@ endif
 PROJECT_HOME = .
 OBJ_DIR = $(PROJECT_HOME)/_obj
 
-SRCS_SRV = $(PROJECT_HOME)/server.cpp \
-           $(PROJECT_HOME)/helloService.cpp
+SRCS_SRV = $(PROJECT_HOME)/server.cpp
 
 SRCS_CLN = $(PROJECT_HOME)/client.cpp 
 

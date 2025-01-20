@@ -14,7 +14,7 @@ void ControlService::Shutdown(const gen::RpcContext& ctx,
     // Check if this request is from a local host
     if(gen::IsLocalhost(clientAddr))
     {
-        INFOMSG("From the local client " << clientAddr);
+        INFOMSG("From the local client " << clientAddr << ", reason: " << req.reason());
         srv->Shutdown();
         resp.set_result(true);
     }
