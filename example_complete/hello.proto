@@ -6,13 +6,13 @@ package test;
 // Interface exported by the server.
 service Hello 
 {
-    // Ping the server 
+    // Unary RPC
     rpc Ping (PingRequest) returns (PingResponse) {}
 
-    // Server-side streaming
+    // Server-side streaming RPC
     rpc ServerStream (ServerStreamRequest) returns (stream ServerStreamResponse) {}
 
-    // Client-side streaming
+    // Client-side streaming RPC
     rpc ClientStream (stream ClientStreamRequest) returns (ClientStreamResponse) {}
 }
 
@@ -28,7 +28,7 @@ message PingResponse
 
 message ServerStreamRequest
 {
-    string msg = 1; // The string to be included in every response message
+    string msg = 1;
 }
 
 message ServerStreamResponse
@@ -39,7 +39,7 @@ message ServerStreamResponse
 
 message ClientStreamRequest
 {
-    string msg = 1; // The string to be included in every response message
+    string msg = 1;
 }
 
 message ClientStreamResponse

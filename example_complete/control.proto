@@ -6,10 +6,7 @@ package test;
 // Interface exported by the server.
 service Control 
 {
-    // Shutdown the server
     rpc Shutdown (ShutdownRequest) returns (ShutdownResponse) {}
-
-    // Get the status of the given service
     rpc Status (StatusRequest) returns (StatusResponse) {}
 }
 
