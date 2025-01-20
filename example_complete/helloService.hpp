@@ -16,13 +16,12 @@ public:
     // gen::GrpcService overrides
     virtual bool OnInit() override
     {
+          auto ptr2 = &HelloService::RequestPing;
+
         // Bind all HelloService RPCs
-        Bind(&HelloService::PingTest,
-             &test::Hello::AsyncService::RequestPing);
-        Bind(&HelloService::ServerStreamTest,
-             &test::Hello::AsyncService::RequestServerStream);
-        Bind(&HelloService::ClientStreamTest,
-             &test::Hello::AsyncService::RequestClientStream);
+        Bind(&HelloService::PingTest, &HelloService::RequestPing);
+        Bind(&HelloService::ServerStreamTest, &HelloService::RequestServerStream);
+        Bind(&HelloService::ClientStreamTest, &HelloService::RequestClientStream);
         return true;
     }
 

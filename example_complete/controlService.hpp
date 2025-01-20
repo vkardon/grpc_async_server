@@ -17,10 +17,8 @@ public:
     virtual bool OnInit() override
     {
         // Bind all ControlService RPCs
-        Bind(&ControlService::Shutdown,
-             &test::Control::AsyncService::RequestShutdown);
-        Bind(&ControlService::Status,
-             &test::Control::AsyncService::RequestStatus);
+        Bind(&ControlService::Shutdown, &ControlService::RequestShutdown);
+        Bind(&ControlService::Status, &ControlService::RequestStatus);
         return true;
     }
 

@@ -42,18 +42,14 @@ void ControlService::Status(const gen::RpcContext& ctx,
     else
     {
         // Return service-specific health status
-        gen::GrpcServiceBase* service = srv->GetService(serviceName);
+        auto service = srv->GetService(serviceName);
         if(!service)
         {
             serviceStatus = "The service '" + serviceName + "' is unknown";
         }
-        else if(service->IsServing())
-        {
-            serviceStatus = "The service '" + serviceName + "' is serving";
-        }
         else
         {
-            serviceStatus = "The service '" + serviceName + "' is NOT serving";
+            serviceStatus = "The service '" + serviceName + "' is available";
         }
     }
 
