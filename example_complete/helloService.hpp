@@ -16,8 +16,6 @@ public:
     // gen::GrpcService overrides
     virtual bool OnInit() override
     {
-          auto ptr2 = &HelloService::RequestPing;
-
         // Bind all HelloService RPCs
         Bind(&HelloService::PingTest, &HelloService::RequestPing);
         Bind(&HelloService::ServerStreamTest, &HelloService::RequestServerStream);
@@ -38,4 +36,3 @@ protected:
 };
 
 #endif // __HELLO_SERVICE_HPP__
-
