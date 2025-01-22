@@ -389,7 +389,7 @@ private:
     void AddRpcRequest(RequestContext* ctx) { requestContextList.emplace_back(ctx); }
 
     // For derived class to override
-    virtual bool OnInit(::grpc::ServerBuilder& builder) { return true; }
+    virtual bool OnInit(::grpc::ServerBuilder& builder) = 0;
     virtual void OnRun() {}
 
     // Class data

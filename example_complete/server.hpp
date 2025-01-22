@@ -12,18 +12,17 @@
 class MyServer : public gen::GrpcServer
 {
 public:
-    MyServer()
-    {
-        // Add all services
-        AddService<HelloService>();
-        AddService<ControlService>();
-    }
+    MyServer() = default;
     virtual ~MyServer() = default;
 
 private:
     // gen::GrpcServer overrides
     virtual bool OnInit(::grpc::ServerBuilder& builder) override
     {
+        // Add all services
+        AddService<HelloService>();
+        AddService<ControlService>();
+
         // Note: Use OnInit for any additional server initialization.
         // For example, to don't allow reusing port:
         builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);

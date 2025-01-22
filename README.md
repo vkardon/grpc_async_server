@@ -10,7 +10,7 @@ You may need to adjust the Makefile to suit your build environment.
 
 2. Add method in your derived class for each RPC method defined in your service definition.
 
-3. Override OnInit method to bind every method in your derived class with the corresponding method defined in your service definition.
+3. Override OnInit() method to bind every method in your derived class with the corresponding method defined in your service definition.
 
 *Example:*
 
@@ -47,8 +47,8 @@ protected:
 ```
 
 4. Derive your server class from gen::GrpcServer.
-5. Use your server class contractor to add all supported services.
-5. Build and start gRpc server.
+5. Override OnInit() method to add all supported services.
+6. Build and start gRpc server.
 
 *Example:*
 
@@ -56,12 +56,15 @@ protected:
 class MyServer : public gen::GrpcServer
 {
 public:
-    MyServer()
+    MyServer() = default;
+    virtual ~MyServer() = default;
+
+    virtual bool OnInit(::grpc::ServerBuilder& /*builder*/) override
     {
         // Add all services
         AddService<HelloService>();
+        return true;
     }
-    virtual ~MyServer() = default;
 };
 
 int main(int argc, char* argv[])
