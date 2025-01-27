@@ -26,6 +26,7 @@ bool PingTest()
 
     std::string errMsg;
     gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
+
     if(!grpcClient.Call(&test::Hello::Stub::Ping, req, resp, metadata, errMsg))
     {
         ERRORMSG(errMsg);
@@ -41,28 +42,14 @@ bool ServerStreamTest(bool silent = false)
     test::ServerStreamRequest req;
     req.set_msg("ServerStreamRequest");
 
-    struct ResponseCallback : public gen::RespCallbackFunctor<test::ServerStreamResponse>
+    std::list<test::ServerStreamResponse> respList;
+    auto lambda = [&respList](const test::ServerStreamResponse& resp) -> bool
     {
-        bool operator()(const test::ServerStreamResponse& resp) override
-        {
-//            std::cout << resp.msg() << std::endl;
-            respList.push_back(resp);
-            return true;
-        }
-
-        void Dump()
-        {
-            // Dump all collected responses
-            std::unique_lock<std::mutex> lock(logger::sLogMutex);
-            std::cout << "BEGIN" << std::endl;
-            for(const test::ServerStreamResponse& resp : respList)
-                std::cout << resp << std::endl;
-            std::cout << "END: " << respList.size() << " responses" << std::endl;
-        }
-
-        std::list<test::ServerStreamResponse> respList;
-
-    } respCallback;
+        // std::cout << resp.msg() << std::endl;
+        respList.push_back(resp);
+        return true;
+    };
+    std::function<bool(test::ServerStreamResponse&)> respCallback(lambda);
 
     std::string errMsg;
     gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
@@ -73,27 +60,31 @@ bool ServerStreamTest(bool silent = false)
     }
 
     if(!silent)
-        respCallback.Dump();
+    {
+        // Dump all collected responses
+        std::unique_lock<std::mutex> lock(logger::sLogMutex);
+        std::cout << "BEGIN" << std::endl;
+        for(const test::ServerStreamResponse& resp : respList)
+            std::cout << resp << std::endl;
+        std::cout << "END: " << respList.size() << " responses" << std::endl;
+    }
 
     return true;
 }
 
 bool ClientStreamTest()
 {
-    struct RequestCallback : public gen::ReqCallbackFunctor<test::ClientStreamRequest>
+    int count = 0;
+    auto lambda = [&count](test::ClientStreamRequest& req) -> bool
     {
-        bool operator()(test::ClientStreamRequest& req) override
-        {
-            if(++count > 20)
-                return false;
-            INFOMSG("Client-side streaming message " + std::to_string(count));
-            req.set_msg("ClientStreamRequest " + std::to_string(count));
-            return true;
-        }
-
-        int count{0};
-    } reqCallback;
-
+        if(++count > 20)
+            return false;   // Return false to stop streaming
+        INFOMSG("Client-side streaming message " + std::to_string(count));
+        req.set_msg("ClientStreamRequest " + std::to_string(count));
+        return true;
+    };
+    std::function<bool(test::ClientStreamRequest&)> reqCallback(lambda);
+ 
     test::ClientStreamResponse resp;
 
     std::string errMsg;

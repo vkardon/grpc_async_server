@@ -11,24 +11,9 @@
 #pragma GCC diagnostic pop
 
 #include "grpcUtils.hpp"
+#include <functional>
 
 namespace gen {
-
-// Helper functor to read server-side STREAM grpc messages
-template<class RESP>
-struct RespCallbackFunctor
-{
-    virtual ~RespCallbackFunctor() = default;
-    virtual bool operator()(const RESP& resp) = 0;
-};
-
-// Helper functor to write client-side STREAM grpc messages
-template<class REQ>
-struct ReqCallbackFunctor
-{
-    virtual ~ReqCallbackFunctor() = default;
-    virtual bool operator()(REQ& resp) = 0;
-};
 
 // Wrapper class to add overload bool() operator that grpc::Status doesn't have.
 // This allows to simplify the code when grpc::Status is NOT required:
@@ -105,14 +90,14 @@ public:
     // Thread-save server-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                        const REQ& req, RespCallbackFunctor<RESP>& respCallback,
+                        const REQ& req, const std::function<bool(RESP&)>& respCallback,
                         const std::map<std::string, std::string>& metadata,
                         std::string& errMsg, unsigned long timeout = 0) const;
 
     // Thread-save server-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                        const REQ& req, RespCallbackFunctor<RESP>& respCallback,
+                        const REQ& req, const std::function<bool(RESP&)>& respCallback,
                         std::string& errMsg, unsigned long timeout = 0) const
     {
         return CallStream(grpcStubFunc, req, respCallback, dummy_metadata, errMsg, timeout);
@@ -121,14 +106,14 @@ public:
     // Thread-save client-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
-                              ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
+                              const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                               const std::map<std::string, std::string>& metadata,
                               std::string& errMsg, unsigned long timeout = 0) const;
 
     // Thread-save client-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
-                              ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
+                              const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                               std::string& errMsg, unsigned long timeout = 0) const
     {
         return CallClientStream(grpcStubFunc, reqCallback, resp, dummy_metadata, errMsg, timeout);
@@ -243,7 +228,7 @@ StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
 template <class RPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                                             const REQ& req, RespCallbackFunctor<RESP>& respCallback,
+                                             const REQ& req, const std::function<bool(RESP&)>& respCallback,
                                              const std::map<std::string, std::string>& metadata,
                                              std::string& errMsg, unsigned long timeout) const
 {
@@ -283,7 +268,7 @@ StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
 template <class RPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
-                                                   ReqCallbackFunctor<REQ>& reqCallback, RESP& resp,
+                                                   const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                                                    const std::map<std::string, std::string>& metadata,
                                                    std::string& errMsg, unsigned long timeout) const
 {
