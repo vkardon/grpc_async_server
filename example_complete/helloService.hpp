@@ -17,6 +17,7 @@ public:
     virtual bool OnInit() override
     {
         // Bind all HelloService RPCs
+        // Note: HelloService::RequestPing is the same as test::Hello::AsyncService::RequestPing, etc.
         Bind(&HelloService::PingTest, &HelloService::RequestPing);
         Bind(&HelloService::ServerStreamTest, &HelloService::RequestServerStream);
         Bind(&HelloService::ClientStreamTest, &HelloService::RequestClientStream);

@@ -17,6 +17,7 @@ public:
     virtual bool OnInit() override
     {
         // Bind all ControlService RPCs
+        // Note: ControlService::RequestShutdown is the same as test::Control::AsyncService::RequestShutdown, etc.
         Bind(&ControlService::Shutdown, &ControlService::RequestShutdown);
         Bind(&ControlService::Status, &ControlService::RequestStatus);
         return true;
