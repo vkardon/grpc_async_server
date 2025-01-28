@@ -90,14 +90,14 @@ public:
     // Thread-save server-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                        const REQ& req, const std::function<bool(RESP&)>& respCallback,
+                        const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                         const std::map<std::string, std::string>& metadata,
                         std::string& errMsg, unsigned long timeout = 0) const;
 
     // Thread-save server-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                        const REQ& req, const std::function<bool(RESP&)>& respCallback,
+                        const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                         std::string& errMsg, unsigned long timeout = 0) const
     {
         return CallStream(grpcStubFunc, req, respCallback, dummy_metadata, errMsg, timeout);
@@ -228,7 +228,7 @@ StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
 template <class RPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                                             const REQ& req, const std::function<bool(RESP&)>& respCallback,
+                                             const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                                              const std::map<std::string, std::string>& metadata,
                                              std::string& errMsg, unsigned long timeout) const
 {

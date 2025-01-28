@@ -49,7 +49,7 @@ bool ServerStreamTest(bool silent = false)
         respList.push_back(resp);
         return true;
     };
-    std::function<bool(test::ServerStreamResponse&)> respCallback(lambda);
+    std::function<bool(const test::ServerStreamResponse&)> respCallback(lambda);
 
     std::string errMsg;
     gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
