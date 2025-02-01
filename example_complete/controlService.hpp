@@ -13,6 +13,7 @@ public:
     ControlService() = default;
     virtual ~ControlService() = default;
 
+private:
     // gen::GrpcService overrides
     virtual bool OnInit() override
     {
@@ -22,7 +23,6 @@ public:
         return true;
     }
 
-protected:
     // Supported RPCs
     void Shutdown(const gen::RpcContext& ctx,
                   const test::ShutdownRequest& req, test::ShutdownResponse& resp);

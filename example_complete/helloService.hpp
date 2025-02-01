@@ -13,6 +13,7 @@ public:
     HelloService() = default;
     virtual ~HelloService() = default;
 
+private:
     // gen::GrpcService overrides
     virtual bool OnInit() override
     {
@@ -23,7 +24,6 @@ public:
         return true;
     }
 
-protected:
     // Supported RPCs
     void PingTest(const gen::RpcContext& ctx,
                   const test::PingRequest& req, test::PingResponse& resp);

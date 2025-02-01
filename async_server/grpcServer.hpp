@@ -124,7 +124,8 @@ public:
             OnError("AddService() out of memory allocating GRPC_SERVICE");
             return nullptr;
         }
-        else if(service->srv = this; !service->OnInit())
+        // Note: Call OnInit() on GrpcServiceBase since it might be private in derived class
+        else if(service->srv = this; !((GrpcServiceBase*)service)->OnInit())
         {
             OnError("OnInit() failed for service '" + std::string(service->GetName()) + "'");
             delete service;
