@@ -55,6 +55,18 @@ struct RequestContext
 };
 
 //
+// This is the base class for service-specific RPC-processing classes
+//
+struct GrpcServiceBase
+{
+    // For derived class to override
+    virtual bool OnInit() = 0;
+    virtual const char* GetName() = 0;
+    virtual ::grpc::Service* GetService() = 0;
+    virtual bool IsServing() { return true; }
+};
+
+//
 // Class GrpcServer
 //
 struct AddressUri
@@ -122,7 +134,7 @@ public:
         return service;
     }
 
-    ::grpc::Service* GetService(const std::string& serviceName)
+    GrpcServiceBase* GetService(const std::string& serviceName)
     {
         auto it = serviceMap.find(serviceName);
         return (it == serviceMap.end() ? nullptr : it->second.get());
@@ -176,7 +188,7 @@ private:
             {
                 // Note: Only register service once. This would be the case
                 // when gRpc server stopped and then started again.
-                ::grpc::Service* service = pair.second.get();
+                ::grpc::Service* service = pair.second->GetService();
                 builder.RegisterService(service);
             }
 
@@ -393,7 +405,7 @@ private:
     virtual void OnRun() {}
 
     // Class data
-    std::map<std::string, std::unique_ptr<::grpc::Service>> serviceMap;
+    std::map<std::string, std::unique_ptr<GrpcServiceBase>> serviceMap;
     std::list<std::unique_ptr<RequestContext>> requestContextList;
     std::atomic<bool> runService{false};            // Initially, since we are not running yet
     std::atomic<bool> runThreads{false};            // Initially, since we don't have any threads yet
@@ -479,7 +491,7 @@ struct UnaryRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        (service->*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
+        (service->async.*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
     void Process() override
@@ -571,7 +583,7 @@ struct ServerStreamRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        (service->*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
+        (service->async.*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
     void Process() override
@@ -721,7 +733,7 @@ struct ClientStreamRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        (service->*requestFunc)(srv_ctx.get(), req_reader.get(), cq, cq, this);
+        (service->async.*requestFunc)(srv_ctx.get(), req_reader.get(), cq, cq, this);
     }
 
     void Process() override
@@ -813,7 +825,7 @@ struct ClientStreamRequestContext : public RequestContext
 // Template implementation of service-specific GrpcService class
 //
 template<class RPC_SERVICE>
-class GrpcService : public RPC_SERVICE::AsyncService
+class GrpcService : public GrpcServiceBase
 {
 public:
     GrpcService() = default;
@@ -822,10 +834,10 @@ public:
     // Note: service_full_name() is not well documented, but
     // is generated for every service class. It might need to
     // be replaced if/when it's no longer generated.
-    const char* GetName() { return RPC_SERVICE::service_full_name(); }
+    const char* GetName() override { return RPC_SERVICE::service_full_name(); }
 
-    // For derived class to override
-    virtual bool OnInit() = 0;
+    // Get the actual AsyncService
+    virtual ::grpc::Service* GetService() override { return &async; }
 
     // Add request for unary RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
@@ -870,6 +882,7 @@ public:
     }
 
 protected:
+    typename RPC_SERVICE::AsyncService async;
     GrpcServer* srv{nullptr};
 
     friend class GrpcServer;

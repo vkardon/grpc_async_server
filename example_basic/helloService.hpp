@@ -17,8 +17,8 @@ public:
     virtual bool OnInit() override
     {
         // Bind all HelloService RPCs
-        Bind(&HelloService::Ping, &HelloService::RequestPing);
-        Bind(&HelloService::Shutdown, &HelloService::RequestShutdown);
+        Bind(&HelloService::Ping, &test::Hello::AsyncService::RequestPing);
+        Bind(&HelloService::Shutdown, &test::Hello::AsyncService::RequestShutdown);
         return true;
     }
 
