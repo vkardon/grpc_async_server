@@ -1,0 +1,48 @@
+
+syntax = "proto3";
+
+package test;
+
+// Interface exported by the server.
+service Hello 
+{
+    // Unary RPC
+    rpc Ping (PingRequest) returns (PingResponse) {}
+
+    // Server-side streaming RPC
+    rpc ServerStream (ServerStreamRequest) returns (stream ServerStreamResponse) {}
+
+    // Client-side streaming RPC
+    rpc ClientStream (stream ClientStreamRequest) returns (ClientStreamResponse) {}
+}
+
+message PingRequest
+{
+    // empty message
+}
+
+message PingResponse
+{
+    string msg = 1;
+}
+
+message ServerStreamRequest
+{
+    string msg = 1;
+}
+
+message ServerStreamResponse
+{
+    string msg = 1; 
+    bool result = 2;
+}
+
+message ClientStreamRequest
+{
+    string msg = 1;
+}
+
+message ClientStreamResponse
+{
+    bool result = 1;
+}
