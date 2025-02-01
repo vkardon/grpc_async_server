@@ -1,18 +1,15 @@
 # Get LINKING_TYPE (shared or static), GRPC_VER, GRPC_LIBS, etc.
-include Makefile.conf    
+include ../Makefile.conf    
 
 # Target(s) to build
 EXE_SRV = server
 EXE_CLN = client
+PROTOSET = protoset
 DEBUG = true
 
 # Compiler and linker to use
 CC = g++
 LD = $(CC) 
-
-# Compiler and linker to use
-CC = g++
-LD = $(CC)
 
 # Configure Debug or Release build
 CFLAGS = -std=gnu++17 -Wall -pthread
@@ -31,14 +28,17 @@ endif
 PROJECT_HOME = .
 OBJ_DIR = $(PROJECT_HOME)/_obj
 
-SRCS_SRV = $(PROJECT_HOME)/server.cpp
+SRCS_SRV = $(PROJECT_HOME)/server.cpp \
+           $(PROJECT_HOME)/helloService.cpp \
+           $(PROJECT_HOME)/controlService.cpp
 
 SRCS_CLN = $(PROJECT_HOME)/client.cpp 
 
 # gRPC proto files 
 PROTO_OUT  = $(OBJ_DIR)/_generate
 PROTO_HOME = $(PROJECT_HOME)
-PROTO_SRCS = $(PROTO_HOME)/hello.proto
+PROTO_SRCS = $(PROTO_HOME)/hello.proto \
+             $(PROTO_HOME)/control.proto
 
 GRPC_INC = $(GRPC_HOME)/$(LINKING_TYPE)/include
 GRPC_BIN = $(GRPC_HOME)/$(LINKING_TYPE)/bin
@@ -49,7 +49,7 @@ PROTOC = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
 # Include directories
-INCS = -I../async_server \
+INCS = -I../../async_server \
        -I$(PROJECT_HOME) \
        -I$(GRPC_INC) \
        -I$(PROTO_OUT)
@@ -103,13 +103,15 @@ OBJS_CLN =  $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS_
 OBJS_CLN += $(PROTOC_OBJS) $(GRPC_OBJS)
 
 # Build target(s)
-all: $(EXE_SRV) $(EXE_CLN)
+all: $(EXE_SRV) $(EXE_CLN) $(PROTOSET)
 
 $(EXE_SRV): $(PROTOC_CC) $(GRPC_CC) $(OBJS_SRV) 
 	$(LD) $(LDFLAGS) -o $(EXE_SRV) $(OBJS_SRV) $(LIBS)
+	ln -sf $(EXE_SRV) $(EXE_SRV)ssl
 
 $(EXE_CLN): $(PROTOC_CC) $(GRPC_CC) $(OBJS_CLN) 
 	$(LD) $(LDFLAGS) -o $(EXE_CLN) $(OBJS_CLN) $(LIBS)
+	ln -sf $(EXE_CLN) $(EXE_CLN)ssl
 
 # Compile source files
 # Add -MP to generate dependency list
@@ -135,9 +137,14 @@ $(PROTO_OUT)/%.pb.cc: $(PROTO_HOME)/%.proto Makefile
 	-mkdir -p $(PROTO_OUT)
 	$(PROTOC) --cpp_out=$(PROTO_OUT) --proto_path=$(PROTO_HOME) $<
 
+# Generate protoset file
+$(PROTOSET):
+	@echo ">>> Generating protoset ..."
+	$(PROTOC) -I $(PROTO_HOME) --descriptor_set_out=$(PROTOSET) $(PROTO_SRCS)
+
 # Delete all intermediate files
 clean clear:
-	rm -rf $(EXE_SRV) $(EXE_CLN) $(OBJ_DIR)
+	rm -rf $(EXE_SRV) $(EXE_SRV)ssl $(EXE_CLN) $(EXE_CLN)ssl $(PROTOSET) $(OBJ_DIR)
 
 # Read the dependency files.
 # Note: use '-' prefix to don't display error or warning
