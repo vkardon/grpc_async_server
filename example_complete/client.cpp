@@ -43,13 +43,12 @@ bool ServerStreamTest(bool silent = false)
     req.set_msg("ServerStreamRequest");
 
     std::list<test::ServerStreamResponse> respList;
-    auto lambda = [&respList](const test::ServerStreamResponse& resp) -> bool
+    std::function respCallback = [&respList](const test::ServerStreamResponse& resp) -> bool
     {
         // std::cout << resp.msg() << std::endl;
         respList.push_back(resp);
         return true;
     };
-    std::function<bool(const test::ServerStreamResponse&)> respCallback(lambda);
 
     std::string errMsg;
     gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
@@ -75,7 +74,7 @@ bool ServerStreamTest(bool silent = false)
 bool ClientStreamTest()
 {
     int count = 0;
-    auto lambda = [&count](test::ClientStreamRequest& req) -> bool
+    std::function reqCallback = [&count](test::ClientStreamRequest& req) -> bool
     {
         if(++count > 20)
             return false;   // Return false to stop streaming
@@ -83,7 +82,6 @@ bool ClientStreamTest()
         req.set_msg("ClientStreamRequest " + std::to_string(count));
         return true;
     };
-    std::function<bool(test::ClientStreamRequest&)> reqCallback(lambda);
  
     test::ClientStreamResponse resp;
 
