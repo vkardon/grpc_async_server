@@ -64,6 +64,7 @@ struct GrpcServiceBase
     virtual const char* GetName() = 0;
     virtual ::grpc::Service* GetService() = 0;
     virtual bool IsServing() { return true; }
+    virtual ~GrpcServiceBase() = default;
 };
 
 //
