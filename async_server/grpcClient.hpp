@@ -32,7 +32,7 @@ struct StatusEx : public grpc::Status
 //
 // Helper class to call UNARY/STREAM gRpc service
 //
-template <class RPC_SERVICE>
+template <class GRPC_SERVICE>
 class GrpcClient
 {
 public:
@@ -151,7 +151,7 @@ private:
     }
 
 private:
-    std::unique_ptr<typename RPC_SERVICE::Stub> stub;
+    std::unique_ptr<typename GRPC_SERVICE::Stub> stub;
     std::shared_ptr<grpc::ChannelCredentials> creds;
     std::string addressUri;
 
@@ -159,10 +159,10 @@ private:
     static inline const std::map<std::string, std::string> dummy_metadata;
 };
 
-template <class RPC_SERVICE>
-bool GrpcClient<RPC_SERVICE>::Init(const std::string& addressUriIn,
-                                   const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*= nullptr*/,
-                                   const grpc::ChannelArguments* channelArgsIn /*= nullptr*/)
+template <class GRPC_SERVICE>
+bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
+                                    const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*= nullptr*/,
+                                    const grpc::ChannelArguments* channelArgsIn /*= nullptr*/)
 {
     addressUri = addressUriIn;
     creds = (credsIn ? credsIn : grpc::InsecureChannelCredentials());
@@ -181,12 +181,12 @@ bool GrpcClient<RPC_SERVICE>::Init(const std::string& addressUriIn,
         channel = grpc::CreateCustomChannel(addressUri, creds, channelArgs);
     }
 
-    stub = RPC_SERVICE::NewStub(channel);
+    stub = GRPC_SERVICE::NewStub(channel);
     return (stub != nullptr);
 }
 
-template <class RPC_SERVICE>
-void GrpcClient<RPC_SERVICE>::Reset()
+template <class GRPC_SERVICE>
+void GrpcClient<GRPC_SERVICE>::Reset()
 {
     stub.reset();
     creds.reset();
@@ -194,12 +194,12 @@ void GrpcClient<RPC_SERVICE>::Reset()
 }
 
 // Thread-save UNARY gRpc
-template <class RPC_SERVICE>
+template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
-                                       const REQ& req, RESP& resp,
-                                       const std::map<std::string, std::string>& metadata,
-                                       std::string& errMsg, unsigned long timeout) const
+StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
+                                        const REQ& req, RESP& resp,
+                                        const std::map<std::string, std::string>& metadata,
+                                        std::string& errMsg, unsigned long timeout) const
 {
     if(!stub)
     {
@@ -225,12 +225,12 @@ StatusEx GrpcClient<RPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
 }
 
 // Thread-save server-side STREAM gRpc
-template <class RPC_SERVICE>
+template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
-                                             const REQ& req, const std::function<bool(const RESP&)>& respCallback,
-                                             const std::map<std::string, std::string>& metadata,
-                                             std::string& errMsg, unsigned long timeout) const
+StatusEx GrpcClient<GRPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
+                                              const REQ& req, const std::function<bool(const RESP&)>& respCallback,
+                                              const std::map<std::string, std::string>& metadata,
+                                              std::string& errMsg, unsigned long timeout) const
 {
     if(!stub)
     {
@@ -272,12 +272,12 @@ StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
 }
 
 // Thread-save client-side STREAM gRpc
-template <class RPC_SERVICE>
+template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
-                                                   const std::function<bool(REQ&)>& reqCallback, RESP& resp,
-                                                   const std::map<std::string, std::string>& metadata,
-                                                   std::string& errMsg, unsigned long timeout) const
+StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
+                                                    const std::function<bool(REQ&)>& reqCallback, RESP& resp,
+                                                    const std::map<std::string, std::string>& metadata,
+                                                    std::string& errMsg, unsigned long timeout) const
 {
     if(!stub)
     {
@@ -315,8 +315,8 @@ StatusEx GrpcClient<RPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
 }
 
 // Experimantal...
-//template <class RPC_SERVICE>
-//pid_t grpcFork(GrpcClient<RPC_SERVICE>& grpcClient)
+//template <class GRPC_SERVICE>
+//pid_t grpcFork(GrpcClient<GRPC_SERVICE>& grpcClient)
 //{
 //    // gRpc fork support: Reset GrpcClient before fork()
 //    std::shared_ptr<grpc::ChannelCredentials> creds;

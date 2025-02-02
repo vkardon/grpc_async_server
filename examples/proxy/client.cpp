@@ -4,6 +4,7 @@
 #include "grpcClient.hpp"
 #include "serverConfig.hpp"     // for PROXY_HOST, PROXY_PORT, etc.
 #include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
+#include <thread>               // std::thread
 #include "hello.grpc.pb.h"
 #include "control.grpc.pb.h"
 
@@ -106,40 +107,38 @@ bool ShutdownTest(const char* addressUri)
     return true;
 }
 
-//void LoadTest()
-//{
-//    const int numClientThreads = 100;  // Number of threads
-//    const int numRpcs = 50;            // Number of RPCs per thread
-//
-//    // Start threads
-//    INFOMSG("Sending requests using " << numClientThreads
-//            << " threads with " << numRpcs << " RPC requests per thread");
-//
-//    StopWatch duration(("Duration [" + std::to_string(numClientThreads * numRpcs) + " calls]: ").c_str());
-//
-//    std::vector<std::thread> threads(numClientThreads);
-//
-//    for(std::thread& thread : threads)
-//    {
-//        thread = std::thread([&]()
-//        {
-//            for(int i = 0; i < numRpcs; ++i)
-//            {
-//                // Format request message and call RPC
-//                if(!ServerStreamTest(true /*silent*/))
-//                    break;
-//            }
-//        });
-//    }
-//
-//    // Wait for all threads to complete
-//    for(std::thread& thread : threads)
-//    {
-//        thread.join();
-//    }
-//
-//    INFOMSG("All client threads are completed");
-//}
+void LoadTest(const char* addressUri)
+{
+    const int numClientThreads = 100;  // Number of threads
+    const int numRpcs = 50;            // Number of RPCs per thread
+
+    // Start threads
+    INFOMSG("Sending requests using " << numClientThreads
+            << " threads with " << numRpcs << " RPC requests per thread");
+
+    StopWatch duration(("Duration [" + std::to_string(numClientThreads * numRpcs) + " calls]: ").c_str());
+
+    std::vector<std::thread> threads(numClientThreads);
+
+    for(std::thread& thread : threads)
+    {
+        thread = std::thread([&]()
+        {
+            for(int i = 0; i < numRpcs; ++i)
+            {
+                ServerStreamTest(addressUri, true /*silent*/);
+            }
+        });
+    }
+
+    // Wait for all threads to complete
+    for(std::thread& thread : threads)
+    {
+        thread.join();
+    }
+
+    INFOMSG("All client threads are completed");
+}
 
 void PrintUsage()
 {
@@ -148,7 +147,7 @@ void PrintUsage()
     std::cout << "       client serverstream" << std::endl;
 //    std::cout << "       client clientstream" << std::endl;
     std::cout << "       client shutdown" << std::endl;
-//    std::cout << "       client load" << std::endl;
+    std::cout << "       client load" << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -185,10 +184,10 @@ int main(int argc, char** argv)
     {
         ShutdownTest(addressUri);
     }
-//    else if(!strcmp(testName, "load"))
-//    {
-//        LoadTest(addressUri);
-//    }
+    else if(!strcmp(testName, "load"))
+    {
+        LoadTest(addressUri);
+    }
     else
     {
         std::cerr << "Unwknown test name '" << testName << "'" << std::endl;
