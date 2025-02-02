@@ -69,6 +69,8 @@ public:
     // Get application-level data set by AddUnaryRpcRequest/AddStreamRpcRequest
     const void* GetRpcParam() const { return rpcParam; }
 
+    const ::grpc::ServerContext* GetServerContext() const { return srvCtx; }
+
 private:
     // Helper method to replace all occurrences of substring with another substring
     void Replace(std::string& str, const char* substr1, const char* substr2) const

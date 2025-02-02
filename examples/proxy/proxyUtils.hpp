@@ -4,7 +4,8 @@
 #ifndef __PROXY_UTILS_HPP__
 #define __PROXY_UTILS_HPP__
 
-#include "grpcContext.hpp"          // gen::RpcContext & gen::RpcServerStreamContext
+#include "grpcContext.hpp"      // gen::RpcContext & gen::RpcServerStreamContext
+#include "grpcClient.hpp"       // gen::GrpcClient
 #include <thread>
 #include <condition_variable>
 #include <memory>
@@ -16,43 +17,19 @@ void Forward(const gen::RpcContext& ctx,
              const REQ& req, RESP& resp, SERVICE_FUNC serviceFunc,
              const std::string& host, unsigned short port)
 {
-//    // Validate session id
-//    if(!ctx.GetSession())
-//    {
-//        errMsg = "Invalid session id";
-//        ERRORMSG(Log(), ctx << ", req=" << req.GetTypeName() << ", err='" << errMsg << "'");
-//        return ::grpc::UNAUTHENTICATED;
-//    }
-
-    // Call Grpc Service
-    grpc::ClientContext context;
-//    context.AddMetadata(GRPC_METADATA_SESSION_ID, ctx.mSessionId);
-//    context.AddMetadata(GRPC_METADATA_REQUEST_ID, ctx.mRequestId);
-//    context.AddMetadata(GRPC_METADATA_IP_ADDR, ctx.GetPeer());
-//    context.AddMetadata(GRPC_METADATA_USER, ctx.mSession->GetUserShmAddress());
-
-    std::string addressUri = gen::FormatDnsAddressUri(host.c_str(), port);
-
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
-    std::unique_ptr<typename SERVICE::Stub> stub = SERVICE::NewStub(channel);
-    if(!stub.get())
+    // Copy metadata from ServerContext
+    std::map<std::string, std::string> metadata;
+    for(const auto& pair : ctx.GetServerContext()->client_metadata())
     {
-        std::string errMsg = "Failed to create Grpc Service stub, req=" +
-                 req.GetTypeName() + ", addressUri='" + addressUri + "'";
-        ctx.SetStatus(::grpc::INTERNAL, errMsg);
-        return;
+//        std::cout << pair.first << "-->" << pair.second << std::endl;
+        metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
     }
 
-    // Set deadline of how long to wait for a server reply
-    std::chrono::time_point<std::chrono::system_clock> deadline =
-        std::chrono::system_clock::now() + std::chrono::milliseconds(GRPC_TIMEOUT);
-    context.set_deadline(deadline);
-
-    grpc::Status s = (stub.get()->*serviceFunc)(&context, req, &resp);
-    if(!s.ok())
+    // Call Grpc Service
+    std::string errMsg;
+    gen::GrpcClient<SERVICE> grpcClient(host, port);
+    if(!grpcClient.Call(serviceFunc, req, resp, metadata, errMsg, GRPC_TIMEOUT))
     {
-        std::string errMsg = "Failed to call Grpc Service, req=" +
-                 req.GetTypeName() + ", addressUri='" + addressUri + "', err='" + s.error_message() + "'";
         ctx.SetStatus(::grpc::INTERNAL, errMsg);
     }
 }
@@ -325,8 +302,7 @@ void Forward(const gen::RpcServerStreamContext& ctx,
     }
 
     // Start or continue reading.
-//    if(reader->Read(resp, true /*async*/))
-    if(reader->Read(resp, false /*sync*/))
+    if(reader->Read(resp, true /*async*/))
     {
         // Send this response and come back for more.
 //        ctx.SetHasMore(true); // Already "true" until set to "false"
