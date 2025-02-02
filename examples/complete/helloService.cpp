@@ -2,7 +2,7 @@
 // helloService.cpp
 //
 #include "helloService.hpp"
-#include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
+#include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
 
 // ResponseList is used to demonstrate server-side streaming
 struct ResponseList

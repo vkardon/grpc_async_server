@@ -1,0 +1,22 @@
+
+syntax = "proto3";
+
+package test;
+
+// Interface exported by the server.
+service Control 
+{
+    rpc Shutdown (ShutdownRequest) returns (ShutdownResponse) {}
+}
+
+message ShutdownRequest
+{
+    string reason = 1;
+}
+
+message ShutdownResponse
+{
+    bool result = 1;
+    string msg = 2;
+}
+

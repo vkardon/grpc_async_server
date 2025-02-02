@@ -37,7 +37,8 @@ SRCS_PRX = $(PROJECT_HOME)/proxy.cpp
 # gRPC proto files 
 PROTO_OUT  = $(OBJ_DIR)/_generate
 PROTO_HOME = $(PROJECT_HOME)
-PROTO_SRCS = $(PROTO_HOME)/hello.proto
+PROTO_SRCS = $(PROTO_HOME)/hello.proto \
+             $(PROTO_HOME)/control.proto
 
 GRPC_INC = $(GRPC_HOME)/$(LINKING_TYPE)/include
 GRPC_BIN = $(GRPC_HOME)/$(LINKING_TYPE)/bin

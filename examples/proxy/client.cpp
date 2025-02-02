@@ -2,8 +2,10 @@
 // client.cpp
 //
 #include "grpcClient.hpp"
-#include "serverConfig.hpp"  // for PORT_NUMBER
+#include "serverConfig.hpp"     // for PROXY_HOST, PROXY_PORT, etc.
+#include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
 #include "hello.grpc.pb.h"
+#include "control.grpc.pb.h"
 
 void PingTest(const char* addressUri)
 {
@@ -51,7 +53,7 @@ void ServerStreamTest(const char* addressUri, bool silent = false)
     else if(!silent)
     {
         // Dump all collected responses
-//        std::unique_lock<std::mutex> lock(logger::sLogMutex);
+        std::unique_lock<std::mutex> lock(logger::sLogMutex);
         std::cout << "BEGIN" << std::endl;
         for(const test::ServerStreamResponse& resp : respList)
             std::cout << resp << std::endl;
@@ -84,45 +86,26 @@ void ServerStreamTest(const char* addressUri, bool silent = false)
 //    INFOMSG(resp);
 //    return true;
 //}
-//
-//bool ShutdownTest()
-//{
-//    test::ShutdownRequest req;
-//    test::ShutdownResponse resp;
-//
-//    req.set_reason("Shutdown Test");
-//
-//    std::string errMsg;
-//    gen::GrpcClient<test::Control> grpcClient(gHost, PORT_NUMBER, gCreds);
-//    if(!grpcClient.Call(&test::Control::Stub::Shutdown, req, resp, errMsg))
-//    {
-//        ERRORMSG(errMsg);
-//        return false;
-//    }
-//
-//    INFOMSG(resp);
-//    return true;
-//}
-//
-//bool StatusTest(const std::string& serviceName)
-//{
-//    test::StatusRequest req;
-//    test::StatusResponse resp;
-//
-//    req.set_service_name(serviceName);
-//
-//    std::string errMsg;
-//    gen::GrpcClient<test::Control> grpcClient(gHost, PORT_NUMBER, gCreds);
-//    if(!grpcClient.Call(&test::Control::Stub::Status, req, resp, errMsg))
-//    {
-//        ERRORMSG(errMsg);
-//        return false;
-//    }
-//
-//    INFOMSG(resp);
-//    return true;
-//}
-//
+
+bool ShutdownTest(const char* addressUri)
+{
+    test::ShutdownRequest req;
+    test::ShutdownResponse resp;
+
+    req.set_reason("Shutdown Test");
+
+    std::string errMsg;
+    gen::GrpcClient<test::Control> grpcClient(addressUri);
+    if(!grpcClient.Call(&test::Control::Stub::Shutdown, req, resp, errMsg))
+    {
+        ERRORMSG(errMsg);
+        return false;
+    }
+
+    INFOMSG(resp);
+    return true;
+}
+
 //void LoadTest()
 //{
 //    const int numClientThreads = 100;  // Number of threads
@@ -164,8 +147,7 @@ void PrintUsage()
     std::cout << "       client ping" << std::endl;
     std::cout << "       client serverstream" << std::endl;
 //    std::cout << "       client clientstream" << std::endl;
-//    std::cout << "       client shutdown" << std::endl;
-//    std::cout << "       client status" << std::endl;
+    std::cout << "       client shutdown" << std::endl;
 //    std::cout << "       client load" << std::endl;
 }
 
@@ -197,23 +179,15 @@ int main(int argc, char** argv)
     }
 //    else if(!strcmp(testName, "clientstream"))
 //    {
-//        ClientStreamTest();
+//        ClientStreamTest(addressUri);
 //    }
-//    else if(!strcmp(testName, "shutdown"))
-//    {
-//        ShutdownTest();
-//    }
-//    else if(!strcmp(testName, "status"))
-//    {
-//        // Check the status of the given service
-//        StatusTest("");                     // Ask for overall status
-//        StatusTest("test.Hello");           // Ask for test.Hello service status
-//        StatusTest("test.Control");         // Ask for test.Control service status
-//        StatusTest("test.DummyService");    // Ask for not existing service
-//    }
+    else if(!strcmp(testName, "shutdown"))
+    {
+        ShutdownTest(addressUri);
+    }
 //    else if(!strcmp(testName, "load"))
 //    {
-//        LoadTest();
+//        LoadTest(addressUri);
 //    }
     else
     {

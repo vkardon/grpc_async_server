@@ -2,8 +2,9 @@
 // server.cpp
 //
 #include <stdio.h>
-#include <libgen.h>          // dirname()
-#include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
+#include <libgen.h>             // dirname()
+#include "serverConfig.hpp"     // PORT_NUMBER, etc.
+#include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
 #include "server.hpp"
 
 int main(int argc, char* argv[])

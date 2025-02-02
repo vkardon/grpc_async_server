@@ -2,7 +2,7 @@
 // controlService.cpp
 //
 #include "controlService.hpp"
-#include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
+#include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
 
 void ControlService::Shutdown(const gen::RpcContext& ctx,
                             const test::ShutdownRequest& req,

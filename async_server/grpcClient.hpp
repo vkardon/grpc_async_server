@@ -250,6 +250,13 @@ StatusEx GrpcClient<RPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
     // Call service
     RESP resp;
     std::unique_ptr<grpc::ClientReader<RESP>> reader((stub.get()->*grpcStubFunc)(&context, req));
+    if(!reader)
+    {
+        grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) client stream reader");
+        SetError(errMsg, __func__, req, s);
+        return s;
+    }
+
     while(reader->Read(&resp))
     {
         if(!respCallback(resp))

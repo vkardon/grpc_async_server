@@ -6,15 +6,13 @@
 
 #include "grpcServer.hpp"
 #include "proxyUtils.hpp"
-
 #include "hello.grpc.pb.h"
 
 class HelloServiceProxy : public gen::GrpcService<test::Hello>
 {
 public:
     HelloServiceProxy(const std::string& forwardHost, unsigned short forwardPort)
-        : mForwardHost(forwardHost),
-          mForwardPort(forwardPort) {}
+        : mForwardAddressUri(gen::FormatDnsAddressUri(forwardHost, forwardPort)) {}
     virtual ~HelloServiceProxy() = default;
 
 private:
@@ -32,26 +30,22 @@ private:
     void Ping(const gen::RpcContext& ctx,
               const test::PingRequest& req, test::PingResponse& resp)
     {
-        std::cout << "From " << ctx.Peer() << std::endl;
-        Forward<test::Hello>(ctx, req, resp, &test::Hello::Stub::Ping, mForwardHost, mForwardPort);
+        Forward<test::Hello>(ctx, req, resp, &test::Hello::Stub::Ping, mForwardAddressUri);
     }
 
     void ServerStreamTest(const gen::RpcServerStreamContext& ctx,
                           const test::ServerStreamRequest& req, test::ServerStreamResponse& resp)
     {
-        std::cout << "From " << ctx.Peer() << std::endl;
-        Forward<test::Hello>(ctx, req, resp, &test::Hello::Stub::ServerStream, mForwardHost, mForwardPort);
+        Forward<test::Hello>(ctx, req, resp, &test::Hello::Stub::ServerStream, mForwardAddressUri);
     }
 
     void ClientStreamTest(const gen::RpcClientStreamContext& ctx,
                           const test::ClientStreamRequest& req, test::ClientStreamResponse& resp)
     {
-        std::cout << "From " << ctx.Peer() << std::endl;
-        Forward<test::Hello>(ctx, req, resp, &test::Hello::Stub::ClientStream, mForwardHost, mForwardPort);
+        Forward<test::Hello>(ctx, req, resp, &test::Hello::Stub::ClientStream, mForwardAddressUri);
     }
 
-    const std::string mForwardHost;
-    unsigned short mForwardPort{0};
+    std::string mForwardAddressUri;
 };
 
 #endif // __HELLO_SERVICE_PROXY_HPP__

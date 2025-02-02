@@ -5,7 +5,8 @@
 #include <string>
 #include <thread>
 #include "grpcClient.hpp"
-#include "serverConfig.hpp"
+#include "serverConfig.hpp"     // PORT_NUMBER, etc.
+#include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
 #include "hello.grpc.pb.h"
 #include "control.grpc.pb.h"
 
