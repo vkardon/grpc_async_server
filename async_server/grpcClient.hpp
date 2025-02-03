@@ -153,6 +153,7 @@ private:
 private:
     std::unique_ptr<typename GRPC_SERVICE::Stub> stub;
     std::shared_ptr<grpc::ChannelCredentials> creds;
+    std::unique_ptr<grpc::ChannelArguments> channelArgs;
     std::string addressUri;
 
     // Dummy metadata used by no-metadata calls
@@ -167,20 +168,20 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
     addressUri = addressUriIn;
     creds = (credsIn ? credsIn : grpc::InsecureChannelCredentials());
 
-    std::shared_ptr<grpc::Channel> channel;
     if(channelArgsIn)
     {
-        channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgsIn);
+        channelArgs = std::make_unique<grpc::ChannelArguments>(*channelArgsIn);
     }
     else
     {
+        channelArgs = std::make_unique<grpc::ChannelArguments>();
+
         // Maximise sent/receive mesage size (instead of 4MB default)
-        grpc::ChannelArguments channelArgs;
-        channelArgs.SetMaxSendMessageSize(INT_MAX);
-        channelArgs.SetMaxReceiveMessageSize(INT_MAX);
-        channel = grpc::CreateCustomChannel(addressUri, creds, channelArgs);
+        channelArgs->SetMaxSendMessageSize(INT_MAX);
+        channelArgs->SetMaxReceiveMessageSize(INT_MAX);
     }
 
+    std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgs);
     stub = GRPC_SERVICE::NewStub(channel);
     return (stub != nullptr);
 }
@@ -190,6 +191,7 @@ void GrpcClient<GRPC_SERVICE>::Reset()
 {
     stub.reset();
     creds.reset();
+    channelArgs.reset();
     addressUri.clear();
 }
 
