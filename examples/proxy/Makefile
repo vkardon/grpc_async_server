@@ -2,7 +2,6 @@
 include ../Makefile.conf    
 
 # Target(s) to build
-EXE_CLN = client
 EXE_PRX = proxy
 DEBUG = true
 
@@ -31,7 +30,6 @@ endif
 PROJECT_HOME = .
 OBJ_DIR = $(PROJECT_HOME)/_obj
 
-SRCS_CLN = $(PROJECT_HOME)/client.cpp 
 SRCS_PRX = $(PROJECT_HOME)/proxy.cpp 
 
 # gRPC proto files 
@@ -95,20 +93,13 @@ PROTOC_OBJS = $(addprefix $(OBJ_DIR)/,   $(addsuffix .pb.o,  $(PROTO_NAMES)))
 GRPC_CC     = $(addprefix $(PROTO_OUT)/, $(addsuffix .grpc.pb.cc, $(PROTO_NAMES)))
 GRPC_OBJS   = $(addprefix $(OBJ_DIR)/,   $(addsuffix .grpc.pb.o,  $(PROTO_NAMES)))
 
-# Objective files to build
-OBJS_CLN =  $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS_CLN)))))
-OBJS_CLN += $(PROTOC_OBJS) $(GRPC_OBJS)
-
 OBJS_PRX =  $(addprefix $(OBJ_DIR)/, $(addsuffix .o, $(basename $(notdir $(SRCS_PRX)))))
 OBJS_PRX += $(PROTOC_OBJS) $(GRPC_OBJS)
 
 
 # Build target(s)
-all: $(EXE_CLN) $(EXE_PRX)
+all: $(EXE_PRX)
 
-$(EXE_CLN): $(PROTOC_CC) $(GRPC_CC) $(OBJS_CLN) 
-	$(LD) $(LDFLAGS) -o $(EXE_CLN) $(OBJS_CLN) $(LIBS)
-	
 $(EXE_PRX): $(PROTOC_CC) $(GRPC_CC) $(OBJS_PRX) 
 	$(LD) $(LDFLAGS) -o $(EXE_PRX) $(OBJS_PRX) $(LIBS)	
 
@@ -138,12 +129,11 @@ $(PROTO_OUT)/%.pb.cc: $(PROTO_HOME)/%.proto Makefile
 
 # Delete all intermediate files
 clean clear:
-	rm -rf $(EXE_CLN) $(EXE_PRX) $(OBJ_DIR)
+	rm -rf $(EXE_PRX) $(OBJ_DIR)
 
 # Read the dependency files.
 # Note: use '-' prefix to don't display error or warning
 # if include file do not exist (just remade it)
--include $(OBJS_CLN:.o=.d)
 -include $(OBJS_PRX:.o=.d)
 
 

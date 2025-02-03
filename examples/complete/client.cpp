@@ -12,9 +12,8 @@
 
 // Channel SSL/TLS credentials
 std::shared_ptr<grpc::ChannelCredentials> gCreds;
-std::string gHost = "localhost";
 
-bool PingTest()
+bool PingTest(const std::string& addressUri)
 {
     test::PingRequest req;
     test::PingResponse resp;
@@ -26,7 +25,7 @@ bool PingTest()
     metadata["requestid"] = std::to_string(rand() % 1000);
 
     std::string errMsg;
-    gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
+    gen::GrpcClient<test::Hello> grpcClient(addressUri, gCreds);
 
     if(!grpcClient.Call(&test::Hello::Stub::Ping, req, resp, metadata, errMsg))
     {
@@ -38,7 +37,7 @@ bool PingTest()
     return true;
 }
 
-bool ServerStreamTest(bool silent = false)
+bool ServerStreamTest(const std::string& addressUri, bool silent = false)
 {
     test::ServerStreamRequest req;
     req.set_msg("ServerStreamRequest");
@@ -52,7 +51,7 @@ bool ServerStreamTest(bool silent = false)
     };
 
     std::string errMsg;
-    gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
+    gen::GrpcClient<test::Hello> grpcClient(addressUri, gCreds);
     if(!grpcClient.CallStream(&test::Hello::Stub::ServerStream, req, respCallback, errMsg))
     {
         ERRORMSG(errMsg);
@@ -72,7 +71,7 @@ bool ServerStreamTest(bool silent = false)
     return true;
 }
 
-bool ClientStreamTest()
+bool ClientStreamTest(const std::string& addressUri)
 {
     int count = 0;
     std::function reqCallback = [&count](test::ClientStreamRequest& req) -> bool
@@ -87,7 +86,7 @@ bool ClientStreamTest()
     test::ClientStreamResponse resp;
 
     std::string errMsg;
-    gen::GrpcClient<test::Hello> grpcClient(gHost, PORT_NUMBER, gCreds);
+    gen::GrpcClient<test::Hello> grpcClient(addressUri, gCreds);
     if(!grpcClient.CallClientStream(&test::Hello::Stub::ClientStream, reqCallback, resp, errMsg))
     {
         ERRORMSG(errMsg);
@@ -98,7 +97,7 @@ bool ClientStreamTest()
     return true;
 }
 
-bool ShutdownTest()
+bool ShutdownTest(const std::string& addressUri)
 {
     test::ShutdownRequest req;
     test::ShutdownResponse resp;
@@ -106,7 +105,7 @@ bool ShutdownTest()
     req.set_reason("Shutdown Test");
 
     std::string errMsg;
-    gen::GrpcClient<test::Control> grpcClient(gHost, PORT_NUMBER, gCreds);
+    gen::GrpcClient<test::Control> grpcClient(addressUri, gCreds);
     if(!grpcClient.Call(&test::Control::Stub::Shutdown, req, resp, errMsg))
     {
         ERRORMSG(errMsg);
@@ -117,7 +116,7 @@ bool ShutdownTest()
     return true;
 }
 
-bool StatusTest(const std::string& serviceName)
+bool StatusTest(const std::string& addressUri, const std::string& serviceName)
 {
     test::StatusRequest req;
     test::StatusResponse resp;
@@ -125,7 +124,7 @@ bool StatusTest(const std::string& serviceName)
     req.set_service_name(serviceName);
 
     std::string errMsg;
-    gen::GrpcClient<test::Control> grpcClient(gHost, PORT_NUMBER, gCreds);
+    gen::GrpcClient<test::Control> grpcClient(addressUri, gCreds);
     if(!grpcClient.Call(&test::Control::Stub::Status, req, resp, errMsg))
     {
         ERRORMSG(errMsg);
@@ -136,7 +135,7 @@ bool StatusTest(const std::string& serviceName)
     return true;
 }
 
-void LoadTest()
+void LoadTest(const std::string& addressUri)
 {
     const int numClientThreads = 100;  // Number of threads
     const int numRpcs = 50;            // Number of RPCs per thread
@@ -156,7 +155,7 @@ void LoadTest()
             for(int i = 0; i < numRpcs; ++i)
             {
                 // Format request message and call RPC
-                if(!ServerStreamTest(true /*silent*/))
+                if(!ServerStreamTest(addressUri, true /*silent*/))
                     break;
             }
         });
@@ -173,7 +172,8 @@ void LoadTest()
 
 void PrintUsage()
 {
-    std::cout << "Usage: client <hostname (optional)> <test name>" << std::endl;
+    std::cout << "Usage: client <host:port (optional)> <test name>" << std::endl;
+    std::cout << "       client localhost:50055 ping" << std::endl;
     std::cout << "       client ping" << std::endl;
     std::cout << "       client serverstream" << std::endl;
     std::cout << "       client clientstream" << std::endl;
@@ -184,9 +184,12 @@ void PrintUsage()
 
 int main(int argc, char** argv)
 {
-    // Read hostname if we have it
+    // Read hostname and port number if provided
+    std::string addressUri;
     if(argc > 2)
-        gHost = argv[1];
+        addressUri = argv[1];
+    else
+        addressUri = "localhost:" + std::to_string(PORT_NUMBER);
 
     // Get the name of the test
     const char* testName = (argc > 2 ? argv[2] : argc > 1 ? argv[1] : nullptr);
@@ -218,31 +221,31 @@ int main(int argc, char** argv)
     // Call gRpc service
     if(!strcmp(testName, "ping"))
     {
-        PingTest();
+        PingTest(addressUri);
     }
     else if(!strcmp(testName, "serverstream"))
     {
-        ServerStreamTest();
+        ServerStreamTest(addressUri);
     }
     else if(!strcmp(testName, "clientstream"))
     {
-        ClientStreamTest();
+        ClientStreamTest(addressUri);
     }
     else if(!strcmp(testName, "shutdown"))
     {
-        ShutdownTest();
+        ShutdownTest(addressUri);
     }
     else if(!strcmp(testName, "status"))
     {
         // Check the status of the given service
-        StatusTest("");                     // Ask for overall status
-        StatusTest("test.Hello");           // Ask for test.Hello service status
-        StatusTest("test.Control");         // Ask for test.Control service status
-        StatusTest("test.DummyService");    // Ask for not existing service
+        StatusTest(addressUri, "");                     // Ask for overall status
+        StatusTest(addressUri, "test.Hello");           // Ask for test.Hello service status
+        StatusTest(addressUri, "test.Control");         // Ask for test.Control service status
+        StatusTest(addressUri, "test.DummyService");    // Ask for not existing service
     }
     else if(!strcmp(testName, "load"))
     {
-        LoadTest();
+        LoadTest(addressUri);
     }
     else
     {
