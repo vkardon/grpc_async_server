@@ -68,17 +68,21 @@ public:
               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
               const grpc::ChannelArguments* channelArgs = nullptr);
 
-    // Terminate a channel (if created) and reset GrpcClient to the initial state
-    void Reset();
+    // Terminate a channel (if it exists) and reset GrpcClient to the initial state
+    void Clear();
 
-    // Thread-save UNARY gRpc
+    // Terminate the channel (if it exists) and initialize the GrpcClient using
+    // the same arguments as the last Init() call
+    bool Reset();
+
+    // UNARY gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
                   const REQ& req, RESP& resp,
                   const std::map<std::string, std::string>& metadata,
                   std::string& errMsg, unsigned long timeout = 0) const;
 
-    // Thread-save UNARY gRpc - no metadata
+    // UNARY gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
                   const REQ& req, RESP& resp,
@@ -87,14 +91,14 @@ public:
         return Call(grpcStubFunc, req, resp, dummy_metadata, errMsg, timeout);
     }
 
-    // Thread-save server-side STREAM gRpc
+    // Server-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
                         const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                         const std::map<std::string, std::string>& metadata,
                         std::string& errMsg, unsigned long timeout = 0) const;
 
-    // Thread-save server-side STREAM gRpc - no metadata
+    // Server-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
                         const REQ& req, const std::function<bool(const RESP&)>& respCallback,
@@ -103,14 +107,14 @@ public:
         return CallStream(grpcStubFunc, req, respCallback, dummy_metadata, errMsg, timeout);
     }
 
-    // Thread-save client-side STREAM gRpc
+    // Client-side STREAM gRpc
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                               const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                               const std::map<std::string, std::string>& metadata,
                               std::string& errMsg, unsigned long timeout = 0) const;
 
-    // Thread-save client-side STREAM gRpc - no metadata
+    // Client-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                               const std::function<bool(REQ&)>& reqCallback, RESP& resp,
@@ -187,8 +191,9 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
     return (stub != nullptr);
 }
 
+// Terminate a channel (if it exists) and reset GrpcClient to the initial state
 template <class GRPC_SERVICE>
-void GrpcClient<GRPC_SERVICE>::Reset()
+void GrpcClient<GRPC_SERVICE>::Clear()
 {
     stub.reset();
     creds.reset();
@@ -196,7 +201,20 @@ void GrpcClient<GRPC_SERVICE>::Reset()
     addressUri.clear();
 }
 
-// Thread-save UNARY gRpc
+// Terminate the channel (if it exists) and initialize the GrpcClient using
+// the same arguments as the last Init() call
+template <class GRPC_SERVICE>
+bool GrpcClient<GRPC_SERVICE>::Reset()
+{
+    if(addressUri.empty())
+        return false;
+
+    std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgs);
+    stub = GRPC_SERVICE::NewStub(channel);
+    return (stub != nullptr);
+}
+
+// UNARY gRpc
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
@@ -227,7 +245,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
     return s;
 }
 
-// Thread-save server-side STREAM gRpc
+// Server-side STREAM gRpc
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
@@ -274,7 +292,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
     return s;
 }
 
-// Thread-save client-side STREAM gRpc
+// Client-side STREAM gRpc
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
@@ -328,7 +346,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
 //    {
 //        creds = grpcClient.GetCredentials();
 //        addressUri = grpcClient.GetAddressUri();
-//        grpcClient.Reset();
+//        grpcClient.Clear();
 //    }
 //
 //    pid_t pid = fork();
