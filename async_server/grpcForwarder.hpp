@@ -78,10 +78,15 @@ public:
     {
         mThread = std::thread([&, grpcStubFunc]()
         {
+            // Reinitialize the GrpcClient if it was previously reset due to a failed call
+            if(!grpcClient.IsValid())
+                grpcClient.Reset();
+
+            // Callback to process stream messages
             std::function respCallback = [&](const RESP& resp) -> bool
             {
-                mPipe.Push(resp);
 //                std::cout << "resp=" << resp << std::endl;
+                mPipe.Push(resp);
                 return true;
             };
 
@@ -91,8 +96,8 @@ public:
 
             if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, mErrMsg))
             {
-
-                // TODO: Reset/Init grpcClient after failure
+                // Reset the channel to avoid gRPC's internal handling of broken connections
+                grpcClient.Clear(true /*channelOnly*/);
 
 //                std::cerr << mErrMsg << std::endl;
                 // Empty the pipe and cause Pop() to return (it anyone waiting)
@@ -164,6 +169,10 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
                                           const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
+    // Reinitialize the GrpcClient if it was previously reset due to a failed call
+    if(!mForwardClient.IsValid())
+        mForwardClient.Reset();
+
     // Copy client metadata from a ServerContext
     std::map<std::string, std::string> metadata;
     CopyMetadata(ctx,metadata);
@@ -174,7 +183,8 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
     {
         ctx.SetStatus(::grpc::INTERNAL, errMsg);
 
-        // TODO: Reset/Init mForwardClient after failure
+        // Reset the channel to avoid gRPC's internal handling of broken connections
+        mForwardClient.Clear(true /*channelOnly*/);
 
         // Note: errMsg already has the request name and the addressUri
         std::stringstream ss;

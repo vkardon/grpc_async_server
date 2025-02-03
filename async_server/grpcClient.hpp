@@ -69,7 +69,7 @@ public:
               const grpc::ChannelArguments* channelArgs = nullptr);
 
     // Terminate a channel (if it exists) and reset GrpcClient to the initial state
-    void Clear();
+    void Clear(bool channelOnly=false);
 
     // Terminate the channel (if it exists) and initialize the GrpcClient using
     // the same arguments as the last Init() call
@@ -193,12 +193,18 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
 
 // Terminate a channel (if it exists) and reset GrpcClient to the initial state
 template <class GRPC_SERVICE>
-void GrpcClient<GRPC_SERVICE>::Clear()
+void GrpcClient<GRPC_SERVICE>::Clear(bool channelOnly /*=false*/)
 {
+    // Terminate a channel (by deleting service stub)
     stub.reset();
-    creds.reset();
-    channelArgs.reset();
-    addressUri.clear();
+
+    // Reset everything else as needed
+    if(!channelOnly)
+    {
+        creds.reset();
+        channelArgs.reset();
+        addressUri.clear();
+    }
 }
 
 // Terminate the channel (if it exists) and initialize the GrpcClient using
