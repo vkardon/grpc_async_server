@@ -54,51 +54,13 @@ public:
     virtual void OnError(const std::string& err) const { std::cerr << err << std::endl; }
     virtual void OnInfo(const std::string& info) const { std::cout << info << std::endl; }
 
+    // Copy client metadata from a ServerContext
+    static void CopyMetadata(const gen::RpcContext& ctx,
+                             std::map<std::string, std::string>& metadata);
+
 private:
     GrpcClient<GRPC_SERVICE> mForwardClient;
 };
-
-//
-// Forward unary request
-//
-template <class GRPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
-void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
-                                          const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
-{
-    // Copy metadata from ServerContext
-    std::map<std::string, std::string> metadata;
-    for(const auto& pair : ctx.GetServerContext()->client_metadata())
-    {
-//        std::cout << pair.first << "-->" << pair.second << std::endl;
-        metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
-    }
-
-    // Call Grpc Service
-    std::string errMsg;
-    if(!mForwardClient.Call(grpcStubFunc, req, resp, metadata, errMsg, UNARY_GRPC_TIMEOUT))
-    {
-        ctx.SetStatus(::grpc::INTERNAL, errMsg);
-
-        // TODO: Reset/Init mForwardClient after failure
-
-        // Note: errMsg already has the request name and the addressUri
-        std::stringstream ss;
-        ss << "ERROR: From " << ctx.Peer()
-           << ", status=" << gen::StatusToStr(::grpc::INTERNAL)
-           << ": " << errMsg;
-        OnError(ss.str());
-    }
-    else
-    {
-        std::stringstream ss;
-        ss << "SUCCESS: From " << ctx.Peer()
-           << ", status=" << gen::StatusToStr(::grpc::OK)
-           << ", req=" << req.GetTypeName()
-           << ", addressUri='" << mForwardClient.GetAddressUri() << "'";
-        OnInfo(ss.str());
-    }
-}
 
 //
 // Helper class to read stream of messages
@@ -123,13 +85,9 @@ public:
                 return true;
             };
 
-            // Copy metadata from ServerContext
+            // Copy client metadata from a ServerContext
             std::map<std::string, std::string> metadata;
-            for(const auto& pair : ctx.GetServerContext()->client_metadata())
-            {
-        //        std::cout << pair.first << "-->" << pair.second << std::endl;
-                metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
-            }
+            GrpcForwarder<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
 
             if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, mErrMsg))
             {
@@ -184,6 +142,59 @@ private:
 };
 
 //
+// Helper method to copy client metadata from a ServerContext
+//
+template <class GRPC_SERVICE>
+void GrpcForwarder<GRPC_SERVICE>::CopyMetadata(const gen::RpcContext& ctx,
+                                               std::map<std::string, std::string>& metadata)
+{
+    // Copy client metadata from a ServerContext
+    for(const auto& pair : ctx.GetServerContext()->client_metadata())
+    {
+//        std::cout << pair.first << "-->" << pair.second << std::endl;
+        metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
+    }
+}
+
+//
+// Forward unary request
+//
+template <class GRPC_SERVICE>
+template <class GRPC_STUB_FUNC, class REQ, class RESP>
+void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
+                                          const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
+{
+    // Copy client metadata from a ServerContext
+    std::map<std::string, std::string> metadata;
+    CopyMetadata(ctx,metadata);
+
+    // Call Grpc Service
+    std::string errMsg;
+    if(!mForwardClient.Call(grpcStubFunc, req, resp, metadata, errMsg, UNARY_GRPC_TIMEOUT))
+    {
+        ctx.SetStatus(::grpc::INTERNAL, errMsg);
+
+        // TODO: Reset/Init mForwardClient after failure
+
+        // Note: errMsg already has the request name and the addressUri
+        std::stringstream ss;
+        ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
+           << ", status=" << gen::StatusToStr(::grpc::INTERNAL)
+           << ": " << errMsg;
+        OnError(ss.str());
+    }
+    else
+    {
+        std::stringstream ss;
+        ss << "From " << ctx.Peer()
+           << ", status=" << gen::StatusToStr(::grpc::OK)
+           << ", req=" << req.GetTypeName()
+           << ", addressUri='" << mForwardClient.GetAddressUri() << "'";
+        OnInfo(ss.str());
+    }
+}
+
+//
 // Forward server-side stream of requests
 //
 template <class GRPC_SERVICE>
@@ -218,7 +229,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
                 ctx.SetStatus(::grpc::INTERNAL, "Out of memory while allocating a GrpcStreamReader");
 
                 std::stringstream ss;
-                ss << "ERROR: From " << ctx.Peer()
+                ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
                    << ", status=" << gen::StatusToStr(ctx.GetStatus())
                    << ": " << ctx.GetError();
                 OnError(ss.str());
@@ -241,7 +252,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
 
             // Note: Reader's error already has the request name and the addressUri
             std::stringstream ss;
-            ss << "ERROR: From " << ctx.Peer()
+            ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
                << ", status=" << gen::StatusToStr(reader->GetStatus())
                << ": " << reader->GetError();
             OnError(ss.str());
@@ -251,7 +262,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
             ctx.SetHasMore(false); // No more data to send
 
             std::stringstream ss;
-            ss << "SUCCESS: From " << ctx.Peer()
+            ss << "From " << ctx.Peer()
                << ", status=" << gen::StatusToStr(reader->GetStatus())
                << ", req=" << req.GetTypeName()
                << ", addressUri='" << mForwardClient.GetAddressUri() << "'";
@@ -297,7 +308,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
 //
 //        if(reader->IsValid())
 //        {
-//            std::cout << "SUCCESS: status=" << gen::StatusToStr(reader->GetStatus())
+//            std::cout << "status=" << gen::StatusToStr(reader->GetStatus())
 //                    << ": req=" << req.GetTypeName() << ", addressUri='" << addressUri << "'" << std::endl;
 //        }
 //        else

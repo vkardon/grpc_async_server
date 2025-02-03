@@ -7,8 +7,8 @@
 #include <list>
 #include <mutex>
 #include <condition_variable>
-#include <list>
 
+namespace gen {
 //
 // Pipe class to provide thread-safe read/write access to stored objects
 //
@@ -121,6 +121,8 @@ void Pipe<DATA>::Clear()
     mHasMore = true;
     mPopCv.notify_all();    // In case we are waiting in Pop()
 }
+
+} //namespace gen
 
 #endif // __PIPE_HPP__
 
