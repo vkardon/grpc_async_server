@@ -120,6 +120,7 @@ public:
     }
 
     const std::shared_ptr<grpc::ChannelCredentials> GetCredentials() const { return creds; }
+    const std::shared_ptr<grpc::ChannelArguments> GetChannelArgs() const { return channelArgs; }
     const std::string GetAddressUri() const { return addressUri; }
     bool IsValid() const { return (bool)stub; }
 
@@ -153,7 +154,7 @@ private:
 private:
     std::unique_ptr<typename GRPC_SERVICE::Stub> stub;
     std::shared_ptr<grpc::ChannelCredentials> creds;
-    std::unique_ptr<grpc::ChannelArguments> channelArgs;
+    std::shared_ptr<grpc::ChannelArguments> channelArgs;
     std::string addressUri;
 
     // Dummy metadata used by no-metadata calls
@@ -170,11 +171,11 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
 
     if(channelArgsIn)
     {
-        channelArgs = std::make_unique<grpc::ChannelArguments>(*channelArgsIn);
+        channelArgs = std::make_shared<grpc::ChannelArguments>(*channelArgsIn);
     }
     else
     {
-        channelArgs = std::make_unique<grpc::ChannelArguments>();
+        channelArgs = std::make_shared<grpc::ChannelArguments>();
 
         // Maximise sent/receive mesage size (instead of 4MB default)
         channelArgs->SetMaxSendMessageSize(INT_MAX);
