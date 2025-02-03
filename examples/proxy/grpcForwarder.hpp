@@ -123,7 +123,15 @@ public:
                 return true;
             };
 
-            if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, mErrMsg))
+            // Copy metadata from ServerContext
+            std::map<std::string, std::string> metadata;
+            for(const auto& pair : ctx.GetServerContext()->client_metadata())
+            {
+        //        std::cout << pair.first << "-->" << pair.second << std::endl;
+                metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
+            }
+
+            if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, mErrMsg))
             {
 
                 // TODO: Reset/Init grpcClient after failure
