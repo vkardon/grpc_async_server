@@ -81,9 +81,9 @@ public:
             // Callback to process stream messages
             std::function respCallback = [&](const RESP& resp) -> bool
             {
-//                std::cout << "resp=" << resp << std::endl;
-                mPipe.Push(resp);
-                return true;
+                if(!mStop)
+                    mPipe.Push(resp);
+                return !mStop;
             };
 
             // Copy client metadata from a ServerContext
@@ -95,7 +95,7 @@ public:
                 // Reset the channel to avoid gRPC's internal handling of broken connections
                 grpcClient.Reset();
 
-//                std::cerr << mErrMsg << std::endl;
+                // std::cerr << mErrMsg << std::endl;
                 // Empty the pipe and cause Pop() to return (it anyone waiting)
                 mPipe.Clear();
                 mGrpcStatus = ::grpc::INTERNAL;
@@ -117,9 +117,8 @@ public:
 
     void Stop()
     {
-        // TODO: Cancel reading if we are still in progress...
-
-        // If reader thread is still running, then we have to stop reading first
+        // If the reader thread is still running, we must stop it before proceeding
+        mStop = true;
         if(mThread.joinable())
         {
             // Empty the pipe and cause Pop() to return (it anyone waiting)
@@ -138,6 +137,7 @@ public:
 private:
     std::thread mThread;
     Pipe<RESP> mPipe;
+    bool mStop{false};
     ::grpc::StatusCode mGrpcStatus{::grpc::UNKNOWN};
     std::string mErrMsg;
 };

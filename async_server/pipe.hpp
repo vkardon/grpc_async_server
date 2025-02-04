@@ -120,6 +120,7 @@ void Pipe<DATA>::Clear()
     mCapacity = 0;          // Unlimited capacity (0)
     mHasMore = true;
     mPopCv.notify_all();    // In case we are waiting in Pop()
+    mPushCv.notify_all();   // In case we are waiting in Push()
 }
 
 } //namespace gen
