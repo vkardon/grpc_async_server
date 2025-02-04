@@ -12,6 +12,7 @@
 
 #include "grpcUtils.hpp"
 #include <functional>
+#include <mutex>
 
 namespace gen {
 
@@ -69,7 +70,9 @@ public:
               const grpc::ChannelArguments* channelArgs = nullptr);
 
     // Terminate a channel (if it exists) and reset GrpcClient to the initial state
-    void Clear(bool channelOnly=false);
+    // Note: This method is NOT thread-safe and should not be used when the GrpcClient
+    // is shared among multiple threads.
+    void Clear();
 
     // Terminate the channel (if it exists) and initialize the GrpcClient using
     // the same arguments as the last Init() call
@@ -80,7 +83,7 @@ public:
     StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
                   const REQ& req, RESP& resp,
                   const std::map<std::string, std::string>& metadata,
-                  std::string& errMsg, unsigned long timeout = 0) const;
+                  std::string& errMsg, unsigned long timeout = 0);
 
     // UNARY gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -96,7 +99,7 @@ public:
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
                         const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                         const std::map<std::string, std::string>& metadata,
-                        std::string& errMsg, unsigned long timeout = 0) const;
+                        std::string& errMsg, unsigned long timeout = 0);
 
     // Server-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -112,7 +115,7 @@ public:
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                               const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                               const std::map<std::string, std::string>& metadata,
-                              std::string& errMsg, unsigned long timeout = 0) const;
+                              std::string& errMsg, unsigned long timeout = 0);
 
     // Client-side STREAM gRpc - no metadata
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -126,7 +129,7 @@ public:
     const std::shared_ptr<grpc::ChannelCredentials> GetCredentials() const { return creds; }
     const std::shared_ptr<grpc::ChannelArguments> GetChannelArgs() const { return channelArgs; }
     const std::string GetAddressUri() const { return addressUri; }
-    bool IsValid() const { return (bool)stub; }
+    bool IsValid();
 
 private:
     // Do not allow copy constructor and assignment operator (prevent class copy)
@@ -156,10 +159,11 @@ private:
     }
 
 private:
-    std::unique_ptr<typename GRPC_SERVICE::Stub> stub;
+    std::shared_ptr<typename GRPC_SERVICE::Stub> stub;  // Note: std::shared_ptr to support multithreading
     std::shared_ptr<grpc::ChannelCredentials> creds;
     std::shared_ptr<grpc::ChannelArguments> channelArgs;
     std::string addressUri;
+    std::mutex mStubMtx;
 
     // Dummy metadata used by no-metadata calls
     static inline const std::map<std::string, std::string> dummy_metadata;
@@ -191,20 +195,23 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
     return (stub != nullptr);
 }
 
-// Terminate a channel (if it exists) and reset GrpcClient to the initial state
 template <class GRPC_SERVICE>
-void GrpcClient<GRPC_SERVICE>::Clear(bool channelOnly /*=false*/)
+bool GrpcClient<GRPC_SERVICE>::IsValid()
 {
-    // Terminate a channel (by deleting service stub)
-    stub.reset();
+    std::unique_lock<std::mutex> lock(mStubMtx);
+    return (bool)stub;
+}
 
-    // Reset everything else as needed
-    if(!channelOnly)
-    {
-        creds.reset();
-        channelArgs.reset();
-        addressUri.clear();
-    }
+// Terminate a channel (if it exists) and reset GrpcClient to the initial state
+// Note: This method is NOT thread-safe and should not be used when the GrpcClient
+// is shared among multiple threads.
+template <class GRPC_SERVICE>
+void GrpcClient<GRPC_SERVICE>::Clear()
+{
+    stub.reset();
+    creds.reset();
+    channelArgs.reset();
+    addressUri.clear();
 }
 
 // Terminate the channel (if it exists) and initialize the GrpcClient using
@@ -214,6 +221,8 @@ bool GrpcClient<GRPC_SERVICE>::Reset()
 {
     if(addressUri.empty())
         return false;
+
+    std::unique_lock<std::mutex> lock(mStubMtx);
 
     std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgs);
     stub = GRPC_SERVICE::NewStub(channel);
@@ -226,9 +235,18 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
                                         const REQ& req, RESP& resp,
                                         const std::map<std::string, std::string>& metadata,
-                                        std::string& errMsg, unsigned long timeout) const
+                                        std::string& errMsg, unsigned long timeout)
 {
-    if(!stub)
+    // Make a local copy of the stub std::shared_ptr.
+    // This is to make sure we have a valid stub even if another thread reset stub.
+    std::shared_ptr<typename GRPC_SERVICE::Stub> thisStub;
+
+    {
+        std::unique_lock<std::mutex> lock(mStubMtx);
+        thisStub = stub;
+    }
+
+    if(!thisStub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
         SetError(errMsg, __func__, req, s);
@@ -244,7 +262,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
     SetDeadline(context, timeout);
 
     // Call service
-    grpc::Status s = (stub.get()->*grpcStubFunc)(&context, req, &resp);
+    grpc::Status s = (thisStub.get()->*grpcStubFunc)(&context, req, &resp);
     if(!s.ok())
         SetError(errMsg, __func__, req, s);
 
@@ -257,9 +275,18 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
                                               const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                                               const std::map<std::string, std::string>& metadata,
-                                              std::string& errMsg, unsigned long timeout) const
+                                              std::string& errMsg, unsigned long timeout)
 {
-    if(!stub)
+    // Make a local copy of the stub std::shared_ptr.
+    // This is to make sure we have a valid stub even if another thread reset stub.
+    std::shared_ptr<typename GRPC_SERVICE::Stub> thisStub;
+
+    {
+        std::unique_lock<std::mutex> lock(mStubMtx);
+        thisStub = stub;
+    }
+
+    if(!thisStub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
         SetError(errMsg, __func__, req, s);
@@ -276,7 +303,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
 
     // Call service
     RESP resp;
-    std::unique_ptr<grpc::ClientReader<RESP>> reader((stub.get()->*grpcStubFunc)(&context, req));
+    std::unique_ptr<grpc::ClientReader<RESP>> reader((thisStub.get()->*grpcStubFunc)(&context, req));
     if(!reader)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) client stream reader");
@@ -304,9 +331,18 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                                                     const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                                                     const std::map<std::string, std::string>& metadata,
-                                                    std::string& errMsg, unsigned long timeout) const
+                                                    std::string& errMsg, unsigned long timeout)
 {
-    if(!stub)
+    // Make a local copy of the stub std::shared_ptr.
+    // This is to make sure we have a valid stub even if another thread reset stub.
+    std::shared_ptr<typename GRPC_SERVICE::Stub> thisStub;
+
+    {
+        std::unique_lock<std::mutex> lock(mStubMtx);
+        thisStub = stub;
+    }
+
+    if(!thisStub)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
         SetError(errMsg, __func__, REQ(), s);
@@ -322,7 +358,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
     SetDeadline(context, timeout);
 
     // Call service
-    std::unique_ptr<grpc::ClientWriter<REQ>> writer((stub.get()->*grpcStubFunc)(&context, &resp));
+    std::unique_ptr<grpc::ClientWriter<REQ>> writer((thisStub.get()->*grpcStubFunc)(&context, &resp));
 
     REQ req;
     while(reqCallback(req))
