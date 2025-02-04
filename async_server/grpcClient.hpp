@@ -89,7 +89,7 @@ public:
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
                   const REQ& req, RESP& resp,
-                  std::string& errMsg, unsigned long timeout = 0) const
+                  std::string& errMsg, unsigned long timeout = 0)
     {
         return Call(grpcStubFunc, req, resp, dummy_metadata, errMsg, timeout);
     }
@@ -105,7 +105,7 @@ public:
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
                         const REQ& req, const std::function<bool(const RESP&)>& respCallback,
-                        std::string& errMsg, unsigned long timeout = 0) const
+                        std::string& errMsg, unsigned long timeout = 0)
     {
         return CallStream(grpcStubFunc, req, respCallback, dummy_metadata, errMsg, timeout);
     }
@@ -121,7 +121,7 @@ public:
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                               const std::function<bool(REQ&)>& reqCallback, RESP& resp,
-                              std::string& errMsg, unsigned long timeout = 0) const
+                              std::string& errMsg, unsigned long timeout = 0)
     {
         return CallClientStream(grpcStubFunc, reqCallback, resp, dummy_metadata, errMsg, timeout);
     }
