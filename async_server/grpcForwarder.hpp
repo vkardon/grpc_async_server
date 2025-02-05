@@ -69,12 +69,39 @@ template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
 class GrpcStreamReader
 {
 public:
-    GrpcStreamReader(size_t capacity) : mPipe(capacity) {}
-    ~GrpcStreamReader() { Stop(); }
+    GrpcStreamReader() = default;
+    virtual ~GrpcStreamReader() = default;
 
-    void Call(const gen::RpcServerStreamContext& ctx,
-              const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
-              GrpcClient<GRPC_SERVICE>& grpcClient)
+    // For derived class to override
+    virtual void Call(const gen::RpcServerStreamContext& ctx,
+                      const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
+                      GrpcClient<GRPC_SERVICE>& grpcClient) = 0;
+    virtual bool Read(RESP& resp) = 0;
+    virtual void Stop() = 0;
+
+    const std::string& GetError() { return mErrMsg; }
+    ::grpc::StatusCode GetStatus() { return mGrpcStatus; }
+    bool IsValid() { return mErrMsg.empty(); }
+
+protected:
+    ::grpc::StatusCode mGrpcStatus{::grpc::UNKNOWN};
+    std::string mErrMsg;
+};
+
+//
+// Asynchronous stream reader to be used when a Forwarder
+// is an synchronous gRPC server.
+//
+template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
+class GrpcAsyncStreamReader : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
+{
+public:
+    GrpcAsyncStreamReader(size_t capacity) : mPipe(capacity) {}
+    virtual ~GrpcAsyncStreamReader() = default;
+
+    virtual void Call(const gen::RpcServerStreamContext& ctx,
+                      const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
+                      GrpcClient<GRPC_SERVICE>& grpcClient) override
     {
         mThread = std::thread([&, grpcStubFunc]()
         {
@@ -90,32 +117,32 @@ public:
             std::map<std::string, std::string> metadata;
             GrpcForwarder<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
 
-            if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, mErrMsg))
+            if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, this->mErrMsg))
             {
-                // Reset the channel to avoid gRPC's internal handling of broken connections
-                grpcClient.Reset();
-
                 // std::cerr << mErrMsg << std::endl;
                 // Empty the pipe and cause Pop() to return (it anyone waiting)
                 mPipe.Clear();
-                mGrpcStatus = ::grpc::INTERNAL;
+                this->mGrpcStatus = ::grpc::INTERNAL;
+
+                // Reset the channel to avoid gRPC's internal handling of broken connections
+                grpcClient.Reset();
             }
             else
             {
-                mGrpcStatus = ::grpc::OK;
+                this->mGrpcStatus = ::grpc::OK;
             }
 
             mPipe.SetHasMore(false); // Done reading from the stream
         });
     }
 
-    bool Read(RESP& resp)
+    virtual bool Read(RESP& resp) override
     {
         // Note: Pop() return false when nothing left to read
         return mPipe.Pop(resp);
     }
 
-    void Stop()
+    virtual void Stop() override
     {
         // If the reader thread is still running, we must stop it before proceeding
         mStop = true;
@@ -124,38 +151,89 @@ public:
             // Empty the pipe and cause Pop() to return (it anyone waiting)
             mPipe.Clear();
             mThread.join();
-//            std::cerr << "The reader has stopped: status=" << gen::StatusToStr(mGrpcStatus)
-//                     << ", req=" << REQ().GetTypeName()
-//                     << ", err='" << mErrMsg << "'" << std::endl;
         }
     }
-
-    const std::string& GetError() { return mErrMsg; }
-    ::grpc::StatusCode GetStatus() { return mGrpcStatus; }
-    bool IsValid() { return mErrMsg.empty(); }
 
 private:
     std::thread mThread;
     Pipe<RESP> mPipe;
     bool mStop{false};
-    ::grpc::StatusCode mGrpcStatus{::grpc::UNKNOWN};
-    std::string mErrMsg;
 };
 
 //
-// Helper method to copy client metadata from a ServerContext
+// Synchronous stream reader to be used when a Forwarder
+// is an asynchronous gRPC server
 //
-template <class GRPC_SERVICE>
-void GrpcForwarder<GRPC_SERVICE>::CopyMetadata(const gen::RpcContext& ctx,
-                                               std::map<std::string, std::string>& metadata)
+template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
+class GrpcSyncStreamReader : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
 {
-    // Copy client metadata from a ServerContext
-    for(const auto& pair : ctx.GetServerContext()->client_metadata())
+public:
+    GrpcSyncStreamReader() = default;
+    virtual ~GrpcSyncStreamReader() = default;
+
+    virtual void Call(const gen::RpcServerStreamContext& ctx,
+                      const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
+                      GrpcClient<GRPC_SERVICE>& grpcClient)
     {
-//        std::cout << pair.first << "-->" << pair.second << std::endl;
-        metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
+        mGrpcClient = &grpcClient;
+
+        // Copy client metadata from a ServerContext
+        std::map<std::string, std::string> metadata;
+        GrpcForwarder<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
+
+        // Create client stream reader
+        grpcClient.CreateContext(mContext, metadata, 0);
+        if(!grpcClient.GetStream(grpcStubFunc, req, mReader, mContext, this->mErrMsg))
+        {
+            this->mGrpcStatus = ::grpc::INTERNAL; // Failed to create stream reader
+        }
     }
-}
+
+    virtual bool Read(RESP& resp)
+    {
+        if(!mReader)
+            return false;
+
+        if(mReader->Read(&resp))
+            return true;
+
+        // Read() returned false, done reading
+        if(grpc::Status s = mReader->Finish(); !s.ok())
+        {
+            mGrpcClient->FormatStatusMsg(this->mErrMsg, __func__, REQ(), s);
+            this->mGrpcStatus = ::grpc::INTERNAL;
+
+            // Reset the channel to avoid gRPC's internal handling of broken connections
+            mGrpcClient->Reset();
+        }
+        else
+        {
+            this->mGrpcStatus = ::grpc::OK;
+        }
+
+        mReader.reset();
+        return false;
+    }
+
+    virtual void Stop()
+    {
+        if(mReader)
+        {
+            mContext.TryCancel();
+            RESP resp;
+            while(mReader->Read(&resp))
+                ;
+            grpc::Status s = mReader->Finish();
+            mGrpcClient->FormatStatusMsg(this->mErrMsg, __func__, REQ(), s);
+            this->mGrpcStatus = ::grpc::INTERNAL;
+        }
+    }
+
+private:
+    GrpcClient<GRPC_SERVICE>* mGrpcClient{nullptr};
+    std::unique_ptr<grpc::ClientReader<RESP>> mReader;
+    grpc::ClientContext mContext;
+};
 
 //
 // Forward unary request
@@ -213,7 +291,19 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
     {
         // Clean up...
         if(reader)
+        {
+            reader->Stop();
+            if(!reader->IsValid())
+            {
+                // Note: Reader's error already has the request name and the addressUri
+                std::stringstream ss;
+                ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
+                   << ", status=" << gen::StatusToStr(reader->GetStatus())
+                   << ": " << reader->GetError();
+                OnError(ss.str());
+            }
             delete reader;
+        }
         reader = nullptr;
         ctx.SetParam(nullptr);
     }
@@ -223,12 +313,13 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
         if(!reader)
         {
             // Create GrpcStreamReader.
-            reader = new (std::nothrow) GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>(PIPE_CAPACITY);
+            //reader = new (std::nothrow) GrpcAsyncStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>(PIPE_CAPACITY);
+            reader = new (std::nothrow) GrpcSyncStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>;
 
             if(!reader)
             {
                 ctx.SetHasMore(false); // Stop streaming
-                ctx.SetStatus(::grpc::INTERNAL, "Out of memory while allocating a GrpcStreamReader");
+                ctx.SetStatus(::grpc::INTERNAL, "Out of memory while allocating a GrpcAsyncStreamReader");
 
                 std::stringstream ss;
                 ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
@@ -271,55 +362,6 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
             OnInfo(ss.str());
         }
     }
-
-
-//    if(isFirstResponse)
-//    {
-//        // This is a very first response.
-//        ctx.SetHasMore(true);
-//
-//        // Create GrpcStreamReader.
-//        reader = new (std::nothrow) GrpcStreamReader<SERVICE, SERVICE_FUNC, REQ, RESP>;
-//        ctx.SetParam(reader);
-//        reader->Call(ctx, req, serviceFunc, addressUri);
-//
-//        // Always send first response. Come back for more report data if there is any
-//    }
-//    // If this is NOT a first response and reader has errors, then stop streaming.
-//    else if(!reader->IsValid())
-//    {
-//        ctx.SetHasMore(false); // Nothing to read or reading failed
-//        ctx.SetStatus(reader->GetStatus(), reader->GetError());
-//        std::cerr << "ERROR: status=" << gen::StatusToStr(reader->GetStatus())
-//                << ": " << reader->GetError() << std::endl;
-//        return;
-//    }
-//
-//    // Start or continue reading.
-//    if(reader->Read(resp))
-//    {
-//        // Send this response and come back for more.
-//        // Note: HasMore is already "true" until set to "false"
-//        std::cout << "resp=" << resp << std::endl;
-//    }
-//    else
-//    {
-//        // Reading done. Stop streaming.
-//        ctx.SetHasMore(false);
-//        ctx.SetStatus(reader->GetStatus(), reader->GetError());
-//
-//        if(reader->IsValid())
-//        {
-//            std::cout << "status=" << gen::StatusToStr(reader->GetStatus())
-//                    << ": req=" << req.GetTypeName() << ", addressUri='" << addressUri << "'" << std::endl;
-//        }
-//        else
-//        {
-//            // Note: Reader's error already has the request name and the addressUrl
-//            std::cerr << "ERROR: status=" << gen::StatusToStr(reader->GetStatus())
-//                    << ": " << reader->GetError() << std::endl;
-//        }
-//    }
 }
 
 //
@@ -331,6 +373,21 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcClientStreamContext& ctx
                                          const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     ctx.SetStatus(::grpc::INTERNAL, "Not Implemented Yet");
+}
+
+//
+// Helper method to copy client metadata from a ServerContext
+//
+template <class GRPC_SERVICE>
+void GrpcForwarder<GRPC_SERVICE>::CopyMetadata(const gen::RpcContext& ctx,
+                                               std::map<std::string, std::string>& metadata)
+{
+    // Copy client metadata from a ServerContext
+    for(const auto& pair : ctx.GetServerContext()->client_metadata())
+    {
+//        std::cout << pair.first << "-->" << pair.second << std::endl;
+        metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
+    }
 }
 
 } //namespace gen
