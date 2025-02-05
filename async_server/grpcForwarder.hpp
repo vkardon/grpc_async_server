@@ -18,7 +18,7 @@ inline unsigned long PIPE_CAPACITY = 5;         // Max number or requests in pip
 // Helper class to forward UNARY/STREAM a destination gRpc service
 //
 template <class GRPC_SERVICE>
-class GrpcForwarder : protected GrpcClient<GRPC_SERVICE>
+class GrpcForwarder
 {
 public:
     GrpcForwarder(const std::string& host, unsigned short port,
