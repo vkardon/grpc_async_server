@@ -119,7 +119,7 @@ public:
 
     void CreateContext(grpc::ClientContext& context,
                        const std::map<std::string, std::string>& metadata,
-                       unsigned long timeout);
+                       unsigned long timeout) const;
 
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
     StatusEx GetStream(GRPC_STUB_FUNC grpcStubFunc, const REQ& req,
@@ -340,7 +340,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
 template <class GRPC_SERVICE>
 void GrpcClient<GRPC_SERVICE>::CreateContext(grpc::ClientContext& context,
                                              const std::map<std::string, std::string>& metadata,
-                                             unsigned long timeout)
+                                             unsigned long timeout) const
 {
     // Create context and set metadata (if we have any...)
     for(const auto& p : metadata)
