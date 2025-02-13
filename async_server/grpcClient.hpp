@@ -397,12 +397,11 @@ void GrpcClient<GRPC_SERVICE>::FormatStatusMsg(std::string& msg, const std::stri
                                                const google::protobuf::Message& req,
                                                const grpc::Status& status) const
 {
-    msg = fname + "(" + req.GetTypeName() + ") to uri='" + addressUri + "' msg: '";
+    msg = fname + "(" + req.GetTypeName() + ") to uri='" + addressUri + "', ";
     if(!status.error_message().empty())
-        msg += status.error_message();
+        msg += "err: '" + status.error_message() + "'";
     else
-        msg += StatusToStr(status.error_code());
-    msg += "'";
+        msg += "status: " + std::to_string(status.error_code()) + " (" + StatusToStr(status.error_code()) + ")";
 }
 
 // Experimantal...
