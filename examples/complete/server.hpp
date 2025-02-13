@@ -27,9 +27,14 @@ private:
         // For example, to don't allow reusing port:
         builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
 
-        // Set the maximum message size for both inbound and outbound messages
+        // Example: Set the maximum message size for both inbound and outbound messages
         builder.SetMaxReceiveMessageSize(INT_MAX);
         builder.SetMaxSendMessageSize(INT_MAX);
+
+        // Example: Limits the incoming request queue size. This controls memory usage.
+        std::shared_ptr<grpc::ResourceQuota> quota = std::make_shared<grpc::ResourceQuota>();
+        quota->Resize(1024 * 1024 * 10); // 10MB max queue size
+        builder.SetResourceQuota(*quota);
 
         // Set how often OnRun() should be called. The default interval is 1 sec,
         // but it can be reset by calling SetRunInterval() with desired time
