@@ -145,6 +145,13 @@ public:
                   const google::protobuf::Message& req,
                   const grpc::Status& status) const;
 
+    void FormatStatusMsg(std::string& errOut, const std::string& fname,
+                  const google::protobuf::Message& req,
+                  ::grpc::StatusCode statusCode, const std::string& err) const
+    {
+        return FormatStatusMsg(errOut, fname, req, grpc::Status(statusCode, err));
+    }
+
 private:
     // Do not allow copy constructor and assignment operator (prevent class copy)
     GrpcClient(const GrpcClient&) = delete;

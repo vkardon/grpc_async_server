@@ -89,8 +89,7 @@ protected:
 };
 
 //
-// Asynchronous stream reader to be used when a Router
-// is an synchronous gRPC server.
+// Asynchronous stream reader to be used with a synchronous gRPC server.
 //
 template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
 class GrpcAsyncStreamReader : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
@@ -161,8 +160,7 @@ private:
 };
 
 //
-// Synchronous stream reader to be used when a Router
-// is an asynchronous gRPC server
+// Synchronous stream reader to be used with an asynchronous gRPC server
 //
 template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
 class GrpcSyncStreamReader : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
@@ -241,15 +239,39 @@ private:
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
-                                          const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
+                                       const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
+    // Check for Deadline Expiration
+    const ::grpc::ServerContext* srvCtx = ctx.GetServerContext();
+
+    // Get the Deadline (std::chrono::time_point) and calculate the remaining time
+    std::chrono::time_point<std::chrono::system_clock> deadline = srvCtx->deadline();
+    auto remainingTime = deadline - std::chrono::system_clock::now();
+
+    if(remainingTime <= std::chrono::milliseconds(0))
+    {
+        ctx.SetStatus(::grpc::DEADLINE_EXCEEDED, "Request already past deadline");
+
+        std::stringstream ss;
+        ss << __func__ << ":" << __LINE__ <<  "(" + req.GetTypeName() + ") from " << ctx.Peer()
+           << ", status: " << ctx.GetStatus() << " (" << StatusToStr(ctx.GetStatus()) << ")"
+           << ", err: '" << ctx.GetError() << "'";
+        OnError(ss.str());
+        return;
+    }
+
+    // Limit forward timeout not to exceed UNARY_GRPC_TIMEOUT
+    unsigned long timeout = std::chrono::duration_cast<std::chrono::milliseconds>(remainingTime).count();
+    if(timeout > UNARY_GRPC_TIMEOUT)
+        timeout = UNARY_GRPC_TIMEOUT;
+
     // Copy client metadata from a ServerContext
     std::map<std::string, std::string> metadata;
-    CopyMetadata(ctx,metadata);
+    CopyMetadata(ctx, metadata);
 
     // Call Grpc Service
     std::string errMsg;
-    if(!mTargetClient.Call(grpcStubFunc, req, resp, metadata, errMsg, UNARY_GRPC_TIMEOUT))
+    if(!mTargetClient.Call(grpcStubFunc, req, resp, metadata, errMsg, timeout))
     {
         ctx.SetStatus(::grpc::INTERNAL, errMsg);
 
@@ -258,9 +280,15 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
 
         // Note: errMsg already has the request name and the addressUri
         std::stringstream ss;
-        ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
-           << ", status=" << gen::StatusToStr(::grpc::INTERNAL)
-           << ": " << errMsg;
+//        ss << __func__ << ":" << __LINE__ <<  " from " << ctx.Peer()
+//           << ", status=" << gen::StatusToStr(::grpc::INTERNAL)
+//           << ": " << errMsg;
+
+
+        ss << __func__ << ":" << __LINE__ <<  "(" + req.GetTypeName() + ") from " << ctx.Peer()
+           << ", status: " << ctx.GetStatus() << " (" << StatusToStr(ctx.GetStatus()) << ")"
+           << ", err: '" << ctx.GetError() << "'";
+
         OnError(ss.str());
     }
     else

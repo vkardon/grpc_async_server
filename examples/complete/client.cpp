@@ -23,11 +23,12 @@ bool PingTest(const std::string& addressUri)
     std::map<std::string, std::string> metadata;
     metadata["sessionid"] = std::to_string(rand() % 1000);
     metadata["requestid"] = std::to_string(rand() % 1000);
+    unsigned long timeout = 1000; // milliseconds
 
     std::string errMsg;
     gen::GrpcClient<test::Hello> grpcClient(addressUri, gCreds);
 
-    if(!grpcClient.Call(&test::Hello::Stub::Ping, req, resp, metadata, errMsg))
+    if(!grpcClient.Call(&test::Hello::Stub::Ping, req, resp, metadata, errMsg, timeout))
     {
         ERRORMSG(errMsg);
         return false;
