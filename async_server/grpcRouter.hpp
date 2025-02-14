@@ -59,6 +59,17 @@ public:
                              std::map<std::string, std::string>& metadata);
 
 private:
+    std::string FormatError(const std::string& fname, int lineNumber,
+                            const std::string& from, const google::protobuf::Message& req,
+                            ::grpc::StatusCode statusCode, const std::string& err) const
+    {
+        std::stringstream ss;
+        ss << fname << ":" << lineNumber <<  "(" + req.GetTypeName() + ") from " << from
+           << ", status: " << statusCode << " (" << gen::StatusToStr(statusCode) << ")"
+           << ", err: '" << err << "'";
+        return ss.str();
+    }
+
     GrpcClient<GRPC_SERVICE> mTargetClient;
 };
 
@@ -79,12 +90,14 @@ public:
     virtual bool Read(RESP& resp) = 0;
     virtual void Stop() = 0;
 
-    const std::string& GetError() { return mErrMsg; }
     ::grpc::StatusCode GetStatus() { return mGrpcStatus; }
+    const std::string& GetError() { return mErrMsg; }
+    const std::string& GetPeer() { return mPeer; }
     bool IsValid() { return mErrMsg.empty(); }
 
 protected:
     ::grpc::StatusCode mGrpcStatus{::grpc::UNKNOWN};
+    std::string mPeer;
     std::string mErrMsg;
 };
 
@@ -102,6 +115,7 @@ public:
                       const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
                       GrpcClient<GRPC_SERVICE>& grpcClient) override
     {
+        this->mPeer = ctx.Peer();
         mThread = std::thread([&, grpcStubFunc]()
         {
             // Callback to process stream messages
@@ -173,6 +187,7 @@ public:
                       const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
                       GrpcClient<GRPC_SERVICE>& grpcClient)
     {
+        this->mPeer = ctx.Peer();
         mGrpcClient = &grpcClient;
 
         // Copy client metadata from a ServerContext
@@ -251,12 +266,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
     if(remainingTime <= std::chrono::milliseconds(0))
     {
         ctx.SetStatus(::grpc::DEADLINE_EXCEEDED, "Request already past deadline");
-
-        std::stringstream ss;
-        ss << __func__ << ":" << __LINE__ <<  "(" + req.GetTypeName() + ") from " << ctx.Peer()
-           << ", status: " << ctx.GetStatus() << " (" << StatusToStr(ctx.GetStatus()) << ")"
-           << ", err: '" << ctx.GetError() << "'";
-        OnError(ss.str());
+        std::string err = FormatError(__func__, __LINE__, ctx.Peer(), req, ctx.GetStatus(), ctx.GetError());
+        OnError(err);
         return;
     }
 
@@ -277,19 +288,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
 
         // Reset the channel to avoid gRPC's internal handling of broken connections
         mTargetClient.Reset();
-
-        // Note: errMsg already has the request name and the addressUri
-        std::stringstream ss;
-//        ss << __func__ << ":" << __LINE__ <<  " from " << ctx.Peer()
-//           << ", status=" << gen::StatusToStr(::grpc::INTERNAL)
-//           << ": " << errMsg;
-
-
-        ss << __func__ << ":" << __LINE__ <<  "(" + req.GetTypeName() + ") from " << ctx.Peer()
-           << ", status: " << ctx.GetStatus() << " (" << StatusToStr(ctx.GetStatus()) << ")"
-           << ", err: '" << ctx.GetError() << "'";
-
-        OnError(ss.str());
+        std::string err = FormatError(__func__, __LINE__, ctx.Peer(), req, ctx.GetStatus(), ctx.GetError());
+        OnError(err);
     }
     else
     {
@@ -323,12 +323,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
             reader->Stop();
             if(!reader->IsValid())
             {
-                // Note: Reader's error already has the request name and the addressUri
-                std::stringstream ss;
-                ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
-                   << ", status=" << gen::StatusToStr(reader->GetStatus())
-                   << ": " << reader->GetError();
-                OnError(ss.str());
+                std::string err = FormatError(__func__, __LINE__, reader->GetPeer(), req, reader->GetStatus(), reader->GetError());
+                OnError(err);
             }
             delete reader;
         }
@@ -348,12 +344,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
             {
                 ctx.SetHasMore(false); // Stop streaming
                 ctx.SetStatus(::grpc::INTERNAL, "Out of memory while allocating a GrpcAsyncStreamReader");
-
-                std::stringstream ss;
-                ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
-                   << ", status=" << gen::StatusToStr(ctx.GetStatus())
-                   << ": " << ctx.GetError();
-                OnError(ss.str());
+                std::string err = FormatError(__func__, __LINE__, ctx.Peer(), req, ctx.GetStatus(), ctx.GetError());
+                OnError(err);
                 return;
             }
 
@@ -370,13 +362,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
         {
             ctx.SetHasMore(false); // No more data to send
             ctx.SetStatus(reader->GetStatus(), reader->GetError());
-
-            // Note: Reader's error already has the request name and the addressUri
-            std::stringstream ss;
-            ss << __func__ << ":" << __LINE__ <<  " From " << ctx.Peer()
-               << ", status=" << gen::StatusToStr(reader->GetStatus())
-               << ": " << reader->GetError();
-            OnError(ss.str());
+            std::string err = FormatError(__func__, __LINE__, ctx.Peer(), req, ctx.GetStatus(), ctx.GetError());
+            OnError(err);
         }
         else
         {
