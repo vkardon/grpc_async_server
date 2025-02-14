@@ -2,7 +2,7 @@
 include ../Makefile.conf    
 
 # Target(s) to build
-EXE_PRX = proxy
+EXE_PRX = router 
 DEBUG = true
 
 # Compiler and linker to use
@@ -30,7 +30,7 @@ endif
 PROJECT_HOME = .
 OBJ_DIR = $(PROJECT_HOME)/_obj
 
-SRCS_PRX = $(PROJECT_HOME)/proxy.cpp 
+SRCS_PRX = $(PROJECT_HOME)/router.cpp 
 
 # gRPC proto files 
 PROTO_OUT  = $(OBJ_DIR)/_generate

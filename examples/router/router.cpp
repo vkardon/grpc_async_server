@@ -1,23 +1,23 @@
 //
-// server.cpp
+// router.cpp
 //
 #include <stdio.h>
 #include "grpcServer.hpp"
-#include "helloServiceProxy.hpp"
+#include "helloServiceRouter.hpp"
 #include "controlService.hpp"
 #include "serverConfig.hpp"     // for PORT_NUMBER
 #include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
 
-class MyProxy : public gen::GrpcServer
+class MyRouter : public gen::GrpcServer
 {
 public:
-    MyProxy(const std::string& forwardHost, unsigned short forwardPort)
+    MyRouter(const std::string& targetHost, unsigned short targetPort)
     {
         // Add all services
-        AddService<HelloServiceProxy>(forwardHost, forwardPort);
+        AddService<HelloService>(targetHost, targetPort);
         AddService<ControlService>();
     }
-    virtual ~MyProxy() = default;
+    virtual ~MyRouter() = default;
 
 private:
     // GrpcServer overrides
@@ -34,8 +34,8 @@ private:
 
 int main(int argc, char* argv[])
 {
-    // Build & start gRpc server.
-    MyProxy srv(FORWARD_HOST, FORWARD_PORT);
+    // Build & start gRpc router server.
+    MyRouter srv(FORWARD_HOST, FORWARD_PORT);
     srv.Run(PROXY_PORT, 8 /*number of threads*/);
 
     INFOMSG("Grpc Proxy Server has stopped");

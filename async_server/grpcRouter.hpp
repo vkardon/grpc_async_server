@@ -1,8 +1,8 @@
 //
-// grpcForwarder.hpp
+// grpcRouter.hpp
 //
-#ifndef __GRPC_FORWARDER_HPP__
-#define __GRPC_FORWARDER_HPP__
+#ifndef __GRPC_ROUTER_HPP__
+#define __GRPC_ROUTER_HPP__
 
 #include "grpcContext.hpp"      // gen::RpcContext & gen::RpcServerStreamContext
 #include "grpcClient.hpp"       // gen::GrpcClient
@@ -18,20 +18,20 @@ inline unsigned long PIPE_CAPACITY = 5;         // Max number or requests in pip
 // Helper class to forward UNARY/STREAM a destination gRpc service
 //
 template <class GRPC_SERVICE>
-class GrpcForwarder
+class GrpcRouter
 {
 public:
-    GrpcForwarder(const std::string& host, unsigned short port,
-                  const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
-                  const grpc::ChannelArguments* channelArgs = nullptr)
-        : mForwardClient(host, port, creds, channelArgs) {}
+    GrpcRouter(const std::string& targetHost, unsigned short targetPort,
+               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
+               const grpc::ChannelArguments* channelArgs = nullptr)
+        : mTargetClient(targetHost, targetPort, creds, channelArgs) {}
 
-    GrpcForwarder(const std::string& addressUri,
-                  const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
-                  const grpc::ChannelArguments* channelArgs = nullptr)
-        : mForwardClient(addressUri, creds, channelArgs) {}
+    GrpcRouter(const std::string& targetAddressUri,
+               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
+               const grpc::ChannelArguments* channelArgs = nullptr)
+        : mTargetClient(targetAddressUri, creds, channelArgs) {}
 
-    virtual ~GrpcForwarder() = default;
+    virtual ~GrpcRouter() = default;
 
     // Forward unary request
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -48,7 +48,7 @@ public:
     void Forward(const gen::RpcClientStreamContext& ctx,
                  const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc);
 
-    bool IsValid() const { return mForwardClient.IsValid(); }
+    bool IsValid() const { return mTargetClient.IsValid(); }
 
     // For derived class to override (Error and Info reporting)
     virtual void OnError(const std::string& err) const { std::cerr << err << std::endl; }
@@ -59,7 +59,7 @@ public:
                              std::map<std::string, std::string>& metadata);
 
 private:
-    GrpcClient<GRPC_SERVICE> mForwardClient;
+    GrpcClient<GRPC_SERVICE> mTargetClient;
 };
 
 //
@@ -89,7 +89,7 @@ protected:
 };
 
 //
-// Asynchronous stream reader to be used when a Forwarder
+// Asynchronous stream reader to be used when a Router
 // is an synchronous gRPC server.
 //
 template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -115,7 +115,7 @@ public:
 
             // Copy client metadata from a ServerContext
             std::map<std::string, std::string> metadata;
-            GrpcForwarder<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
+            GrpcRouter<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
 
             if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, this->mErrMsg))
             {
@@ -161,7 +161,7 @@ private:
 };
 
 //
-// Synchronous stream reader to be used when a Forwarder
+// Synchronous stream reader to be used when a Router
 // is an asynchronous gRPC server
 //
 template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
@@ -179,7 +179,7 @@ public:
 
         // Copy client metadata from a ServerContext
         std::map<std::string, std::string> metadata;
-        GrpcForwarder<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
+        GrpcRouter<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
 
         // Create client stream reader
         grpcClient.CreateContext(mContext, metadata, 0);
@@ -240,7 +240,7 @@ private:
 //
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
+void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
                                           const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     // Copy client metadata from a ServerContext
@@ -249,12 +249,12 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
 
     // Call Grpc Service
     std::string errMsg;
-    if(!mForwardClient.Call(grpcStubFunc, req, resp, metadata, errMsg, UNARY_GRPC_TIMEOUT))
+    if(!mTargetClient.Call(grpcStubFunc, req, resp, metadata, errMsg, UNARY_GRPC_TIMEOUT))
     {
         ctx.SetStatus(::grpc::INTERNAL, errMsg);
 
         // Reset the channel to avoid gRPC's internal handling of broken connections
-        mForwardClient.Reset();
+        mTargetClient.Reset();
 
         // Note: errMsg already has the request name and the addressUri
         std::stringstream ss;
@@ -269,7 +269,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
         ss << "From " << ctx.Peer()
            << ", status=" << gen::StatusToStr(::grpc::OK)
            << ", req=" << req.GetTypeName()
-           << ", addressUri='" << mForwardClient.GetAddressUri() << "'";
+           << ", addressUri='" << mTargetClient.GetAddressUri() << "'";
         OnInfo(ss.str());
     }
 }
@@ -279,7 +279,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
 //
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
+void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
                                           const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     // Start or continue streaming
@@ -329,7 +329,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
                 return;
             }
 
-            reader->Call(ctx, req, grpcStubFunc, mForwardClient);
+            reader->Call(ctx, req, grpcStubFunc, mTargetClient);
             ctx.SetParam(reader);
         }
 
@@ -358,7 +358,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
             ss << "From " << ctx.Peer()
                << ", status=" << gen::StatusToStr(reader->GetStatus())
                << ", req=" << req.GetTypeName()
-               << ", addressUri='" << mForwardClient.GetAddressUri() << "'";
+               << ", addressUri='" << mTargetClient.GetAddressUri() << "'";
             OnInfo(ss.str());
         }
     }
@@ -369,7 +369,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx
 //
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcClientStreamContext& ctx,
+void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcClientStreamContext& ctx,
                                          const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     ctx.SetStatus(::grpc::INTERNAL, "Not Implemented Yet");
@@ -379,7 +379,7 @@ void GrpcForwarder<GRPC_SERVICE>::Forward(const gen::RpcClientStreamContext& ctx
 // Helper method to copy client metadata from a ServerContext
 //
 template <class GRPC_SERVICE>
-void GrpcForwarder<GRPC_SERVICE>::CopyMetadata(const gen::RpcContext& ctx,
+void GrpcRouter<GRPC_SERVICE>::CopyMetadata(const gen::RpcContext& ctx,
                                                std::map<std::string, std::string>& metadata)
 {
     // Copy client metadata from a ServerContext
@@ -393,5 +393,5 @@ void GrpcForwarder<GRPC_SERVICE>::CopyMetadata(const gen::RpcContext& ctx,
 } //namespace gen
 
 
-#endif // __GRPC_FORWARDER_HPP__
+#endif // __GRPC_ROUTER_HPP__
 
