@@ -54,21 +54,11 @@ public:
     virtual void OnError(const std::string& err) const { std::cerr << err << std::endl; }
     virtual void OnInfo(const std::string& info) const { std::cout << info << std::endl; }
 
-    // Copy client metadata from a ServerContext
-    static void CopyMetadata(const gen::RpcContext& ctx,
-                             std::map<std::string, std::string>& metadata);
-
 private:
+    // Helper method to format error
     std::string FormatError(const std::string& fname, int lineNumber,
                             const std::string& from, const google::protobuf::Message& req,
-                            ::grpc::StatusCode statusCode, const std::string& err) const
-    {
-        std::stringstream ss;
-        ss << fname << ":" << lineNumber <<  "(" + req.GetTypeName() + ") from " << from
-           << ", status: " << statusCode << " (" << gen::StatusToStr(statusCode) << ")"
-           << ", err: '" << err << "'";
-        return ss.str();
-    }
+                            ::grpc::StatusCode statusCode, const std::string& err) const;
 
     GrpcClient<GRPC_SERVICE> mTargetClient;
 };
@@ -128,7 +118,7 @@ public:
 
             // Copy client metadata from a ServerContext
             std::map<std::string, std::string> metadata;
-            GrpcRouter<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
+            ctx.GetMetadata(metadata);
 
             if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, this->mErrMsg))
             {
@@ -185,14 +175,14 @@ public:
 
     virtual void Call(const gen::RpcServerStreamContext& ctx,
                       const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
-                      GrpcClient<GRPC_SERVICE>& grpcClient)
+                      GrpcClient<GRPC_SERVICE>& grpcClient) override
     {
         this->mPeer = ctx.Peer();
         mGrpcClient = &grpcClient;
 
         // Copy client metadata from a ServerContext
         std::map<std::string, std::string> metadata;
-        GrpcRouter<GRPC_SERVICE>::CopyMetadata(ctx, metadata);
+        ctx.GetMetadata(metadata);
 
         // Create client stream reader
         grpcClient.CreateContext(mContext, metadata, 0);
@@ -202,7 +192,7 @@ public:
         }
     }
 
-    virtual bool Read(RESP& resp)
+    virtual bool Read(RESP& resp) override
     {
         if(!mReader)
             return false;
@@ -228,7 +218,7 @@ public:
         return false;
     }
 
-    virtual void Stop()
+    virtual void Stop() override
     {
         if(mReader)
         {
@@ -278,7 +268,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
 
     // Copy client metadata from a ServerContext
     std::map<std::string, std::string> metadata;
-    CopyMetadata(ctx, metadata);
+    ctx.GetMetadata(metadata);
 
     // Call Grpc Service
     std::string errMsg;
@@ -308,14 +298,14 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
-                                          const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
+                                       const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     // Start or continue streaming
     auto reader = (GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>*)ctx.GetParam();
 
     // Are we done?
     if(ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ||
-            ctx.GetStreamStatus() == gen::StreamStatus::ERROR)
+       ctx.GetStreamStatus() == gen::StreamStatus::ERROR)
     {
         // Clean up...
         if(reader)
@@ -342,8 +332,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
 
             if(!reader)
             {
-                ctx.SetHasMore(false); // Stop streaming
-                ctx.SetStatus(::grpc::INTERNAL, "Out of memory while allocating a GrpcAsyncStreamReader");
+                // Stop streaming
+                ctx.EndOfStream(::grpc::INTERNAL, "Out of memory while allocating a GrpcAsyncStreamReader");
                 std::string err = FormatError(__func__, __LINE__, ctx.Peer(), req, ctx.GetStatus(), ctx.GetError());
                 OnError(err);
                 return;
@@ -356,18 +346,17 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
         // Get data to send
         if(reader->Read(resp))
         {
-            ctx.SetHasMore(true); // Ask for more data to send
+            // We read some data, send it and come back for more
         }
         else if(!reader->IsValid())
         {
-            ctx.SetHasMore(false); // No more data to send
-            ctx.SetStatus(reader->GetStatus(), reader->GetError());
+            ctx.EndOfStream(reader->GetStatus(), reader->GetError());
             std::string err = FormatError(__func__, __LINE__, ctx.Peer(), req, ctx.GetStatus(), ctx.GetError());
             OnError(err);
         }
         else
         {
-            ctx.SetHasMore(false); // No more data to send
+            ctx.EndOfStream(); // No more data to send
 
             std::stringstream ss;
             ss << "From " << ctx.Peer()
@@ -385,24 +374,24 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
 void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcClientStreamContext& ctx,
-                                         const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
+                                       const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     ctx.SetStatus(::grpc::INTERNAL, "Not Implemented Yet");
 }
 
 //
-// Helper method to copy client metadata from a ServerContext
+// Helper method to format error
 //
 template <class GRPC_SERVICE>
-void GrpcRouter<GRPC_SERVICE>::CopyMetadata(const gen::RpcContext& ctx,
-                                               std::map<std::string, std::string>& metadata)
+std::string GrpcRouter<GRPC_SERVICE>::FormatError(const std::string& fname, int lineNumber,
+                                                  const std::string& from, const google::protobuf::Message& req,
+                                                  ::grpc::StatusCode statusCode, const std::string& err) const
 {
-    // Copy client metadata from a ServerContext
-    for(const auto& pair : ctx.GetServerContext()->client_metadata())
-    {
-//        std::cout << pair.first << "-->" << pair.second << std::endl;
-        metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
-    }
+    std::stringstream ss;
+    ss << fname << ":" << lineNumber <<  "(" + req.GetTypeName() + ") from " << from
+    << ", status: " << statusCode << " (" << gen::StatusToStr(statusCode) << ")"
+    << ", err: '" << err << "'";
+    return ss.str();
 }
 
 } //namespace gen

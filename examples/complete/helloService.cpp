@@ -38,7 +38,7 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 
     // Are we done?
     if(ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ||
-            ctx.GetStreamStatus() == gen::StreamStatus::ERROR)
+       ctx.GetStreamStatus() == gen::StreamStatus::ERROR)
     {
         OUTMSG((ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ? "SUCCESS" : "ERROR")
                << ", stream=" << ctx.GetParam()
@@ -77,11 +77,10 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
             resp.set_msg(ss.str());
             resp.set_result(true);
             respList->sentRows++;
-            ctx.SetHasMore(true); // Ask for more data to send
         }
         else
         {
-            ctx.SetHasMore(false); // No more rows to send
+            ctx.EndOfStream(); // No more rows to send
         }
     }
 

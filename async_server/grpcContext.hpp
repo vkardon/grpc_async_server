@@ -53,6 +53,15 @@ public:
         srvCtx->AddTrailingMetadata(key, value);
     }
 
+    void GetMetadata(std::map<std::string, std::string>& metadata) const
+    {
+        assert(srvCtx);
+        for(const auto& pair : srvCtx->client_metadata())
+        {
+            metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
+        }
+    }
+
     std::string Peer() const
     {
         assert(srvCtx);
@@ -85,7 +94,6 @@ private:
 
     ::grpc::ServerContext* srvCtx = nullptr;
     const void* rpcParam{nullptr};
-    //mutable ::grpc::StatusCode grpcStatusCode{grpc::UNKNOWN};
     mutable ::grpc::StatusCode grpcStatusCode{grpc::OK};
     mutable std::string grpcErr;
 };
@@ -103,15 +111,21 @@ public:
 
     StreamStatus GetStreamStatus() const { return streamStatus; }
 
-    void  SetHasMore(bool hasMore) const { streamHasMore = hasMore; }
-    bool  GetHasMore() const { return streamHasMore; }
-
     void  SetParam(void* param) const { streamParam = param; }
     void* GetParam() const { return streamParam; }
 
+    void  EndOfStream(::grpc::StatusCode statusCode = grpc::OK, const std::string& err = "") const
+    {
+        RpcContext::SetStatus(statusCode, err);
+        streamHasMore = false;
+    }
+
 private:
+    // Prevent from calling RpcContext::SetStatus, force to use EndOfStream instead
+    void SetStatus(::grpc::StatusCode statusCode, const std::string& err) const = delete;
+
     StreamStatus streamStatus = STREAMING;
-    mutable bool streamHasMore = false;   // Are there more responses to stream?
+    mutable bool streamHasMore = true;    // Are there more responses to stream?
     mutable void* streamParam = nullptr;  // Request-specific stream data (for derived class to use)
 
     template<class RPC_SERVICE, class REQ, class RESP>
