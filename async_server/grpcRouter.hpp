@@ -246,11 +246,9 @@ template <class GRPC_STUB_FUNC, class REQ, class RESP>
 void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
                                        const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
-    // Check for Deadline Expiration
-    const ::grpc::ServerContext* srvCtx = ctx.GetServerContext();
-
-    // Get the Deadline (std::chrono::time_point) and calculate the remaining time
-    std::chrono::time_point<std::chrono::system_clock> deadline = srvCtx->deadline();
+    // Check for Deadline Expiration.
+    // Get the Deadline (std::chrono::time_point) and calculate the remaining time.
+    std::chrono::time_point<std::chrono::system_clock> deadline = ctx.deadline();
     auto remainingTime = deadline - std::chrono::system_clock::now();
 
     if(remainingTime <= std::chrono::milliseconds(0))

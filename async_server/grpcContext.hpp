@@ -20,10 +20,10 @@ namespace gen {
 //
 // Class RpcContext is sent to unary process function
 //
-class RpcContext
+class RpcContext : public grpc::ServerContext
 {
 public:
-    RpcContext(::grpc::ServerContext* ctx, const void* param) : srvCtx(ctx), rpcParam(param) {}
+    RpcContext(const void* param) : rpcParam(param) {}
     ~RpcContext() = default;
 
     const std::string& GetError() const { return grpcErr; }
@@ -38,25 +38,22 @@ public:
             grpcErr = err;
     }
 
-    void GetMetadata(const char* key, std::string& value) const
+    void SetMetadata(const char* key, const std::string& value) { grpc::ServerContext::AddTrailingMetadata(key, value); }
+    void GetMetadata(const char* key, std::string& value) const { GetMetadata(this, key, value); }
+    
+    void GetMetadata(std::map<std::string, std::string>& metadata) const { GetMetadata(this, metadata); }
+
+    static void GetMetadata(const grpc::ServerContextBase* ctx, const char* key, std::string& value)
     {
-        assert(srvCtx);
-        const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = srvCtx->client_metadata();
+        const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = ctx->client_metadata();
         auto itr = client_metadata.find(key);
         if(itr != client_metadata.end())
             value.assign(itr->second.data(), itr->second.size());
     }
 
-    void SetMetadata(const char* key, const std::string& value) const
+    static void GetMetadata(const grpc::ServerContextBase* ctx, std::map<std::string, std::string>& metadata)
     {
-        assert(srvCtx);
-        srvCtx->AddTrailingMetadata(key, value);
-    }
-
-    void GetMetadata(std::map<std::string, std::string>& metadata) const
-    {
-        assert(srvCtx);
-        for(const auto& pair : srvCtx->client_metadata())
+        for(const auto& pair : ctx->client_metadata())
         {
             metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
         }
@@ -64,9 +61,7 @@ public:
 
     std::string Peer() const
     {
-        assert(srvCtx);
-        //return srvCtx->peer();
-        std::string peer = srvCtx->peer();
+        std::string peer = grpc::ServerContext::peer();
 
         // Note: Un-escape peer by replacing "%5B" and "%5D" with "[" and "]"
         // respectively in order to support older gRpc releases
@@ -77,8 +72,6 @@ public:
 
     // Get application-level data set by AddUnaryRpcRequest/AddStreamRpcRequest
     const void* GetRpcParam() const { return rpcParam; }
-
-    const ::grpc::ServerContext* GetServerContext() const { return srvCtx; }
 
 private:
     // Helper method to replace all occurrences of substring with another substring
@@ -92,7 +85,6 @@ private:
         }
     };
 
-    ::grpc::ServerContext* srvCtx = nullptr;
     const void* rpcParam{nullptr};
     mutable ::grpc::StatusCode grpcStatusCode{grpc::OK};
     mutable std::string grpcErr;
@@ -106,7 +98,7 @@ enum StreamStatus : char { STREAMING=1, SUCCESS, ERROR };
 class RpcServerStreamContext : public RpcContext
 {
 public:
-    RpcServerStreamContext(::grpc::ServerContext* ctx, const void* param) : RpcContext(ctx, param) {}
+    RpcServerStreamContext(const void* param) : RpcContext(param) {}
     ~RpcServerStreamContext() = default;
 
     StreamStatus GetStreamStatus() const { return streamStatus; }
@@ -138,7 +130,7 @@ private:
 class RpcClientStreamContext : public RpcContext
 {
 public:
-    RpcClientStreamContext(::grpc::ServerContext* ctx, const void* param) : RpcContext(ctx, param) {}
+    RpcClientStreamContext(const void* param) : RpcContext(param) {}
     ~RpcClientStreamContext() = default;
 
     bool GetHasMore() const { return streamHasMore; }

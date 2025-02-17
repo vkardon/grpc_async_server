@@ -43,7 +43,6 @@ struct RequestContext
     RequestContext() = default;
     virtual ~RequestContext() = default;
 
-    std::unique_ptr<::grpc::ServerContext> srv_ctx;
     enum : char { UNKNOWN=0, REQUEST, READ, READEND, WRITE, FINISH } state = UNKNOWN;
 
     virtual void Process() = 0;
@@ -480,12 +479,13 @@ struct UnaryRequestContext : public RequestContext
 
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncResponseWriter<RESP>> resp_writer;
+    std::unique_ptr<gen::RpcContext> ctx;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
-        srv_ctx.reset(new ::grpc::ServerContext);
-        resp_writer.reset(new ::grpc::ServerAsyncResponseWriter<RESP>(srv_ctx.get()));
+        ctx.reset(new gen::RpcContext(processParam));
+        resp_writer.reset(new ::grpc::ServerAsyncResponseWriter<RESP>(ctx.get()));
         req.Clear();
 
         // *Request* that the system start processing given requests.
@@ -493,18 +493,17 @@ struct UnaryRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        (service->async.*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
+        (service->async.*requestFunc)(ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
     void Process() override
     {
         // The actual processing
-        RpcContext rpc_ctx(srv_ctx.get(), processParam);
         RESP resp;
-        (service->*processFunc)(rpc_ctx, req, resp);
+        (service->*processFunc)(*ctx, req, resp);
 
         // And we are done!
-        ::grpc::Status grpcStatus(rpc_ctx.GetStatus(), rpc_ctx.GetError());
+        ::grpc::Status grpcStatus(ctx->GetStatus(), ctx->GetError());
 
         // Let the gRPC runtime know we've finished, using the
         // memory address of this instance as the uniquely identifying tag for
@@ -525,10 +524,10 @@ struct UnaryRequestContext : public RequestContext
 
     virtual RequestContext* Clone() override
     {
-        auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>(*this);
-        if(!ctx)
+        auto reqCtx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>(*this);
+        if(!reqCtx)
             service->srv->OnError("Clone() out of memory allocating UnaryRequestContext");
-        return ctx;
+        return reqCtx;
     }
 
     std::string GetRequestName() const override { return req.GetTypeName(); }
@@ -564,14 +563,13 @@ struct ServerStreamRequestContext : public RequestContext
 
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncWriter<RESP>> resp_writer;
-    std::unique_ptr<RpcServerStreamContext> stream_ctx;
+    std::unique_ptr<RpcServerStreamContext> ctx;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
-        srv_ctx.reset(new ::grpc::ServerContext);
-        resp_writer.reset(new ::grpc::ServerAsyncWriter<RESP>(srv_ctx.get()));
-        stream_ctx.reset();
+        ctx.reset(new RpcServerStreamContext(processParam));
+        resp_writer.reset(new ::grpc::ServerAsyncWriter<RESP>(ctx.get()));
         req.Clear();
 
 //            // victor test
@@ -585,7 +583,7 @@ struct ServerStreamRequestContext : public RequestContext
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        (service->async.*requestFunc)(srv_ctx.get(), &req, resp_writer.get(), cq, cq, this);
+        (service->async.*requestFunc)(ctx.get(), &req, resp_writer.get(), cq, cq, this);
     }
 
     void Process() override
@@ -594,17 +592,14 @@ struct ServerStreamRequestContext : public RequestContext
         {
             // This is very first Process call for the given request.
             state = RequestContext::WRITE;
-
-            // Create new RpcStreamContext
-            stream_ctx.reset(new RpcServerStreamContext(srv_ctx.get(), processParam));
         }
 
         // The actual processing
         RESP resp;
-        (service->*processFunc)(*stream_ctx, req, resp);
+        (service->*processFunc)(*ctx, req, resp);
 
         // Are there more responses to stream?
-        if(stream_ctx->streamHasMore)
+        if(ctx->streamHasMore)
         {
 //                // victor test
 //                TRACE("Calling Write(), tag='" << this << "', "
@@ -618,7 +613,7 @@ struct ServerStreamRequestContext : public RequestContext
         else
         {
             // And we are done!
-            ::grpc::Status grpcStatus(stream_ctx->GetStatus(), stream_ctx->GetError());
+            ::grpc::Status grpcStatus(ctx->GetStatus(), ctx->GetError());
 
             // Let the gRPC runtime know we've finished, using the
             // memory address of this instance as the uniquely identifying tag for
@@ -637,7 +632,7 @@ struct ServerStreamRequestContext : public RequestContext
 
     void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) override
     {
-        if(stream_ctx)
+        if(ctx)
         {
             if(isError)
             {
@@ -648,14 +643,14 @@ struct ServerStreamRequestContext : public RequestContext
 
                 std::stringstream ss;
                 ss << "Error streaming for tag=" << this << ", req=" << GetRequestName() << ", "
-                   << "streamParam=" << stream_ctx->streamParam << ", state=" << stateStr;
+                   << "streamParam=" << ctx->streamParam << ", state=" << stateStr;
                 serv->OnError(ss.str());
             }
 
             // End processing
-            stream_ctx->streamStatus = (isError ? StreamStatus::ERROR : StreamStatus::SUCCESS);
+            ctx->streamStatus = (isError ? StreamStatus::ERROR : StreamStatus::SUCCESS);
             RESP respDummy;
-            (service->*processFunc)(*stream_ctx, req, respDummy);
+            (service->*processFunc)(*ctx, req, respDummy);
         }
         else
         {
@@ -681,10 +676,10 @@ struct ServerStreamRequestContext : public RequestContext
 
     virtual RequestContext* Clone() override
     {
-        auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>(*this);
-        if(!ctx)
+        auto reqCtx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>(*this);
+        if(!reqCtx)
             service->srv->OnError("Clone() out of memory allocating ServerStreamRequestContext");
-        return ctx;
+        return reqCtx;
     }
 
     std::string GetRequestName() const override { return req.GetTypeName(); }
@@ -721,21 +716,20 @@ struct ClientStreamRequestContext : public RequestContext
     REQ req;
     RESP resp;
     std::unique_ptr<::grpc::ServerAsyncReader<RESP, REQ>> req_reader;
-    std::unique_ptr<RpcClientStreamContext> stream_ctx;
+    std::unique_ptr<RpcClientStreamContext> ctx;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
-        srv_ctx.reset(new ::grpc::ServerContext);
-        req_reader.reset(new ::grpc::ServerAsyncReader<RESP, REQ>(srv_ctx.get()));
-        stream_ctx.reset();
+        ctx.reset(new RpcClientStreamContext(processParam));
+        req_reader.reset(new ::grpc::ServerAsyncReader<RESP, REQ>(ctx.get()));
 
         // *Request* that the system start processing given requests.
         // In this request, "this" acts as the tag uniquely identifying
         // the request (so that different context instances can serve
         // different requests concurrently), in this case the memory address
         // of this context instance.
-        (service->async.*requestFunc)(srv_ctx.get(), req_reader.get(), cq, cq, this);
+        (service->async.*requestFunc)(ctx.get(), req_reader.get(), cq, cq, this);
     }
 
     void Process() override
@@ -743,9 +737,7 @@ struct ClientStreamRequestContext : public RequestContext
         if(state == RequestContext::REQUEST)
         {
             // This is very first Process call for the given request.
-            // Create new RpcStreamContext
-            stream_ctx.reset(new RpcClientStreamContext(srv_ctx.get(), processParam));
-            stream_ctx->streamHasMore = true;
+            ctx->streamHasMore = true;
 
             // Start reading
             //TRACE("this=" << this << ", ASK TO READ");  // victor test
@@ -758,16 +750,16 @@ struct ClientStreamRequestContext : public RequestContext
         {
             //TRACE("this=" << this << ", READ COMPLETE");    // victor test
 
-            (service->*processFunc)(*stream_ctx, req, resp);
+            (service->*processFunc)(*ctx, req, resp);
 
             // Is processing failed?
-            if(stream_ctx->GetStatus() != ::grpc::OK)
+            if(ctx->GetStatus() != ::grpc::OK)
             {
-                //TRACE("this=" << this << ", Processing returned error " << stream_ctx->GetStatus());    // victor test
+                //TRACE("this=" << this << ", Processing returned error " << ctx->GetStatus());    // victor test
 
                 // Processing returned error
                 state = RequestContext::FINISH;
-                ::grpc::Status grpcStatus(stream_ctx->GetStatus(), stream_ctx->GetError());
+                ::grpc::Status grpcStatus(ctx->GetStatus(), ctx->GetError());
                 req_reader->FinishWithError(grpcStatus, this);
                 return;
             }
@@ -786,13 +778,13 @@ struct ClientStreamRequestContext : public RequestContext
             req.Clear();
             resp.Clear();
             state = RequestContext::FINISH;
-            stream_ctx->streamHasMore = false;
-            (service->*processFunc)(*stream_ctx, req, resp);
+            ctx->streamHasMore = false;
+            (service->*processFunc)(*ctx, req, resp);
 
             // Let the gRPC runtime know we've finished, using the
             // memory address of this instance as the uniquely identifying tag for
             // the event.
-            ::grpc::Status grpcStatus(stream_ctx->GetStatus(), stream_ctx->GetError());
+            ::grpc::Status grpcStatus(ctx->GetStatus(), ctx->GetError());
             req_reader->Finish(resp, grpcStatus, this);
         }
         else
@@ -814,10 +806,10 @@ struct ClientStreamRequestContext : public RequestContext
 
     virtual RequestContext* Clone() override
     {
-        auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>(*this);
-        if(!ctx)
+        auto reqCtx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>(*this);
+        if(!reqCtx)
             service->srv->OnError("Clone() out of memory allocating ClientStreamRequestContext");
-        return ctx;
+        return reqCtx;
     }
 
     std::string GetRequestName() const override { return req.GetTypeName(); }

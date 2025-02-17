@@ -20,7 +20,7 @@ public:
     {
         if(methods->QueryInterceptionHookPoint(grpc::experimental::InterceptionHookPoints::POST_RECV_INITIAL_METADATA)) 
         {
-            std::cout << "Got a new RPC " << rpcInfo->method() << ": POST_RECV_INITIAL_METADATA" << std::endl;
+            // std::cout << "Got a new RPC " << rpcInfo->method() << ": POST_RECV_INITIAL_METADATA" << std::endl;
 
             if(std::string_view(rpcInfo->method()) == "/test.Hello/Ping")
             {
@@ -35,17 +35,16 @@ public:
 private:
     bool Authenticate()
     {
-        grpc::ServerContextBase* srvCtx = rpcInfo->server_context();
+        grpc::ServerContextBase* ctx = rpcInfo->server_context();
         // auto& metadata = srvCtx->client_metadata();
         // std::string peer = srvCtx->peer();
         // void* msg = methods->GetRecvMessage();
 
-        gen::RpcContext ctx((::grpc::ServerContext*)srvCtx, nullptr);
         std::string sessionId;
         std::string requestId;
 
-        ctx.GetMetadata("sessionid", sessionId);
-        ctx.GetMetadata("requestid", requestId);
+        gen::RpcContext::GetMetadata(ctx, "sessionid", sessionId);
+        gen::RpcContext::GetMetadata(ctx, "requestid", requestId);
 
         std::cout << "sessionid='" << sessionId << "'" << std::endl;
         std::cout << "requestid='" << requestId << "'" << std::endl;
