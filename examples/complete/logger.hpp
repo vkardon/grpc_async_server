@@ -15,7 +15,11 @@
 namespace logger
 {
 // Mutex to sync multi-threading logging
-inline static std::mutex sLogMutex;
+inline std::mutex& GetLogMutex()
+{
+    static std::mutex sLogMutex;
+    return sLogMutex;
+}
 
 inline pid_t GetThreadId()
 {
@@ -26,7 +30,7 @@ inline pid_t GetThreadId()
 
 #define __MSG__(msg_type, msg)                                  \
 do{                                                             \
-    std::unique_lock<std::mutex> lock(logger::sLogMutex);       \
+    std::unique_lock<std::mutex> lock(logger::GetLogMutex());   \
     std::cout << "[" << logger::GetThreadId() << "]"            \
               << (*msg_type == '\0' ? "" : "[" msg_type "]")    \
               << " " << __func__ << ": " << msg << std::endl;   \
@@ -40,8 +44,7 @@ do{                                                             \
 // Helper StopWatch class to measure elapsed time
 //
 #include <string>   // std::string
-#include <chrono>   // std:chrono
-#include <iomanip>  // std::setw
+#include <chrono>   // std::chrono
 
 class StopWatch
 {

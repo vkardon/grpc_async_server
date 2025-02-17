@@ -54,6 +54,9 @@ public:
     virtual void OnError(const std::string& err) const { std::cerr << err << std::endl; }
     virtual void OnInfo(const std::string& info) const { std::cout << info << std::endl; }
 
+    // Helper method to get client metadata
+    static void GetMetadata(const grpc::ServerContext& ctx, std::map<std::string, std::string>& metadata);
+
 private:
     // Helper method to format error
     std::string FormatError(const std::string& fname, int lineNumber,
@@ -118,7 +121,7 @@ public:
 
             // Copy client metadata from a ServerContext
             std::map<std::string, std::string> metadata;
-            ctx.GetMetadata(metadata);
+            GrpcRouter<GRPC_SERVICE>::GetMetadata(ctx, metadata);
 
             if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, this->mErrMsg))
             {
@@ -182,7 +185,7 @@ public:
 
         // Copy client metadata from a ServerContext
         std::map<std::string, std::string> metadata;
-        ctx.GetMetadata(metadata);
+        GrpcRouter<GRPC_SERVICE>::GetMetadata(ctx, metadata);
 
         // Create client stream reader
         grpcClient.CreateContext(mContext, metadata, 0);
@@ -266,7 +269,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
 
     // Copy client metadata from a ServerContext
     std::map<std::string, std::string> metadata;
-    ctx.GetMetadata(metadata);
+    GetMetadata(ctx, metadata);
 
     // Call Grpc Service
     std::string errMsg;
@@ -378,7 +381,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ClientStreamContext& ctx,
 }
 
 //
-// Helper method to format error
+// Helper method to format errorcd
 //
 template <class GRPC_SERVICE>
 std::string GrpcRouter<GRPC_SERVICE>::FormatError(const std::string& fname, int lineNumber,
@@ -390,6 +393,19 @@ std::string GrpcRouter<GRPC_SERVICE>::FormatError(const std::string& fname, int 
     << ", status: " << statusCode << " (" << gen::StatusToStr(statusCode) << ")"
     << ", err: '" << err << "'";
     return ss.str();
+}
+
+//
+// Helper method to get client metadata
+//
+template <class GRPC_SERVICE>
+void GrpcRouter<GRPC_SERVICE>::GetMetadata(const grpc::ServerContext& ctx, 
+                                           std::map<std::string, std::string>& metadata)
+{
+    for(const auto& pair : ctx.client_metadata())
+    {
+        metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
+    }
 }
 
 } //namespace gen

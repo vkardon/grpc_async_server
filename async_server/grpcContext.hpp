@@ -39,24 +39,13 @@ public:
     }
 
     void SetMetadata(const char* key, const std::string& value) { grpc::ServerContext::AddTrailingMetadata(key, value); }
-    void GetMetadata(const char* key, std::string& value) const { GetMetadata(this, key, value); }
 
-    void GetMetadata(std::map<std::string, std::string>& metadata) const { GetMetadata(this, metadata); }
-
-    static void GetMetadata(const grpc::ServerContextBase* ctx, const char* key, std::string& value)
+    void GetMetadata(const char* key, std::string& value)
     {
-        const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = ctx->client_metadata();
+        const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = grpc::ServerContext::client_metadata();
         auto itr = client_metadata.find(key);
         if(itr != client_metadata.end())
             value.assign(itr->second.data(), itr->second.size());
-    }
-
-    static void GetMetadata(const grpc::ServerContextBase* ctx, std::map<std::string, std::string>& metadata)
-    {
-        for(const auto& pair : ctx->client_metadata())
-        {
-            metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
-        }
     }
 
     std::string Peer() const

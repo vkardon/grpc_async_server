@@ -5,6 +5,7 @@
 #define __INTERCEPTOR_HPP__
 
 #include "grpcContext.hpp"      // gen::RpcContext
+#include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/support/server_interceptor.h>
 
@@ -20,12 +21,21 @@ public:
     {
         if(methods->QueryInterceptionHookPoint(grpc::experimental::InterceptionHookPoints::POST_RECV_INITIAL_METADATA)) 
         {
-            // std::cout << "Got a new RPC " << rpcInfo->method() << ": POST_RECV_INITIAL_METADATA" << std::endl;
+            grpc::ServerContextBase* ctx = rpcInfo->server_context();
+            // auto& metadata = srvCtx->client_metadata();
+            // std::string peer = srvCtx->peer();
+            // void* msg = methods->GetRecvMessage();
+
+            std::string sessionId = GetMetadata(ctx, "sessionid");
+            std::string requestId = GetMetadata(ctx, "requestid");
+
+            OUTMSG("method='" << rpcInfo->method() << "'" <<
+                   ", sessionId='" << sessionId << "'" <<
+                   ", requestId='" << requestId << "'");
 
             if(std::string_view(rpcInfo->method()) == "/test.Hello/Ping")
             {
-                //if(!Authenticate())
-                //    methods->Hijack();
+                // Do something for Ping message
             }
         }
 
@@ -33,24 +43,13 @@ public:
     }
 
 private:
-    bool Authenticate()
+    std::string GetMetadata(grpc::ServerContextBase* ctx, const char* key)
     {
-        grpc::ServerContextBase* ctx = rpcInfo->server_context();
-        // auto& metadata = srvCtx->client_metadata();
-        // std::string peer = srvCtx->peer();
-        // void* msg = methods->GetRecvMessage();
-
-        std::string sessionId;
-        std::string requestId;
-
-        gen::Context::GetMetadata(ctx, "sessionid", sessionId);
-        gen::Context::GetMetadata(ctx, "requestid", requestId);
-
-        std::cout << "sessionid='" << sessionId << "'" << std::endl;
-        std::cout << "requestid='" << requestId << "'" << std::endl;
-
-        // TODO
-        return false;
+        const auto& client_metadata = ctx->client_metadata();
+        if(auto itr = client_metadata.find(key); itr != client_metadata.end())
+            return std::string(itr->second.data(), itr->second.size());
+        else
+            return "";
     }
 
     grpc::experimental::ServerRpcInfo* rpcInfo{nullptr};
