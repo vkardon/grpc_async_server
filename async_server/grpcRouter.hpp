@@ -35,17 +35,17 @@ public:
 
     // Forward unary request
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    void Forward(const gen::RpcContext& ctx,
+    void Forward(const gen::Context& ctx,
                  const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc);
 
     // Forward server-side stream of requests
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    void Forward(const gen::RpcServerStreamContext& ctx,
+    void Forward(const gen::ServerStreamContext& ctx,
                  const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc);
 
     // Forward client-side stream of requests
     template <class GRPC_STUB_FUNC, class REQ, class RESP>
-    void Forward(const gen::RpcClientStreamContext& ctx,
+    void Forward(const gen::ClientStreamContext& ctx,
                  const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc);
 
     bool IsValid() const { return mTargetClient.IsValid(); }
@@ -74,7 +74,7 @@ public:
     virtual ~GrpcStreamReader() = default;
 
     // For derived class to override
-    virtual void Call(const gen::RpcServerStreamContext& ctx,
+    virtual void Call(const gen::ServerStreamContext& ctx,
                       const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
                       GrpcClient<GRPC_SERVICE>& grpcClient) = 0;
     virtual bool Read(RESP& resp) = 0;
@@ -101,7 +101,7 @@ public:
     GrpcAsyncStreamReader(size_t capacity) : mPipe(capacity) {}
     virtual ~GrpcAsyncStreamReader() = default;
 
-    virtual void Call(const gen::RpcServerStreamContext& ctx,
+    virtual void Call(const gen::ServerStreamContext& ctx,
                       const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
                       GrpcClient<GRPC_SERVICE>& grpcClient) override
     {
@@ -173,7 +173,7 @@ public:
     GrpcSyncStreamReader() = default;
     virtual ~GrpcSyncStreamReader() = default;
 
-    virtual void Call(const gen::RpcServerStreamContext& ctx,
+    virtual void Call(const gen::ServerStreamContext& ctx,
                       const REQ& req, GRPC_STUB_FUNC grpcStubFunc,
                       GrpcClient<GRPC_SERVICE>& grpcClient) override
     {
@@ -243,7 +243,7 @@ private:
 //
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
+void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
                                        const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     // Check for Deadline Expiration.
@@ -295,7 +295,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcContext& ctx,
 //
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
+void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
                                        const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     // Start or continue streaming
@@ -371,7 +371,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcServerStreamContext& ctx,
 //
 template <class GRPC_SERVICE>
 template <class GRPC_STUB_FUNC, class REQ, class RESP>
-void GrpcRouter<GRPC_SERVICE>::Forward(const gen::RpcClientStreamContext& ctx,
+void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ClientStreamContext& ctx,
                                        const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
     ctx.SetStatus(::grpc::INTERNAL, "Not Implemented Yet");

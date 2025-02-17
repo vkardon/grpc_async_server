@@ -24,14 +24,14 @@ private:
     }
 
     // Supported RPCs
-    void Ping(const gen::RpcContext& ctx,
+    void Ping(const gen::Context& ctx,
               const test::PingRequest& req, test::PingResponse& resp)
     {
         std::cout << "From " << ctx.Peer() << std::endl;
         resp.set_msg("Pong");
     }
 
-    void Shutdown(const gen::RpcContext& ctx,
+    void Shutdown(const gen::Context& ctx,
                   const test::ShutdownRequest& req, test::ShutdownResponse& resp)
     {
         std::cout << "From " << ctx.Peer() << ", reason: " << req.reason() << std::endl;

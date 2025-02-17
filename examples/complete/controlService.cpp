@@ -4,7 +4,7 @@
 #include "controlService.hpp"
 #include "logger.hpp"           // OUTMSG, INFOMSG, ERRORMSG, etc.
 
-void ControlService::Shutdown(const gen::RpcContext& ctx,
+void ControlService::Shutdown(const gen::Context& ctx,
                             const test::ShutdownRequest& req,
                             test::ShutdownResponse& resp)
 {
@@ -26,7 +26,7 @@ void ControlService::Shutdown(const gen::RpcContext& ctx,
     }
 }
 
-void ControlService::Status(const gen::RpcContext& ctx,
+void ControlService::Status(const gen::Context& ctx,
                             const test::StatusRequest& req,
                             test::StatusResponse& resp)
 {

@@ -25,13 +25,13 @@ private:
     }
 
     // Supported RPCs
-    void PingTest(const gen::RpcContext& ctx,
+    void PingTest(const gen::Context& ctx,
                   const test::PingRequest& req, test::PingResponse& resp);
 
-    void ServerStreamTest(const gen::RpcServerStreamContext& ctx,
+    void ServerStreamTest(const gen::ServerStreamContext& ctx,
                           const test::ServerStreamRequest& req, test::ServerStreamResponse& resp);
 
-    void ClientStreamTest(const gen::RpcClientStreamContext& ctx,
+    void ClientStreamTest(const gen::ClientStreamContext& ctx,
                           const test::ClientStreamRequest& req, test::ClientStreamResponse& resp);
 };
 

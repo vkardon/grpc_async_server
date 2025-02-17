@@ -15,7 +15,7 @@
 #include <grpcpp/impl/service_type.h>
 #pragma GCC diagnostic pop
 
-#include "grpcContext.hpp"  // RpcContext
+#include "grpcContext.hpp"  // Context
 #include "grpcUtils.hpp"    // FormatDnsAddressUri
 #include <sstream>          // stringstream
 #include <thread>           // std::thread
@@ -423,13 +423,13 @@ class GrpcService;
 // Template pointer to function that does actual unary/stream processing
 //
 template<class RPC_SERVICE, class REQ, class RESP>
-using UnaryProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const RpcContext&, const REQ&, RESP&);
+using UnaryProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const Context&, const REQ&, RESP&);
 
 template<class RPC_SERVICE, class REQ, class RESP>
-using ServerStreamProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const RpcServerStreamContext&, const REQ&, RESP&);
+using ServerStreamProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const ServerStreamContext&, const REQ&, RESP&);
 
 template<class RPC_SERVICE, class REQ, class RESP>
-using ClientStreamProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const RpcClientStreamContext&, const REQ&, RESP&);
+using ClientStreamProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const ClientStreamContext&, const REQ&, RESP&);
 
 //
 // Template pointer to function that *request* the system to start processing unary/strean requests
@@ -479,12 +479,12 @@ struct UnaryRequestContext : public RequestContext
 
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncResponseWriter<RESP>> resp_writer;
-    std::unique_ptr<gen::RpcContext> ctx;
+    std::unique_ptr<Context> ctx;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
-        ctx.reset(new gen::RpcContext(processParam));
+        ctx.reset(new Context(processParam));
         resp_writer.reset(new ::grpc::ServerAsyncResponseWriter<RESP>(ctx.get()));
         req.Clear();
 
@@ -563,12 +563,12 @@ struct ServerStreamRequestContext : public RequestContext
 
     REQ req;
     std::unique_ptr<::grpc::ServerAsyncWriter<RESP>> resp_writer;
-    std::unique_ptr<RpcServerStreamContext> ctx;
+    std::unique_ptr<ServerStreamContext> ctx;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
-        ctx.reset(new RpcServerStreamContext(processParam));
+        ctx.reset(new ServerStreamContext(processParam));
         resp_writer.reset(new ::grpc::ServerAsyncWriter<RESP>(ctx.get()));
         req.Clear();
 
@@ -716,12 +716,12 @@ struct ClientStreamRequestContext : public RequestContext
     REQ req;
     RESP resp;
     std::unique_ptr<::grpc::ServerAsyncReader<RESP, REQ>> req_reader;
-    std::unique_ptr<RpcClientStreamContext> ctx;
+    std::unique_ptr<ClientStreamContext> ctx;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
         state = RequestContext::REQUEST;
-        ctx.reset(new RpcClientStreamContext(processParam));
+        ctx.reset(new ClientStreamContext(processParam));
         req_reader.reset(new ::grpc::ServerAsyncReader<RESP, REQ>(ctx.get()));
 
         // *Request* that the system start processing given requests.
@@ -835,7 +835,7 @@ public:
 
     // Add request for unary RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void Bind(void (SERVICE_IMPL::*processFunc)(const RpcContext&, const REQ&, RESP&),
+    void Bind(void (SERVICE_IMPL::*processFunc)(const Context&, const REQ&, RESP&),
               auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
@@ -849,7 +849,7 @@ public:
 
     // Add request for server-stream RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void Bind(void (SERVICE_IMPL::*processFunc)(const RpcServerStreamContext&, const REQ&, RESP&),
+    void Bind(void (SERVICE_IMPL::*processFunc)(const ServerStreamContext&, const REQ&, RESP&),
               auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
@@ -863,7 +863,7 @@ public:
 
     // Add request for client-stream RPC
     template<class REQ, class RESP, class SERVICE_IMPL>
-    void Bind(void (SERVICE_IMPL::*processFunc)(const RpcClientStreamContext&, const REQ&, RESP&),
+    void Bind(void (SERVICE_IMPL::*processFunc)(const ClientStreamContext&, const REQ&, RESP&),
               auto requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.

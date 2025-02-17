@@ -18,7 +18,7 @@ struct ResponseList
     }
 };
 
-void HelloService::PingTest(const gen::RpcContext& ctx,
+void HelloService::PingTest(const gen::Context& ctx,
                             const test::PingRequest& req,
                             test::PingResponse& resp)
 {
@@ -27,7 +27,7 @@ void HelloService::PingTest(const gen::RpcContext& ctx,
     resp.set_msg("Pong");
 }
 
-void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
+void HelloService::ServerStreamTest(const gen::ServerStreamContext& ctx,
                                     const test::ServerStreamRequest& req,
                                     test::ServerStreamResponse& resp)
 {
@@ -91,7 +91,7 @@ void HelloService::ServerStreamTest(const gen::RpcServerStreamContext& ctx,
 //    OUTMSG("opened_streams=" << opened_streams);
 }
 
-void HelloService::ClientStreamTest(const gen::RpcClientStreamContext& ctx,
+void HelloService::ClientStreamTest(const gen::ClientStreamContext& ctx,
                                     const test::ClientStreamRequest& req,
                                     test::ClientStreamResponse& resp)
 {

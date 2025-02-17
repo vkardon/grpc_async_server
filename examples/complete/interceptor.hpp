@@ -43,8 +43,8 @@ private:
         std::string sessionId;
         std::string requestId;
 
-        gen::RpcContext::GetMetadata(ctx, "sessionid", sessionId);
-        gen::RpcContext::GetMetadata(ctx, "requestid", requestId);
+        gen::Context::GetMetadata(ctx, "sessionid", sessionId);
+        gen::Context::GetMetadata(ctx, "requestid", requestId);
 
         std::cout << "sessionid='" << sessionId << "'" << std::endl;
         std::cout << "requestid='" << requestId << "'" << std::endl;

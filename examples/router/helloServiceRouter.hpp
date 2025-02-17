@@ -49,19 +49,19 @@ private:
     }
 
     // Supported RPCs
-    void Ping(const gen::RpcContext& ctx,
+    void Ping(const gen::Context& ctx,
               const test::PingRequest& req, test::PingResponse& resp)
     {
         mRouter.Forward(ctx, req, resp, &test::Hello::Stub::Ping);
     }
 
-    void ServerStreamTest(const gen::RpcServerStreamContext& ctx,
+    void ServerStreamTest(const gen::ServerStreamContext& ctx,
                           const test::ServerStreamRequest& req, test::ServerStreamResponse& resp)
     {
         mRouter.Forward(ctx, req, resp, &test::Hello::Stub::ServerStream);
     }
 
-    void ClientStreamTest(const gen::RpcClientStreamContext& ctx,
+    void ClientStreamTest(const gen::ClientStreamContext& ctx,
                           const test::ClientStreamRequest& req, test::ClientStreamResponse& resp)
     {
         mRouter.Forward(ctx, req, resp, &test::Hello::Stub::ClientStream);

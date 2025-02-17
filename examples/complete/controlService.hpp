@@ -24,10 +24,10 @@ private:
     }
 
     // Supported RPCs
-    void Shutdown(const gen::RpcContext& ctx,
+    void Shutdown(const gen::Context& ctx,
                   const test::ShutdownRequest& req, test::ShutdownResponse& resp);
     
-    void Status(const gen::RpcContext& ctx,
+    void Status(const gen::Context& ctx,
                 const test::StatusRequest& req, test::StatusResponse& resp);
 };
 

@@ -1,6 +1,6 @@
 // *INDENT-OFF*
 //
-// grpcContext.hpp
+// gContext.hpp
 //
 #ifndef __GRPC_CONTEXT_HPP__
 #define __GRPC_CONTEXT_HPP__
@@ -18,13 +18,13 @@ namespace grpc { class Service; }
 namespace gen {
 
 //
-// Class RpcContext is sent to unary process function
+// Class Context is sent to unary process function
 //
-class RpcContext : public grpc::ServerContext
+class Context : public grpc::ServerContext
 {
 public:
-    RpcContext(const void* param) : rpcParam(param) {}
-    ~RpcContext() = default;
+    Context(const void* param) : rpcParam(param) {}
+    ~Context() = default;
 
     const std::string& GetError() const { return grpcErr; }
 
@@ -40,7 +40,7 @@ public:
 
     void SetMetadata(const char* key, const std::string& value) { grpc::ServerContext::AddTrailingMetadata(key, value); }
     void GetMetadata(const char* key, std::string& value) const { GetMetadata(this, key, value); }
-    
+
     void GetMetadata(std::map<std::string, std::string>& metadata) const { GetMetadata(this, metadata); }
 
     static void GetMetadata(const grpc::ServerContextBase* ctx, const char* key, std::string& value)
@@ -91,15 +91,15 @@ private:
 };
 
 //
-// Class RpcServerStreamContext is sent to stream process function
+// Class ServerStreamContext is sent to stream process function
 //
 enum StreamStatus : char { STREAMING=1, SUCCESS, ERROR };
 
-class RpcServerStreamContext : public RpcContext
+class ServerStreamContext : public Context
 {
 public:
-    RpcServerStreamContext(const void* param) : RpcContext(param) {}
-    ~RpcServerStreamContext() = default;
+    ServerStreamContext(const void* param) : Context(param) {}
+    ~ServerStreamContext() = default;
 
     StreamStatus GetStreamStatus() const { return streamStatus; }
 
@@ -108,12 +108,12 @@ public:
 
     void  EndOfStream(::grpc::StatusCode statusCode = grpc::OK, const std::string& err = "") const
     {
-        RpcContext::SetStatus(statusCode, err);
+        Context::SetStatus(statusCode, err);
         streamHasMore = false;
     }
 
 private:
-    // Prevent from calling RpcContext::SetStatus, force to use EndOfStream instead
+    // Prevent from calling Context::SetStatus, force to use EndOfStream instead
     void SetStatus(::grpc::StatusCode statusCode, const std::string& err) const = delete;
 
     StreamStatus streamStatus = STREAMING;
@@ -125,13 +125,13 @@ private:
 };
 
 //
-// Class RpcClientStreamContext is sent to client stream process function
+// Class ClientStreamContext is sent to client stream process function
 //
-class RpcClientStreamContext : public RpcContext
+class ClientStreamContext : public Context
 {
 public:
-    RpcClientStreamContext(const void* param) : RpcContext(param) {}
-    ~RpcClientStreamContext() = default;
+    ClientStreamContext(const void* param) : Context(param) {}
+    ~ClientStreamContext() = default;
 
     bool GetHasMore() const { return streamHasMore; }
 
