@@ -8,6 +8,7 @@
 #include "helloService.hpp"
 #include "controlService.hpp"
 #include "serverConfig.hpp"  // OUTMSG, INFOMSG, ERRORMSG
+#include "interceptor.hpp"
 
 class MyServer : public gen::GrpcServer
 {
@@ -41,6 +42,12 @@ private:
         // interval in milliseconds.
         // For example, to receive OnRun() every 0.5 seconds:
         SetRunInterval(500);
+
+        // Experimental: Set Interceptor
+        std::vector<std::unique_ptr<grpc::experimental::ServerInterceptorFactoryInterface>> creators;
+        creators.push_back(std::unique_ptr<grpc::experimental::ServerInterceptorFactoryInterface>(new MyInterceptorFactory()));
+        builder.experimental().SetInterceptorCreators(std::move(creators));
+
         return true;
     }
 
