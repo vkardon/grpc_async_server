@@ -26,16 +26,16 @@ public:
     Context(const void* param) : rpcParam(param) {}
     ~Context() = default;
 
-    const std::string& GetError() const { return grpcErr; }
-
-    ::grpc::StatusCode GetStatus() const { return grpcStatusCode; }
+    const ::grpc::Status& GetStatus() const { return grpcStatus; }
 
     void SetStatus(::grpc::StatusCode statusCode, const std::string& err) const
     {
         // Note: Ignore err if status is grpc::OK. Otherwise, it will be
         // an error to construct gen::Status::OK with non-empty error_message.
-        if((grpcStatusCode = statusCode) != grpc::OK)
-            grpcErr = err;
+        if(statusCode != grpc::OK)
+            grpcStatus = ::grpc::Status(statusCode, err);
+        else
+            grpcStatus = ::grpc::Status::OK;
     }
 
     void SetMetadata(const char* key, const std::string& value) { grpc::ServerContext::AddTrailingMetadata(key, value); }
@@ -75,8 +75,7 @@ private:
     };
 
     const void* rpcParam{nullptr};
-    mutable ::grpc::StatusCode grpcStatusCode{grpc::OK};
-    mutable std::string grpcErr;
+    mutable ::grpc::Status grpcStatus{::grpc::Status::OK};
 };
 
 //

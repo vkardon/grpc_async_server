@@ -503,14 +503,11 @@ struct UnaryRequestContext : public RequestContext
         (service->*processFunc)(*ctx, req, resp);
 
         // And we are done!
-        ::grpc::Status grpcStatus(ctx->GetStatus(), ctx->GetError());
-
-        // Let the gRPC runtime know we've finished, using the
-        // memory address of this instance as the uniquely identifying tag for
-        // the event.
+        // Let the gRPC runtime know we've finished, using the memory address 
+        // of this instance as the uniquely identifying tag for the event.
         state = RequestContext::FINISH;
 
-        resp_writer->Finish(resp, grpcStatus, this);
+        resp_writer->Finish(resp, ctx->GetStatus(), this);
     }
 
     void EndProcessing(const GrpcServer* /*serv*/, ::grpc::ServerCompletionQueue* cq, bool /*isError*/) override
@@ -613,11 +610,8 @@ struct ServerStreamRequestContext : public RequestContext
         else
         {
             // And we are done!
-            ::grpc::Status grpcStatus(ctx->GetStatus(), ctx->GetError());
-
-            // Let the gRPC runtime know we've finished, using the
-            // memory address of this instance as the uniquely identifying tag for
-            // the event.
+            // Let the gRPC runtime know we've finished, using the memory address 
+            // of this instance as the uniquely identifying tag for the event.
             state = RequestContext::FINISH;
 
 //                // victor test
@@ -626,7 +620,7 @@ struct ServerStreamRequestContext : public RequestContext
 //                                        state == RequestContext::WRITE   ? "WRITE"   :
 //                                        state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
 
-            resp_writer->Finish(grpcStatus, this);
+            resp_writer->Finish(ctx->GetStatus(), this);
         }
     }
 
@@ -753,14 +747,13 @@ struct ClientStreamRequestContext : public RequestContext
             (service->*processFunc)(*ctx, req, resp);
 
             // Is processing failed?
-            if(ctx->GetStatus() != ::grpc::OK)
+            if(!ctx->GetStatus().ok())
             {
-                //TRACE("this=" << this << ", Processing returned error " << ctx->GetStatus());    // victor test
+                //TRACE("this=" << this << ", Processing returned error " << ctx->GetStatus().error_code());    // victor test
 
                 // Processing returned error
                 state = RequestContext::FINISH;
-                ::grpc::Status grpcStatus(ctx->GetStatus(), ctx->GetError());
-                req_reader->FinishWithError(grpcStatus, this);
+                req_reader->FinishWithError(ctx->GetStatus(), this);
                 return;
             }
 
@@ -784,8 +777,7 @@ struct ClientStreamRequestContext : public RequestContext
             // Let the gRPC runtime know we've finished, using the
             // memory address of this instance as the uniquely identifying tag for
             // the event.
-            ::grpc::Status grpcStatus(ctx->GetStatus(), ctx->GetError());
-            req_reader->Finish(resp, grpcStatus, this);
+            req_reader->Finish(resp, ctx->GetStatus(), this);
         }
         else
         {
