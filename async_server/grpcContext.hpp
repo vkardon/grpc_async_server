@@ -40,12 +40,13 @@ public:
 
     void SetMetadata(const char* key, const std::string& value) { grpc::ServerContext::AddTrailingMetadata(key, value); }
 
-    void GetMetadata(const char* key, std::string& value)
+    std::string GetMetadata(const char* key)
     {
-        const std::multimap<::grpc::string_ref, ::grpc::string_ref>& client_metadata = grpc::ServerContext::client_metadata();
-        auto itr = client_metadata.find(key);
-        if(itr != client_metadata.end())
-            value.assign(itr->second.data(), itr->second.size());
+        const std::multimap<::grpc::string_ref, ::grpc::string_ref>& metadata = grpc::ServerContext::client_metadata();
+        if(auto itr = metadata.find(key); itr != metadata.end())
+            return std::string(itr->second.data(), itr->second.size());
+        else
+            return "";
     }
 
     std::string Peer() const

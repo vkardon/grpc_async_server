@@ -45,8 +45,8 @@ public:
 private:
     std::string GetMetadata(grpc::ServerContextBase* ctx, const char* key)
     {
-        const auto& client_metadata = ctx->client_metadata();
-        if(auto itr = client_metadata.find(key); itr != client_metadata.end())
+        const auto& metadata = ctx->client_metadata();
+        if(auto itr = metadata.find(key); itr != metadata.end())
             return std::string(itr->second.data(), itr->second.size());
         else
             return "";
