@@ -240,6 +240,7 @@ private:
             std::chrono::time_point<std::chrono::system_clock> deadline =
                     std::chrono::system_clock::now() + std::chrono::milliseconds(200);
             server->Shutdown(deadline);
+            server->Wait();  // Important: Wait for shutdown to complete
 
             OnInfo("Waiting for server threads to complete...");
 
