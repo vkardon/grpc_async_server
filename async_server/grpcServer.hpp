@@ -45,9 +45,18 @@ struct RequestContext
 
     enum : char { UNKNOWN=0, REQUEST, READ, READEND, WRITE, FINISH } state = UNKNOWN;
 
+    const char* GetStateStr()
+    {
+        return (state == RequestContext::REQUEST ? "REQUEST" :
+                state == RequestContext::READ    ? "READ"    :
+                state == RequestContext::READEND ? "READEND" :
+                state == RequestContext::WRITE   ? "WRITE"   :
+                state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN");
+    }
+
     virtual void Process() = 0;
     virtual void StartProcessing(::grpc::ServerCompletionQueue* cq) = 0;
-    virtual void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) = 0;
+    virtual void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) = 0;
 
     virtual RequestContext* Clone() = 0;
     virtual std::string GetRequestName() const = 0;
@@ -334,12 +343,8 @@ private:
             // Get the request context for the specific tag
             RequestContext* ctx = static_cast<RequestContext*>(tag);
 
-    //        // victor test
-    //        TRACE("Next Event: tag='" << tag << "', eventReadSuccess=" << eventReadSuccess << ", "
-    //                << "state=" << (ctx->state == RequestContext::REQUEST ? "REQUEST" :
-    //                                ctx->state == RequestContext::READ    ? "READ"    :
-    //                                ctx->state == RequestContext::WRITE   ? "WRITE"   :
-    //                                ctx->state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
+            // victor test
+//            TRACE("Next Event: tag=" << tag << ", eventReadSuccess=" << eventReadSuccess << ", state=" << GetStateStr());
 
             // Have we successfully read event?
             if(!eventReadSuccess)
@@ -356,13 +361,8 @@ private:
                 // Ignore events that failed to read due to shutting down
                 else if(ctx->state != RequestContext::REQUEST)
                 {
-                    std::stringstream ss;
-                    ss << "Server Completion Queue failed to read event for tag=" << tag << ", "
-                       << "req=" << ctx->GetRequestName();
-                    OnError(ss.str());
-
                     // Abort processing if we failed reading event
-                    ctx->EndProcessing(this, cq, true /*isError*/);
+                    ctx->EndProcessing(cq, true /*isError*/);
                 }
                 continue;
             }
@@ -379,7 +379,7 @@ private:
 
             case RequestContext::FINISH:    // Completion of Finish()
                 // Process post-Finish() event
-                ctx->EndProcessing(this, cq, false /*isError*/);
+                ctx->EndProcessing(cq, false /*isError*/);
                 break;
 
             default:
@@ -511,10 +511,22 @@ struct UnaryRequestContext : public RequestContext
         resp_writer->Finish(resp, ctx->GetStatus(), this);
     }
 
-    void EndProcessing(const GrpcServer* /*serv*/, ::grpc::ServerCompletionQueue* cq, bool /*isError*/) override
+    void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) override
     {
-        // TODO
-        // Handle processing errors ...
+        if(isError)
+        {
+            std::stringstream ss;
+            ss << "Failed to read event for tag=" << this << ", req=" << GetRequestName()
+               << ", state=" << GetStateStr();
+            service->srv->OnError(ss.str());
+
+            // TODO: Handle processing errors ...
+            if(state != RequestContext::FINISH)
+            {
+//                ::grpc::Status grpcStatus(grpc::StatusCode::INTERNAL, "Server Completion Queue failed to read event");
+//                resp_writer->FinishWithError(grpcStatus, this);
+            }
+        }
 
         // Ask the system start processing requests
         StartProcessing(cq);
@@ -570,11 +582,8 @@ struct ServerStreamRequestContext : public RequestContext
         resp_writer.reset(new ::grpc::ServerAsyncWriter<RESP>(ctx.get()));
         req.Clear();
 
-//            // victor test
-//            TRACE("Calling requestFunc(), tag='" << this << "', "
-//                    << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
-//                                    state == RequestContext::WRITE   ? "WRITE"   :
-//                                    state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
+//        // victor test
+//        TRACE("Calling requestFunc(), tag=" << this << ", state=" << GetStateStr());
 
         // *Request* that the system start processing given requests.
         // In this request, "this" acts as the tag uniquely identifying
@@ -599,11 +608,8 @@ struct ServerStreamRequestContext : public RequestContext
         // Are there more responses to stream?
         if(ctx->streamHasMore)
         {
-//                // victor test
-//                TRACE("Calling Write(), tag='" << this << "', "
-//                        << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
-//                                        state == RequestContext::WRITE   ? "WRITE"   :
-//                                        state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
+            // victor test
+//            TRACE("Calling Write(), tag=" << this << ", state=" << GetStateStr());
 
             resp_writer->Write(resp, this);
         }
@@ -615,33 +621,37 @@ struct ServerStreamRequestContext : public RequestContext
             // of this instance as the uniquely identifying tag for the event.
             state = RequestContext::FINISH;
 
-//                // victor test
-//                TRACE("Calling Finish(), tag='" << this << "', "
-//                        << "state=" << (state == RequestContext::REQUEST ? "REQUEST" :
-//                                        state == RequestContext::WRITE   ? "WRITE"   :
-//                                        state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN"));
+//            // victor test
+//            TRACE("Calling Finish(), tag=" << this << ", state=" << GetStateStr());
 
             resp_writer->Finish(ctx->GetStatus(), this);
         }
     }
 
-    void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) override
+    void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) override
     {
+        if(isError)
+        {
+//            const char* stateStr =
+//                (state == RequestContext::REQUEST ? "REQUEST (ServerAsyncWriter::requestFunc() failed)" :
+//                 state == RequestContext::WRITE   ? "WRITE (ServerAsyncWriter::Write() failed)" :
+//                 state == RequestContext::FINISH  ? "FINISH (ServerAsyncWriter::Finish() failed)" : "UNKNOWN");
+//
+            std::stringstream ss;
+            ss << "Failed to read event for tag=" << this << ", req=" << GetRequestName()
+               << ", streamParam=" << ctx->streamParam << ", state=" << GetStateStr();
+            service->srv->OnError(ss.str());
+
+            // TODO: Handle processing errors ...
+            if(state != RequestContext::FINISH)
+            {
+//                ::grpc::Status grpcStatus(grpc::StatusCode::INTERNAL, "Server Completion Queue failed to read event");
+//                resp_writer->Finish(grpcStatus, this);
+            }
+        }
+
         if(ctx)
         {
-            if(isError)
-            {
-                const char* stateStr =
-                    (state == RequestContext::REQUEST ? "REQUEST (ServerAsyncWriter::requestFunc() failed)" :
-                     state == RequestContext::WRITE   ? "WRITE (ServerAsyncWriter::Write() failed)"   :
-                     state == RequestContext::FINISH  ? "FINISH (ServerAsyncWriter::Finish() failed)" : "UNKNOWN");
-
-                std::stringstream ss;
-                ss << "Error streaming for tag=" << this << ", req=" << GetRequestName() << ", "
-                   << "streamParam=" << ctx->streamParam << ", state=" << stateStr;
-                serv->OnError(ss.str());
-            }
-
             // End processing
             ctx->streamStatus = (isError ? StreamStatus::ERROR : StreamStatus::SUCCESS);
             RESP respDummy;
@@ -654,15 +664,10 @@ struct ServerStreamRequestContext : public RequestContext
             // If processing of requestFunc() event failed, then we will be here
             // even before stream_ctx gets a chance to be initialized.
             // In this case we don't have a stream yet.
-            const char* stateStr =
-                (state == RequestContext::REQUEST ? "REQUEST" :
-                 state == RequestContext::WRITE   ? "WRITE"   :
-                 state == RequestContext::FINISH  ? "FINISH"  : "UNKNOWN");
-
             std::stringstream ss;
-            ss << "Ending streaming for tag=" << this << ", req=" << GetRequestName() << ", "
-               << "stream='Not Started', state=" << stateStr;
-            serv->OnError(ss.str());
+            ss << "Ending streaming for tag=" << this << ", req=" << GetRequestName()
+               << ", stream='Not Started', state=" << GetStateStr();
+            service->srv->OnError(ss.str());
         }
 
         // Ask the system start processing requests
@@ -789,9 +794,16 @@ struct ClientStreamRequestContext : public RequestContext
         }
     }
 
-    void EndProcessing(const GrpcServer* serv, ::grpc::ServerCompletionQueue* cq, bool isError) override
+    void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) override
     {
         //TRACE("Done");  // victor test
+        if(isError)
+        {
+            std::stringstream ss;
+            ss << "Failed to read event for tag=" << this << ", req=" << GetRequestName()
+               << ", state=" << GetStateStr();
+            service->srv->OnError(ss.str());
+        }
 
         // Ask the system start processing requests
         StartProcessing(cq);

@@ -32,10 +32,14 @@ private:
         builder.SetMaxReceiveMessageSize(INT_MAX);
         builder.SetMaxSendMessageSize(INT_MAX);
 
-        // Example: Limits the incoming request queue size. This controls memory usage.
+        // Example: Limit memory and thread usage by the gRPC library
+        // ResourceQuota represents a bound on memory and thread usage by the gRPC
+        // library. gRPC will attempt to keep memory and threads used by all attached
+        // entities below the ResourceQuota bound.
         grpc::ResourceQuota quota;
-        quota.Resize(1024 * 1024 * 10); // 10MB max queue size
+        quota.Resize(1024 * 1024 * 10); // 10MB memory max
         builder.SetResourceQuota(quota);
+        //builder.SetMaxThreads(int new_max_threads);
 
         // Set how often OnRun() should be called. The default interval is 1 sec,
         // but it can be reset by calling SetRunInterval() with desired time

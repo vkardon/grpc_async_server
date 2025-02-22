@@ -173,6 +173,8 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
                                     const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*= nullptr*/,
                                     const grpc::ChannelArguments* channelArgsIn /*= nullptr*/)
 {
+    Clear();
+
     addressUri = addressUriIn;
     creds = (credsIn ? credsIn : grpc::InsecureChannelCredentials());
 
@@ -190,7 +192,8 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
     }
 
     std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgs);
-    stub = GRPC_SERVICE::NewStub(channel);
+    if(channel)
+        stub = GRPC_SERVICE::NewStub(channel);
     return (stub != nullptr);
 }
 
