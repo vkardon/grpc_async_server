@@ -21,7 +21,7 @@ template <class GRPC_SERVICE>
 class GrpcRouter
 {
 public:
-    GrpcRouter(bool asyncForward = false) : mAsyncForward(asyncForward) {}
+    GrpcRouter() = default;
     virtual ~GrpcRouter() = default;
 
     GrpcRouter(const std::string& targetHost, unsigned short targetPort,
@@ -74,11 +74,15 @@ public:
     // Helper method to get client metadata
     void GetMetadata(const grpc::ServerContext& ctx, std::map<std::string, std::string>& metadata) const;
 
+    // Get contained GrpcClient object
+    GrpcClient<GRPC_SERVICE>& GetTargetClient() { return mTargetClient; }
+
     // Helper method to format error
     std::string FormatError(const std::string& from, const google::protobuf::Message& req,
                             const ::grpc::Status& status) const;
 
-    GrpcClient<GRPC_SERVICE>& GetTargetClient() { return mTargetClient; }
+    // Set Async or Sync forwarding method
+    void SetAsyncForward(bool asyncForward) { mAsyncForward = asyncForward; }
 
 private:
     GrpcClient<GRPC_SERVICE> mTargetClient;

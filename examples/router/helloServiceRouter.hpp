@@ -18,7 +18,6 @@ class HelloServiceRouter : public gen::GrpcRouter<test::Hello>
 {
 public:
     HelloServiceRouter(const std::string& targetHost, unsigned short targetPort)
-//        : gen::GrpcRouter<test::Hello>(true /*asyncForward*/)
     {
 //        // Example: Set the maximum message size for both inbound and outbound messages
 //        grpc::ChannelArguments channelArgs;
@@ -36,6 +35,9 @@ public:
 //        Init(targetHost, targetPort, nullptr, &channelArgs);
 
         Init(targetHost, targetPort);
+
+        // Set Async or Sync forwarding method (default is sync)
+//        SetAsyncForward(true /*asyncForward*/);
     }
     virtual ~HelloServiceRouter() = default;
 
