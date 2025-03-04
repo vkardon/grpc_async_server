@@ -37,7 +37,10 @@ public:
         Init(targetHost, targetPort);
 
         // Set Async or Sync forwarding method (default is sync)
-//        SetAsyncForward(true /*asyncForward*/);
+        //SetAsyncForward(true /*asyncForward*/);
+
+        // Set Verbose to get OnInfo() messages
+        SetVerbose(true);
     }
     virtual ~HelloServiceRouter() = default;
 

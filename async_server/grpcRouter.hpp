@@ -84,9 +84,13 @@ public:
     // Set Async or Sync forwarding method
     void SetAsyncForward(bool asyncForward) { mAsyncForward = asyncForward; }
 
+    // Enable/Disable Info logging
+    void SetVerbose(bool verbose) { mVerbose = verbose; }
+
 private:
     GrpcClient<GRPC_SERVICE> mTargetClient;
     bool mAsyncForward{false};
+    bool mVerbose{false};
 };
 
 //
@@ -320,12 +324,15 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
     }
     else
     {
-        std::stringstream ss;
-        ss << "From " << ctx.Peer()
-           << ", status=" << gen::StatusToStr(::grpc::OK)
-           << ", req=" << req.GetTypeName()
-           << ", addressUri='" << mTargetClient.GetAddressUri() << "'";
-        OnInfo(__FNAME__, __LINE__, __func__, ss.str());
+        if(mVerbose)
+        {
+            std::stringstream ss;
+            ss << "From " << ctx.Peer()
+               << ", status=" << gen::StatusToStr(::grpc::OK)
+               << ", req=" << req.GetTypeName()
+               << ", addressUri='" << mTargetClient.GetAddressUri() << "'";
+            OnInfo(__FNAME__, __LINE__, __func__, ss.str());
+        }
     }
 }
 
@@ -391,12 +398,15 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
         {
             ctx.EndOfStream(); // No more data to send
 
-            std::stringstream ss;
-            ss << "From " << ctx.Peer()
-               << ", status=" << gen::StatusToStr(reader->GetStatus().error_code())
-               << ", req=" << req.GetTypeName()
-               << ", addressUri='" << mTargetClient.GetAddressUri() << "'";
-            OnInfo(__FNAME__, __LINE__, __func__, ss.str());
+            if(mVerbose)
+            {
+                std::stringstream ss;
+                ss << "From " << ctx.Peer()
+                   << ", status=" << gen::StatusToStr(reader->GetStatus().error_code())
+                   << ", req=" << req.GetTypeName()
+                   << ", addressUri='" << mTargetClient.GetAddressUri() << "'";
+                OnInfo(__FNAME__, __LINE__, __func__, ss.str());
+            }
         }
     }
 }
