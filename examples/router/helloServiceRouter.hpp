@@ -17,14 +17,40 @@
 class HelloServiceRouter : public gen::GrpcRouter<test::Hello>
 {
 public:
-    template <typename... Args>
-    HelloServiceRouter(Args&&... args) : gen::GrpcRouter<test::Hello>(std::forward<Args>(args)...) {}
+    HelloServiceRouter(const std::string& targetHost, unsigned short targetPort)
+//        : gen::GrpcRouter<test::Hello>(true /*asyncForward*/)
+    {
+//        // Example: Set the maximum message size for both inbound and outbound messages
+//        grpc::ChannelArguments channelArgs;
+//        channelArgs.SetMaxSendMessageSize(INT_MAX);
+//        channelArgs.SetMaxReceiveMessageSize(INT_MAX);
+//
+//        // Example: Limit memory and thread usage by the gRPC library
+//        // ResourceQuota represents a bound on memory and thread usage by the gRPC
+//        // library. gRPC will attempt to keep memory and threads used by all attached
+//        // entities below the ResourceQuota bound.
+//        grpc::ResourceQuota quota;
+//        quota.Resize(1024 * 1024 * 300); // 300MB memory max
+//        channelArgs.SetResourceQuota(quota);
+//
+//        Init(targetHost, targetPort, nullptr, &channelArgs);
+
+        Init(targetHost, targetPort);
+    }
     virtual ~HelloServiceRouter() = default;
 
 private:
     // Error/Info messages produced by gen::GrpcRouter
-    virtual void OnError(const std::string& err) const override { ERRORMSG(err); }
-    virtual void OnInfo(const std::string& info) const override { INFOMSG(info); }
+    virtual void OnError(const std::string& /*fname*/, int /*lineNum*/, const std::string& /*func*/,
+                         const std::string& err) const override
+    {
+        ERRORMSG(err);
+    }
+    virtual void OnInfo(const std::string& /*fname*/, int /*lineNum*/, const std::string& /*func*/,
+                        const std::string& info) const override
+    {
+        INFOMSG(info);
+    }
 };
 
 //

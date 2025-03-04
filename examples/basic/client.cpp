@@ -26,34 +26,10 @@ void PingTest(const char* addressUri)
     }
 }
 
-void ShutdownTest(const char* addressUri)
-{
-    // Instantiate a channel, out of which the actual RPCs are created
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
-    std::unique_ptr<test::Hello::Stub> stub = test::Hello::NewStub(channel);
-    grpc::ClientContext context;
-
-    test::ShutdownRequest req;
-    test::ShutdownResponse resp;
-
-    req.set_reason("Shutdown Test");
-
-    if(grpc::Status s = stub->Shutdown(&context, req, &resp); !s.ok())
-    {
-        std::cerr << "ShutdownTest failed with error code: " 
-            << s.error_code() << " (" << s.error_message() << ")" << std::endl;
-    }
-    else
-    {
-        std::cout << "ShutdownTest response: " << resp.msg() << std::endl;
-    }
-}
-
 void PrintUsage()
 {
     std::cout << "Usage: client <hostname (optional)> <test name>" << std::endl;
     std::cout << "       client ping" << std::endl;
-    std::cout << "       client shutdown" << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -77,10 +53,6 @@ int main(int argc, char** argv)
     if(!strcmp(testName, "ping"))
     {
         PingTest(addressUri);
-    }
-    else if(!strcmp(testName, "shutdown"))
-    {
-        ShutdownTest(addressUri);
     }
     else
     {

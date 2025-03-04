@@ -37,7 +37,7 @@ SRCS_CLN = $(PROJECT_HOME)/client.cpp
 
 # gRPC proto files 
 PROTO_OUT  = $(OBJ_DIR)/_generate
-PROTO_HOME = $(PROJECT_HOME)
+PROTO_HOME = $(PROJECT_HOME)/../proto
 PROTO_SRCS = $(PROTO_HOME)/hello.proto
 
 GRPC_INC = $(GRPC_HOME)/$(LINKING_TYPE)/include

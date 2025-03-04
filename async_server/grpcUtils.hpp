@@ -227,6 +227,16 @@ inline bool JsonToProtobuf(
     return true;
 }
 
+// This method is intended to be used with __FILE__ preprocessor variable
+// to extract file name portion from the full path. It's constexpr, and therefore
+// resolved at compile time rather than runtime.
+constexpr const char* fname(const char* file, int i)
+{
+    return (i == 0) ? (file) : (*(file + i) == '/' ? (file + i + 1) : fname(file, i - 1));
+}
+
+#define __FNAME__ fname(__FILE__, sizeof(__FILE__)-1)
+
 } //namespace gen
 
 inline std::ostream& operator<<(std::ostream& out, const ::google::protobuf::Message& msg)

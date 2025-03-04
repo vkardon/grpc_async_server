@@ -24,6 +24,20 @@ private:
     virtual bool OnInit(::grpc::ServerBuilder& builder) override
     {
         builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
+
+//        // Example: Set the maximum message size for both inbound and outbound messages
+//        builder.SetMaxReceiveMessageSize(INT_MAX);
+//        builder.SetMaxSendMessageSize(INT_MAX);
+//
+//        // Example: Limit memory and thread usage by the gRPC library
+//        // ResourceQuota represents a bound on memory and thread usage by the gRPC
+//        // library. gRPC will attempt to keep memory and threads used by all attached
+//        // entities below the ResourceQuota bound.
+//        grpc::ResourceQuota quota;
+//        quota.Resize(1024 * 1024 * 10); // 10MB memory max
+//        builder.SetResourceQuota(quota);
+//        //builder.SetMaxThreads(int new_max_threads);
+
         return true;
     }
 

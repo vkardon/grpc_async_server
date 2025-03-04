@@ -225,9 +225,10 @@ bool GrpcClient<GRPC_SERVICE>::Reset()
         return false;
 
     std::unique_lock<std::mutex> lock(mStubMtx);
-
+    stub.reset();
     std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgs);
-    stub = GRPC_SERVICE::NewStub(channel);
+    if(channel)
+        stub = GRPC_SERVICE::NewStub(channel);
     return (stub != nullptr);
 }
 

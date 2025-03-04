@@ -29,12 +29,14 @@ message PingResponse
 message ServerStreamRequest
 {
     string msg = 1;
+    bytes data = 2;    // Dummy data to simulate a large message
 }
 
 message ServerStreamResponse
 {
     string msg = 1; 
-    bool result = 2;
+    bytes data = 2;    // Dummy data to simulate a large message
+    bool result = 3;
 }
 
 message ClientStreamRequest

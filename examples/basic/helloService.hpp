@@ -19,7 +19,6 @@ private:
     {
         // Bind all HelloService RPCs
         Bind(&HelloService::Ping, &test::Hello::AsyncService::RequestPing);
-        Bind(&HelloService::Shutdown, &test::Hello::AsyncService::RequestShutdown);
         return true;
     }
 
@@ -29,14 +28,6 @@ private:
     {
         std::cout << "From " << ctx.Peer() << std::endl;
         resp.set_msg("Pong");
-    }
-
-    void Shutdown(const gen::Context& ctx,
-                  const test::ShutdownRequest& req, test::ShutdownResponse& resp)
-    {
-        std::cout << "From " << ctx.Peer() << ", reason: " << req.reason() << std::endl;
-        resp.set_msg("Goodbye");
-        srv->Shutdown(); // Shutdown the server
     }
 };
 

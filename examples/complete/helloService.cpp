@@ -76,6 +76,7 @@ void HelloService::ServerStreamTest(const gen::ServerStreamContext& ctx,
             ss << "Resp[" << (respList->sentRows + 1) << "]: '" << respList->rows[respList->sentRows] << "'";
             resp.set_msg(ss.str());
             resp.set_result(true);
+//            resp.set_data(std::string(4 * 1024 * 1024, 'A'));   // Fill with 4MB or 'A' characters
             respList->sentRows++;
         }
         else

@@ -27,13 +27,11 @@ namespace gen {
 #if 0
 #define TRACE(msg) \
 do{ \
-    std::stringstream buf; \
-    buf << "[INTERNAL] " << msg; \
-    OnInfo(buf.str()); \
+    std::stringstream ss; \
+    ss << "[INTERNAL " << __func__ << ":" << __LINE__ << "] " << msg; \
+    OnInfo(ss.str()); \
 }while(0)
 #endif
-
-class GrpcServer;
 
 //
 // Base request context class
@@ -362,6 +360,11 @@ private:
                 else if(ctx->state != RequestContext::REQUEST)
                 {
                     // Abort processing if we failed reading event
+                    std::stringstream ss;
+                    ss << __func__ << ':' << __LINE__ << ' '
+                       << "Failed to read Completion Queue event: state=" << ctx->GetStateStr()
+                       << ", ctx=" << ctx << ", " << "req=" << ctx->GetRequestName();
+                    OnError(ss.str());
                     ctx->EndProcessing(cq, true /*isError*/);
                 }
                 continue;
@@ -384,8 +387,9 @@ private:
 
             default:
                 std::stringstream ss;
-                ss << "Unknown Completion Queue event: ctx->state=" << ctx->state << ", tag=" << tag << ", "
-                   << "req=" << ctx->GetRequestName();
+                ss << __func__ << ':' << __LINE__ << ' '
+                   << "Unknown Completion Queue event: state=" << ctx->GetStateStr()
+                   << ", ctx=" << ctx << ", " << "req=" << ctx->GetRequestName();
                 OnError(ss.str());
                 break;
             } // end of switch
@@ -515,11 +519,6 @@ struct UnaryRequestContext : public RequestContext
     {
         if(isError)
         {
-            std::stringstream ss;
-            ss << "Failed to read event for tag=" << this << ", req=" << GetRequestName()
-               << ", state=" << GetStateStr();
-            service->srv->OnError(ss.str());
-
             // TODO: Handle processing errors ...
             if(state != RequestContext::FINISH)
             {
@@ -638,7 +637,8 @@ struct ServerStreamRequestContext : public RequestContext
 //                 state == RequestContext::FINISH  ? "FINISH (ServerAsyncWriter::Finish() failed)" : "UNKNOWN");
 //
             std::stringstream ss;
-            ss << "Failed to read event for tag=" << this << ", req=" << GetRequestName()
+            ss << __func__ << ':' << __LINE__ << ' '
+               << "Server streaming failed for tag=" << this << ", req=" << GetRequestName()
                << ", streamParam=" << ctx->streamParam << ", state=" << GetStateStr();
             service->srv->OnError(ss.str());
 
@@ -665,7 +665,8 @@ struct ServerStreamRequestContext : public RequestContext
             // even before stream_ctx gets a chance to be initialized.
             // In this case we don't have a stream yet.
             std::stringstream ss;
-            ss << "Ending streaming for tag=" << this << ", req=" << GetRequestName()
+            ss << __func__ << ':' << __LINE__ << ' '
+               << "Ending streaming for tag=" << this << ", req=" << GetRequestName()
                << ", stream='Not Started', state=" << GetStateStr();
             service->srv->OnError(ss.str());
         }
@@ -796,13 +797,9 @@ struct ClientStreamRequestContext : public RequestContext
 
     void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) override
     {
-        //TRACE("Done");  // victor test
         if(isError)
         {
-            std::stringstream ss;
-            ss << "Failed to read event for tag=" << this << ", req=" << GetRequestName()
-               << ", state=" << GetStateStr();
-            service->srv->OnError(ss.str());
+            // TODO: Handle processing errors ...
         }
 
         // Ask the system start processing requests
