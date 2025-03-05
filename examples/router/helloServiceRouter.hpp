@@ -19,10 +19,10 @@ class HelloServiceRouter : public gen::GrpcRouter<test::Hello>
 public:
     HelloServiceRouter(const std::string& targetHost, unsigned short targetPort)
     {
-//        // Example: Set the maximum message size for both inbound and outbound messages
-//        grpc::ChannelArguments channelArgs;
-//        channelArgs.SetMaxSendMessageSize(INT_MAX);
-//        channelArgs.SetMaxReceiveMessageSize(INT_MAX);
+        // Example: Set the maximum message size for both inbound and outbound messages
+        grpc::ChannelArguments channelArgs;
+        channelArgs.SetMaxSendMessageSize(INT_MAX);
+        channelArgs.SetMaxReceiveMessageSize(INT_MAX);
 //
 //        // Example: Limit memory and thread usage by the gRPC library
 //        // ResourceQuota represents a bound on memory and thread usage by the gRPC
@@ -31,13 +31,11 @@ public:
 //        grpc::ResourceQuota quota;
 //        quota.Resize(1024 * 1024 * 300); // 300MB memory max
 //        channelArgs.SetResourceQuota(quota);
-//
-//        Init(targetHost, targetPort, nullptr, &channelArgs);
 
-        Init(targetHost, targetPort);
+        Init(targetHost, targetPort, nullptr, &channelArgs);
 
         // Set Async or Sync forwarding method (default is sync)
-        //SetAsyncForward(true /*asyncForward*/);
+        SetAsyncForward(true /*asyncForward*/);
 
         // Set Verbose to get OnInfo() messages
         SetVerbose(true);
@@ -45,13 +43,34 @@ public:
     virtual ~HelloServiceRouter() = default;
 
 private:
+    virtual ::grpc::Status OnCallBegin(const gen::Context& /*ctx*/, const void** callParam) override
+    {
+        // This method can be used for authentication and other purposes.
+        // If a Status other than OK is returned, the call will be terminated.
+        // return { ::grpc::UNAUTHENTICATED, "Invalid session id" };
+        //
+        // Note: You can use callParam to assign any application-specific value.
+        // This value will then be sent to the following methods if you decide to override them:
+        // OnCallEnd(callParam)
+        // GetMetadata(callParam)
+        // FormatError(callParam)
+        // FormatInfo(callParam)
+        //
+        return ::grpc::Status::OK;
+    }
+
+    virtual void OnCallEnd(const gen::Context& ctx, const void* callParam) override
+    {
+        // Note: You can use this method to clean up any resources associated with callParam
+    }
+
     // Error/Info messages produced by gen::GrpcRouter
-    virtual void OnError(const std::string& /*fname*/, int /*lineNum*/, const std::string& /*func*/,
+    virtual void OnError(const char* fname, int lineNum, const char* func,
                          const std::string& err) const override
     {
-        ERRORMSG(err);
+        ERRORMSG(fname << ":" << lineNum << ":" << func << " err='" << err << "'");
     }
-    virtual void OnInfo(const std::string& /*fname*/, int /*lineNum*/, const std::string& /*func*/,
+    virtual void OnInfo(const char* /*fname*/, int /*lineNum*/, const char* /*func*/,
                         const std::string& info) const override
     {
         INFOMSG(info);

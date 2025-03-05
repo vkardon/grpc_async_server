@@ -65,7 +65,7 @@ bool ServerStreamTest(const std::string& addressUri, bool silent = false)
         std::unique_lock<std::mutex> lock(logger::GetLogMutex());
         std::cout << "BEGIN" << std::endl;
         for(const test::ServerStreamResponse& resp : respList)
-            std::cout << resp << std::endl;
+            std::cout << resp.msg() << std::endl;
         std::cout << "END: " << respList.size() << " responses" << std::endl;
     }
 

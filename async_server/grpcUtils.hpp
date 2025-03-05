@@ -227,15 +227,15 @@ inline bool JsonToProtobuf(
     return true;
 }
 
-// This method is intended to be used with __FILE__ preprocessor variable
-// to extract file name portion from the full path. It's constexpr, and therefore
-// resolved at compile time rather than runtime.
-constexpr const char* fname(const char* file, int i)
-{
-    return (i == 0) ? (file) : (*(file + i) == '/' ? (file + i + 1) : fname(file, i - 1));
-}
-
-#define __FNAME__ fname(__FILE__, sizeof(__FILE__)-1)
+#ifndef __FNAME__
+    // This constexpr method extracts the filename from a full path using
+    // the __FILE__ preprocessor variable, resolving at compile time.
+    constexpr const char* fname(const char* file, int i)
+    {
+        return (i == 0) ? (file) : (*(file + i) == '/' ? (file + i + 1) : fname(file, i - 1));
+    }
+    #define __FNAME__ gen::fname(__FILE__, sizeof(__FILE__)-1)
+#endif
 
 } //namespace gen
 
