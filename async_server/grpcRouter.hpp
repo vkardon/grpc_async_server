@@ -139,7 +139,7 @@ protected:
 // Asynchronous stream reader to be used with a synchronous gRPC server.
 //
 template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
-class GrpcAsyncStreamReader : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
+class GrpcAsyncStreamReader final : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
 {
 public:
     GrpcAsyncStreamReader(GrpcRouter<GRPC_SERVICE>* router, const void* callParam, size_t capacity)
@@ -150,7 +150,7 @@ public:
     virtual void Call(const gen::ServerStreamContext& ctx,
                       const REQ& req, GRPC_STUB_FUNC grpcStubFunc) override
     {
-        this->mPeer = ctx.Peer();
+        mPeer = ctx.Peer();
 
         mThread = std::thread([&, grpcStubFunc]()
         {
@@ -164,25 +164,25 @@ public:
 
             // Copy client metadata from a ServerContext
             std::map<std::string, std::string> metadata;
-            this->mRouter->GetMetadata(this->mCallParam, ctx, metadata);
+            mRouter->GetMetadata(mCallParam, ctx, metadata);
             std::string errMsg;
 
-            GrpcClient<GRPC_SERVICE>& grpcClient = this->mRouter->GetTargetClient();
+            GrpcClient<GRPC_SERVICE>& grpcClient = mRouter->GetTargetClient();
             if(!grpcClient.CallStream(grpcStubFunc, req, respCallback, metadata, errMsg))
             {
                 // std::cerr << errMsg << std::endl;
                 // Empty the pipe and cause Pop() to return (it anyone waiting)
                 mPipe.Clear();
-                this->mStatus = { ::grpc::INTERNAL, errMsg };
-                errMsg = this->mRouter->FormatError(this->mCallParam, this->mPeer, req, this->mStatus);
-                this->mRouter->OnError(__FNAME__, __LINE__, __func__, errMsg);
+                mStatus = { ::grpc::INTERNAL, errMsg };
+                errMsg = mRouter->FormatError(mCallParam, mPeer, req, mStatus);
+                mRouter->OnError(__FNAME__, __LINE__, __func__, errMsg);
 
                 // Reset the channel to avoid gRPC's internal handling of broken connections
                 grpcClient.Reset();
             }
             else
             {
-                this->mStatus = ::grpc::Status::OK;
+                mStatus = ::grpc::Status::OK;
             }
 
             mPipe.SetHasMore(false); // Done reading from the stream
@@ -208,6 +208,13 @@ public:
     }
 
 private:
+    // Bring base class members into derived (this) class's scope
+    using GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>::mRouter;
+    using GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>::mStatus;
+    using GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>::mPeer;
+    using GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>::mCallParam;
+
+    // Class members
     std::thread mThread;
     Pipe<RESP> mPipe;
     bool mStop{false};
@@ -217,7 +224,7 @@ private:
 // Synchronous stream reader to be used with an asynchronous gRPC server
 //
 template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
-class GrpcSyncStreamReader : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
+class GrpcSyncStreamReader final : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
 {
 public:
     GrpcSyncStreamReader(GrpcRouter<GRPC_SERVICE>* router, const void* callParam)
@@ -228,20 +235,20 @@ public:
     virtual void Call(const gen::ServerStreamContext& ctx,
                       const REQ& req, GRPC_STUB_FUNC grpcStubFunc) override
     {
-        this->mPeer = ctx.Peer();
+        mPeer = ctx.Peer();
 
         // Copy client metadata from a ServerContext
         std::map<std::string, std::string> metadata;
-        this->mRouter->GetMetadata(this->mCallParam, ctx, metadata);
+        mRouter->GetMetadata(mCallParam, ctx, metadata);
 
         // Create client stream reader
         std::string errMsg;
         mGrpcClient.CreateContext(mClientContext, metadata, 0);
         if(!mGrpcClient.GetStream(grpcStubFunc, req, mReader, mClientContext, errMsg))
         {
-            this->mStatus = { ::grpc::INTERNAL, errMsg };
-            errMsg = this->mRouter->FormatError(this->mCallParam, this->mPeer, req, this->mStatus);
-            this->mRouter->OnError(__FNAME__, __LINE__, __func__, errMsg);
+            mStatus = { ::grpc::INTERNAL, errMsg };
+            errMsg = mRouter->FormatError(mCallParam, mPeer, req, mStatus);
+            mRouter->OnError(__FNAME__, __LINE__, __func__, errMsg);
         }
     }
 
@@ -258,16 +265,16 @@ public:
         {
             std::string errMsg;
             mGrpcClient.FormatStatusMsg(errMsg, __func__, REQ(), s);
-            this->mStatus = { ::grpc::INTERNAL, errMsg };
-            errMsg = this->mRouter->FormatError(this->mCallParam, this->mPeer, REQ(), this->mStatus);
-            this->mRouter->OnError(__FNAME__, __LINE__, __func__, errMsg);
+            mStatus = { ::grpc::INTERNAL, errMsg };
+            errMsg = mRouter->FormatError(mCallParam, mPeer, REQ(), mStatus);
+            mRouter->OnError(__FNAME__, __LINE__, __func__, errMsg);
 
             // Reset the channel to avoid gRPC's internal handling of broken connections
             mGrpcClient.Reset();
         }
         else
         {
-            this->mStatus = ::grpc::Status::OK;
+            mStatus = ::grpc::Status::OK;
         }
 
         // Reading is done
@@ -286,13 +293,20 @@ public:
             std::string errMsg;
             grpc::Status s = mReader->Finish();
             mGrpcClient.FormatStatusMsg(errMsg, __func__, REQ(), s);
-            this->mStatus = { ::grpc::INTERNAL, errMsg };
-            errMsg = this->mRouter->FormatError(this->mCallParam, this->mPeer, REQ(), this->mStatus);
-            this->mRouter->OnError(__FNAME__, __LINE__, __func__, errMsg);
+            mStatus = { ::grpc::INTERNAL, errMsg };
+            errMsg = mRouter->FormatError(mCallParam, mPeer, REQ(), mStatus);
+            mRouter->OnError(__FNAME__, __LINE__, __func__, errMsg);
         }
     }
 
 private:
+    // Bring base class members into derived (this) class's scope
+    using GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>::mRouter;
+    using GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>::mStatus;
+    using GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>::mPeer;
+    using GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>::mCallParam;
+
+    // Class members
     GrpcClient<GRPC_SERVICE>& mGrpcClient;
     grpc::ClientContext mClientContext;
     std::unique_ptr<grpc::ClientReader<RESP>> mReader;
