@@ -38,9 +38,14 @@ public:
             grpcStatus = ::grpc::Status::OK;
     }
 
-    void SetMetadata(const char* key, const std::string& value) { grpc::ServerContext::AddTrailingMetadata(key, value); }
+    void SetMetadata(const char* key, const std::string& value) const
+    {
+        // TODO: What would be the preferred way to change grpc::ServerContext
+        // metadata instead of removing constness from its pointer?
+        const_cast<Context*>(this)->grpc::ServerContext::AddTrailingMetadata(key, value);
+    }
 
-    std::string GetMetadata(const char* key)
+    std::string GetMetadata(const char* key) const
     {
         const std::multimap<::grpc::string_ref, ::grpc::string_ref>& metadata = grpc::ServerContext::client_metadata();
         if(auto itr = metadata.find(key); itr != metadata.end())
