@@ -10,9 +10,8 @@
 #include "hello.grpc.pb.h"
 
 //
-// Note: The only reason to derive from gen::GrpcRouter is
-// to override OnError and OnInfo to write to the desired logger
-// instead of std::cout and std::cerr
+// Note: Derive from gen::GrpcRouterof in order to customize
+// initialization and to override OnCallBegin/End, OnError/Info, etc.
 //
 class HelloServiceRouter : public gen::GrpcRouter<test::Hello>
 {
@@ -65,13 +64,12 @@ private:
     }
 
     // Error/Info messages produced by gen::GrpcRouter
-    virtual void OnError(const char* fname, int lineNum, const char* func,
-                         const std::string& err) const override
+    virtual void OnError(const char* /*fname*/, int /*lineNum*/, const std::string& err) const override
     {
-        ERRORMSG(fname << ":" << lineNum << ":" << func << " err='" << err << "'");
+        ERRORMSG(err);
     }
-    virtual void OnInfo(const char* /*fname*/, int /*lineNum*/, const char* /*func*/,
-                        const std::string& info) const override
+
+    virtual void OnInfo(const char* /*fname*/, int /*lineNum*/, const std::string& info) const override
     {
         INFOMSG(info);
     }
