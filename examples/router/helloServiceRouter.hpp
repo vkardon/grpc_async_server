@@ -64,12 +64,14 @@ private:
     }
 
     // Error/Info messages produced by gen::GrpcRouter
-    virtual void OnError(const char* /*fname*/, int /*lineNum*/, const std::string& err) const override
+    virtual void OnError(const char* /*fname*/, int /*lineNum*/, const std::string& err, 
+                         const void* /*callParam*/) const override
     {
         ERRORMSG(err);
     }
 
-    virtual void OnInfo(const char* /*fname*/, int /*lineNum*/, const std::string& info) const override
+    virtual void OnInfo(const char* /*fname*/, int /*lineNum*/, const std::string& info, 
+                        const void* /*callParam*/) const override
     {
         INFOMSG(info);
     }

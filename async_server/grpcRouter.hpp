@@ -84,19 +84,23 @@ protected:
     // That parameter will be send back with OnCallEnd() notification.
     virtual ::grpc::Status OnCallBegin(const gen::Context& /*ctx*/, const void** /*callParam*/) { return ::grpc::Status::OK; }
     virtual void OnCallEnd(const gen::Context& /*ctx*/, const void* /*callParam*/) { /**/ }
+    virtual void OnEndOfStream(const gen::Context& /*ctx*/, const void* /*callParam*/) { /**/ }
 
     // Helper method to get client metadata
-    virtual void GetMetadata(const void* callParam, const grpc::ServerContext& ctx,
-                             std::map<std::string, std::string>& metadata) const;
+    virtual void GetMetadata(const grpc::ServerContext& ctx,
+                             std::map<std::string, std::string>& metadata,
+                             const void* callParam) const;
 
     // Helper method to format status message
-    virtual std::string FormatStatusMsg(const void* callParam,
-                                        const google::protobuf::Message& req,
-                                        const ::grpc::Status& status) const;
+    virtual std::string FormatStatusMsg(const google::protobuf::Message& req,
+                                        const ::grpc::Status& status,
+                                        const void* callParam) const;
 
     // For derived class to override (Error and Info reporting)
-    virtual void OnError(const char* fname, int lineNum, const std::string& err) const;
-    virtual void OnInfo(const char* fname, int lineNum, const std::string& info) const;
+    virtual void OnError(const char* fname, int lineNum, const std::string& err,
+                         const void* callParam) const;
+    virtual void OnInfo(const char* fname, int lineNum, const std::string& info,
+                        const void* callParam) const;
 
 protected:
     GrpcClient<GRPC_SERVICE> mTargetClient;
@@ -168,7 +172,7 @@ public:
 
             // Copy client metadata from a ServerContext
             std::map<std::string, std::string> metadata;
-            mRouter->GetMetadata(mCallParam, ctx, metadata);
+            mRouter->GetMetadata(ctx, metadata, mCallParam);
             std::string errMsg;
 
             GrpcClient<GRPC_SERVICE>& grpcClient = mRouter->GetTargetClient();
@@ -178,8 +182,8 @@ public:
                 // Empty the pipe and cause Pop() to return (it anyone waiting)
                 mPipe.Clear();
                 mStatus = { ::grpc::INTERNAL, errMsg };
-                errMsg = mRouter->FormatStatusMsg(mCallParam, req, mStatus);
-                mRouter->OnError(__FNAME__, __LINE__, errMsg);
+                errMsg = mRouter->FormatStatusMsg(req, mStatus, mCallParam);
+                mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
 
                 // Reset the channel to avoid gRPC's internal handling of broken connections
                 grpcClient.Reset();
@@ -240,7 +244,7 @@ public:
     {
         // Copy client metadata from a ServerContext
         std::map<std::string, std::string> metadata;
-        mRouter->GetMetadata(mCallParam, ctx, metadata);
+        mRouter->GetMetadata(ctx, metadata, mCallParam);
 
         // Create client stream reader
         std::string errMsg;
@@ -248,8 +252,8 @@ public:
         if(!mGrpcClient.GetStream(grpcStubFunc, req, mReader, mClientContext, errMsg))
         {
             mStatus = { ::grpc::INTERNAL, errMsg };
-            errMsg = mRouter->FormatStatusMsg(mCallParam, req, mStatus);
-            mRouter->OnError(__FNAME__, __LINE__, errMsg);
+            errMsg = mRouter->FormatStatusMsg(req, mStatus, mCallParam);
+            mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
         }
     }
 
@@ -267,8 +271,8 @@ public:
             std::string errMsg;
             mGrpcClient.FormatStatusMsg(errMsg, __func__, REQ(), s);
             mStatus = { ::grpc::INTERNAL, errMsg };
-            errMsg = mRouter->FormatStatusMsg(mCallParam, REQ(), mStatus);
-            mRouter->OnError(__FNAME__, __LINE__, errMsg);
+            errMsg = mRouter->FormatStatusMsg(REQ(), mStatus, mCallParam);
+            mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
 
             // Reset the channel to avoid gRPC's internal handling of broken connections
             mGrpcClient.Reset();
@@ -295,8 +299,8 @@ public:
             grpc::Status s = mReader->Finish();
             mGrpcClient.FormatStatusMsg(errMsg, __func__, REQ(), s);
             mStatus = { ::grpc::INTERNAL, errMsg };
-            errMsg = mRouter->FormatStatusMsg(mCallParam, REQ(), mStatus);
-            mRouter->OnError(__FNAME__, __LINE__, errMsg);
+            errMsg = mRouter->FormatStatusMsg(REQ(), mStatus, mCallParam);
+            mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
         }
     }
 
@@ -326,8 +330,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
     if(!s.ok())
     {
         ctx.SetStatus(s.error_code(), s.error_message());
-        std::string err = FormatStatusMsg(callParam, req, ctx.GetStatus());
-        OnError(__FNAME__, __LINE__, err);
+        std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
+        OnError(__FNAME__, __LINE__, err, callParam);
         OnCallEnd(ctx, callParam);  // Send CallEnd notification
         return;
     }
@@ -340,8 +344,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
     if(remainingTime <= std::chrono::milliseconds(0))
     {
         ctx.SetStatus(::grpc::DEADLINE_EXCEEDED, "Request already past deadline");
-        std::string err = FormatStatusMsg(callParam, req, ctx.GetStatus());
-        OnError(__FNAME__, __LINE__, err);
+        std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
+        OnError(__FNAME__, __LINE__, err, callParam);
         OnCallEnd(ctx, callParam);  // Send CallEnd notification
         return;
     }
@@ -353,7 +357,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
 
     // Copy client metadata from a ServerContext
     std::map<std::string, std::string> metadata;
-    GetMetadata(callParam, ctx, metadata);
+    GetMetadata(ctx, metadata, callParam);
 
     // Call Grpc Service
     std::string errMsg;
@@ -362,13 +366,13 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
         // Reset the channel to avoid gRPC's internal handling of broken connections
         mTargetClient.Reset();
         ctx.SetStatus(::grpc::INTERNAL, errMsg);
-        std::string err = FormatStatusMsg(callParam, req, ctx.GetStatus());
-        OnError(__FNAME__, __LINE__, err);
+        std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
+        OnError(__FNAME__, __LINE__, err, callParam);
     }
     else if(mVerbose)
     {
-        std::string info = FormatStatusMsg(callParam, req, ctx.GetStatus());
-        OnInfo(__FNAME__, __LINE__, info);
+        std::string info = FormatStatusMsg(req, ctx.GetStatus(), callParam);
+        OnInfo(__FNAME__, __LINE__, info, callParam);
     }
 
     OnCallEnd(ctx, callParam);  // Send CallEnd notification
@@ -393,6 +397,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
         if(reader)
         {
             reader->Stop(); // Note: Stop() does nothing if the reader is already complete
+            OnCallEnd(ctx, reader->GetCallParam());  // Send CallEnd notification
             delete reader;
         }
         reader = nullptr;
@@ -406,27 +411,27 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
             // Send CallBegin notification.
             const void* callParam = nullptr;
             ::grpc::Status s = OnCallBegin(ctx, &callParam);
+            if(s.ok())
+            {
+                // Create GrpcStreamReader.
+                if(mAsyncForward)
+                    reader = new (std::nothrow) GrpcAsyncStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>(this, callParam, mPipeCapacity);
+                else
+                    reader = new (std::nothrow) GrpcSyncStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>(this, callParam);
+
+                if(!reader)
+                    s = { ::grpc::INTERNAL, "Out of memory while allocating GrpcAsyncStreamReader" };
+            }
+
             if(!s.ok())
             {
                 ctx.EndOfStream(s.error_code(), s.error_message());
-                std::string err = FormatStatusMsg(callParam, req, ctx.GetStatus());
-                OnError(__FNAME__, __LINE__, err);
-                OnCallEnd(ctx, callParam);  // Send CallEnd notification
-                return;
-            }
+                std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
+                OnError(__FNAME__, __LINE__, err, callParam);
+                OnEndOfStream(ctx, callParam);  // Send EndOfStream notification
 
-            // Create GrpcStreamReader.
-            if(mAsyncForward)
-                reader = new (std::nothrow) GrpcAsyncStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>(this, callParam, mPipeCapacity);
-            else
-                reader = new (std::nothrow) GrpcSyncStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>(this, callParam);
-
-            if(!reader)
-            {
-                // Failed to allocate reader, stop streaming
-                ctx.EndOfStream(::grpc::INTERNAL, "Out of memory while allocating GrpcAsyncStreamReader");
-                std::string err = FormatStatusMsg(callParam, req, ctx.GetStatus());
-                OnError(__FNAME__, __LINE__, err);
+                // Since we don't have a reader, we have no place to keep callParam.
+                // Let's send CallEnd notification now while we still have callParam.
                 OnCallEnd(ctx, callParam);  // Send CallEnd notification
                 return;
             }
@@ -444,17 +449,17 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
         {
             const ::grpc::Status& s = reader->GetStatus();
             ctx.EndOfStream(s.error_code(), s.error_message());
-            OnCallEnd(ctx, reader->GetCallParam());  // Send CallEnd notification
+            OnEndOfStream(ctx, reader->GetCallParam());  // Send EndOfStream notification
         }
         else
         {
             ctx.EndOfStream(); // No more data to send
             if(mVerbose)
             {
-                std::string info = FormatStatusMsg(reader->GetCallParam(), req, ctx.GetStatus());
-                OnInfo(__FNAME__, __LINE__, info);
+                std::string info = FormatStatusMsg(req, ctx.GetStatus(), reader->GetCallParam());
+                OnInfo(__FNAME__, __LINE__, info, reader->GetCallParam());
             }
-            OnCallEnd(ctx, reader->GetCallParam());  // Send CallEnd notification
+            OnEndOfStream(ctx, reader->GetCallParam());  // Send EndOfStream notification
         }
     }
 }
@@ -474,13 +479,15 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ClientStreamContext& ctx,
 // For derived class to override (Error and Info reporting)
 //
 template <class GRPC_SERVICE>
-void GrpcRouter<GRPC_SERVICE>::OnError(const char* fname, int lineNum, const std::string& err) const
+void GrpcRouter<GRPC_SERVICE>::OnError(const char* fname, int lineNum, const std::string& err,
+                                       const void* /*callParam*/) const
 {
     std::cout << "ERROR: " << fname << ":" << lineNum << " " << err << std::endl;
 }
 
 template <class GRPC_SERVICE>
-void GrpcRouter<GRPC_SERVICE>::OnInfo(const char* fname, int lineNum, const std::string& info) const
+void GrpcRouter<GRPC_SERVICE>::OnInfo(const char* fname, int lineNum, const std::string& info,
+                                      const void* /*callParam*/) const
 {
     std::cout << "INFO: " << fname << ":" << lineNum << " " << info << std::endl;
 }
@@ -489,9 +496,9 @@ void GrpcRouter<GRPC_SERVICE>::OnInfo(const char* fname, int lineNum, const std:
 // Helper method to format errorcd
 //
 template <class GRPC_SERVICE>
-std::string GrpcRouter<GRPC_SERVICE>::FormatStatusMsg(const void* /*callParam*/,
-                                                      const google::protobuf::Message& req,
-                                                      const ::grpc::Status& status) const
+std::string GrpcRouter<GRPC_SERVICE>::FormatStatusMsg(const google::protobuf::Message& req,
+                                                      const ::grpc::Status& status,
+                                                      const void* /*callParam*/) const
 {
     std::stringstream ss;
     ss << "req: " << req.GetTypeName()
@@ -506,8 +513,9 @@ std::string GrpcRouter<GRPC_SERVICE>::FormatStatusMsg(const void* /*callParam*/,
 // Helper method to get client metadata
 //
 template <class GRPC_SERVICE>
-void GrpcRouter<GRPC_SERVICE>::GetMetadata(const void* /*callParam*/, const grpc::ServerContext& ctx,
-                                           std::map<std::string, std::string>& metadata) const
+void GrpcRouter<GRPC_SERVICE>::GetMetadata(const grpc::ServerContext& ctx,
+                                           std::map<std::string, std::string>& metadata,
+                                           const void* /*callParam*/) const
 {
     for(const auto& pair : ctx.client_metadata())
     {
