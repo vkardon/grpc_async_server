@@ -60,10 +60,29 @@ public:
     void Forward(const gen::ClientStreamContext& ctx,
                  const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc);
 
+    // Check the overall status
+    bool IsValid() const { return mTargetClient.IsValid(); }
+
+    // Get contained GrpcClient object
+    GrpcClient<GRPC_SERVICE>& GetTargetClient() { return mTargetClient; }
+
+    // Set Async or Sync forwarding method
+    void SetAsyncForward(bool asyncForward) { mAsyncForward = asyncForward; }
+    bool GetAsyncForward() { return mAsyncForward; }
+
+    // Set timeout (in milliseconds) for unary gRpcs
+    void SetUnaryTimeout(unsigned long timeoutMs) { mUnaryTimeoutMs = timeoutMs; }
+    unsigned long GetUnaryTimeout() { return mUnaryTimeoutMs; }
+
+    // Enable/Disable Info logging
+    void SetVerbose(bool verbose) { mVerbose = verbose; }
+    bool GetVerbose() { return mVerbose; }
+
+protected:
     // For derived class to override - call Begin/End notification.
     // A derived class can use OnCallBegin() to associate a void* parameter with a call.
     // That parameter will be send back with OnCallEnd() notification.
-    virtual ::grpc::Status OnCallBegin(const gen::Context& /*ctx*/, const void** callParam) { return ::grpc::Status::OK; }
+    virtual ::grpc::Status OnCallBegin(const gen::Context& /*ctx*/, const void** /*callParam*/) { return ::grpc::Status::OK; }
     virtual void OnCallEnd(const gen::Context& /*ctx*/, const void* /*callParam*/) { /**/ }
 
     // Helper method to get client metadata
@@ -84,19 +103,7 @@ public:
     virtual void OnError(const char* fname, int lineNum, const char* func, const std::string& err) const;
     virtual void OnInfo(const char* fname, int lineNum, const char* func, const std::string& info) const;
 
-    // Check the overall status
-    bool IsValid() const { return mTargetClient.IsValid(); }
-
-    // Get contained GrpcClient object
-    GrpcClient<GRPC_SERVICE>& GetTargetClient() { return mTargetClient; }
-
-    // Set Async or Sync forwarding method
-    void SetAsyncForward(bool asyncForward) { mAsyncForward = asyncForward; }
-
-    // Enable/Disable Info logging
-    void SetVerbose(bool verbose) { mVerbose = verbose; }
-
-private:
+protected:
     GrpcClient<GRPC_SERVICE> mTargetClient;
     unsigned long mUnaryTimeoutMs{5000};    // 5 seconds timeout (in milliseconds) for unary gRpcs
     bool mAsyncForward{false};
@@ -104,6 +111,12 @@ private:
 
     // Max number or requests in pipe when forwarding is async (mAsyncForward is true)
     unsigned long PIPE_CAPACITY{5};         // Max number or requests in pipe (when
+
+    // Make GrpcAsyncStreamReader & GrpcAsyncStreamReader friends
+    template <class GRPC_SERVICE2, class GRPC_STUB_FUNC, class REQ, class RESP>
+    friend class GrpcAsyncStreamReader;
+    template <class GRPC_SERVICE2, class GRPC_STUB_FUNC, class REQ, class RESP>
+    friend class GrpcSyncStreamReader;
 };
 
 //
@@ -503,7 +516,7 @@ std::string GrpcRouter<GRPC_SERVICE>::FormatError(const void* /*callParam*/, con
 }
 
 template <class GRPC_SERVICE>
-std::string GrpcRouter<GRPC_SERVICE>::FormatInfo(const void* callParam, const std::string& from,
+std::string GrpcRouter<GRPC_SERVICE>::FormatInfo(const void* /*callParam*/, const std::string& from,
                                                  const google::protobuf::Message& req,
                                                  const ::grpc::Status& status) const
 {
