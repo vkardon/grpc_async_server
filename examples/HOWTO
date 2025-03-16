@@ -1,0 +1,32 @@
+#
+### How to select libraries for a build
+#
+### 1. Run nm to get a symbol table of every static library
+#
+# > nm -C *.a | egrep "\.a| T | W | D | R "
+#
+# .a - name of the library: libgrpc.a, etc.
+# T (Text) It's usually a function
+# D (Data) It's usually a global or static variable
+# W (Weak) The symbol is a weak symbol
+# R        Global read-only data symbol
+#
+# One-line command for all *.a libs to generate *.a.nm files:
+# > for file in *.a; do rm -rf $file.nm && nm -C $file | egrep "\.a| T | W | D | R " > $file.nm; done
+
+### 2. Run make command and select a firsts undefined sysbol
+#
+# > rm -rf client; make client 2>&1 | grep undefined | head -n 1
+# > examine_stack.cc:(.text+0x3b): undefined reference to `absl::lts_20230802::Symbolize(void const*, char*, int)'
+
+### 3. Find library that has undefined symbol
+#
+# > grep absl::lts_20230802::Symbolize *.nm
+# > libabsl_symbolize.a.nm:0000000000002730 T absl::lts_20230802::Symbolize(void const*, char*, int)
+#
+# The corresponding library is libabsl_symbolize.a
+#
+
+
+
+
