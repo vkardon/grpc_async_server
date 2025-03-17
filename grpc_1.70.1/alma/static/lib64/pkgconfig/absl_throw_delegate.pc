@@ -1,7 +1,7 @@
-prefix=/home/victor/Projects/github/grpc_build/1.70.1/grpc_install/static
+prefix=/home/vkardons/local/victor/github/grpc_build/1.70.1/grpc_install/static
 exec_prefix=${prefix}
-libdir=/home/victor/Projects/github/grpc_build/1.70.1/grpc_install/static/lib64
-includedir=/home/victor/Projects/github/grpc_build/1.70.1/grpc_install/static/include
+libdir=/home/vkardons/local/victor/github/grpc_build/1.70.1/grpc_install/static/lib64
+includedir=/home/vkardons/local/victor/github/grpc_build/1.70.1/grpc_install/static/include
 
 Name: absl_throw_delegate
 Description: Abseil throw_delegate library

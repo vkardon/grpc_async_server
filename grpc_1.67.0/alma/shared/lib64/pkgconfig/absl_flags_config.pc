@@ -1,0 +1,12 @@
+prefix=/home/vkardons/local/victor/github/grpc_build/1.67.0/grpc_install/shared
+exec_prefix=${prefix}
+libdir=/home/vkardons/local/victor/github/grpc_build/1.67.0/grpc_install/shared/lib64
+includedir=/home/vkardons/local/victor/github/grpc_build/1.67.0/grpc_install/shared/include
+
+Name: absl_flags_config
+Description: Abseil flags_config library
+URL: https://abseil.io/
+Version: 20240116
+Requires: absl_config = 20240116, absl_flags_path_util = 20240116, absl_flags_program_name = 20240116, absl_core_headers = 20240116, absl_strings = 20240116, absl_synchronization = 20240116
+Libs: -L${libdir}  -labsl_flags_config 
+Cflags: -I${includedir} -DNOMINMAX

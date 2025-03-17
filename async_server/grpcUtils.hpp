@@ -198,6 +198,7 @@ inline bool ProtobufToJson(
 {
     google::protobuf::util::JsonPrintOptions jsonOptions;
     //jsonOptions.always_print_primitive_fields = true; // deprecated
+    jsonOptions.always_print_fields_with_no_presence = true;
 
     if(!compact)
         jsonOptions.add_whitespace = true;
@@ -243,7 +244,7 @@ inline std::ostream& operator<<(std::ostream& out, const ::google::protobuf::Mes
 {
     google::protobuf::util::JsonPrintOptions jsonOptions;
     //jsonOptions.always_print_primitive_fields = true; // deprecated
-
+    jsonOptions.always_print_fields_with_no_presence = true;
     std::string json;
     auto status = google::protobuf::util::MessageToJsonString(msg, &json, jsonOptions);
     out << (status.ok() ? json : status.ToString());

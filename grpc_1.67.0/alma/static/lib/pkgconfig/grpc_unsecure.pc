@@ -1,4 +1,4 @@
-prefix=/home/victor/Projects/github/grpc_build/1.67.0/grpc_install/static
+prefix=/home/vkardons/local/victor/github/grpc_build/1.67.0/grpc_install/static
 exec_prefix=${prefix}
 includedir=${prefix}/include
 libdir=${exec_prefix}/lib

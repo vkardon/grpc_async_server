@@ -4,9 +4,9 @@
 #              | (_|_____| (_| | | |  __/\__ \
 #               \___|     \__,_|_|  \___||___/
 #
-exec_prefix=/home/victor/Projects/github/grpc_build/1.67.0/grpc_install/static/bin
-libdir=/home/victor/Projects/github/grpc_build/1.67.0/grpc_install/static/lib64
-includedir=/home/victor/Projects/github/grpc_build/1.67.0/grpc_install/static/include
+exec_prefix=/home/vkardons/local/victor/github/grpc_build/1.67.0/grpc_install/static/bin
+libdir=/home/vkardons/local/victor/github/grpc_build/1.67.0/grpc_install/static/lib64
+includedir=/home/vkardons/local/victor/github/grpc_build/1.67.0/grpc_install/static/include
 
 Name: c-ares
 URL: https://c-ares.org/
