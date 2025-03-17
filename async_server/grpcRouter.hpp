@@ -1,3 +1,4 @@
+// *INDENT-OFF*
 //
 // grpcRouter.hpp
 //
@@ -525,6 +526,6 @@ void GrpcRouter<GRPC_SERVICE>::GetMetadata(const grpc::ServerContext& ctx,
 
 } //namespace gen
 
-
 #endif // __GRPC_ROUTER_HPP__
+// *INDENT-ON*
 
