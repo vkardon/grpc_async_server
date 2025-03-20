@@ -117,8 +117,8 @@ public:
         return RunImpl(addressUriArr, threadCount);
     }
 
-    void Shutdown() { runService = false; }
-    bool IsRunning() { return runService; }
+    void Shutdown() { runServer = false; }
+    bool IsRunning() { return runServer; }
 
     template<class GRPC_SERVICE, class... SERVICE_ARGS>
     GRPC_SERVICE* AddService(SERVICE_ARGS&&...args)
@@ -133,6 +133,7 @@ public:
         // Note: Call OnInit() on GrpcServiceBase since it might be private in derived class
         else if(service->srv = this; !((GrpcServiceBase*)service)->OnInit())
         {
+            runServer = false;  // Do not run if any of the services fail initialization
             OnError("OnInit() failed for service '" + std::string(service->GetName()) + "'");
             delete service;
             return nullptr;
@@ -158,7 +159,9 @@ public:
 private:
     bool RunImpl(const std::vector<AddressUri>& addressUriArr, int threadCount)
     {
-        bool result = false; // Initially
+        runServer = true;       // Initially
+        bool result = false;    // Initially
+
         while(true)
         {
             ::grpc::ServerBuilder builder;
@@ -167,6 +170,13 @@ private:
             if(!OnInit(builder))
             {
                 OnError("Server inialization failed");
+                break;
+            }
+
+            // Are there any services that failed to initialize?
+            if(!runServer)
+            {
+                OnError("Server inialization failed: some services failed to initialize");
                 break;
             }
 
@@ -233,9 +243,8 @@ private:
 
             OnInfo("GrpcServer is running with " + std::to_string(threads.size()) + " threads");
 
-            // Loop until runService is true
-            runService = true;
-            while(runService)
+            // Loop until runServer is true
+            while(runServer)
             {
                 OnRun();
                 usleep(runIntervalMicroseconds);
@@ -267,7 +276,7 @@ private:
 
         // Clean up...
         requestContextList.clear();
-        runService = false;
+        runServer = false;
         runThreads = false;
 
         return result;
@@ -413,7 +422,7 @@ private:
     // Class data
     std::map<std::string, std::unique_ptr<GrpcServiceBase>> serviceMap;
     std::list<std::unique_ptr<RequestContext>> requestContextList;
-    std::atomic<bool> runService{false};            // Initially, since we are not running yet
+    std::atomic<bool> runServer{false};             // Initially, since we are not running yet
     std::atomic<bool> runThreads{false};            // Initially, since we don't have any threads yet
     unsigned int runIntervalMicroseconds{1000000};  // 1 secs default
 
