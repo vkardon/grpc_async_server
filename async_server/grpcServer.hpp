@@ -123,11 +123,11 @@ public:
     template<class GRPC_SERVICE, class... SERVICE_ARGS>
     GRPC_SERVICE* AddService(SERVICE_ARGS&&...args)
     {
-        char const* serverName = GRPC_SERVICE::service_full_name();
+        char const* serviceName = GRPC_SERVICE::service_full_name();
 
         if(!runServer)
         {
-            OnError("Cannot add service '" + std::string(serverName) + "' due to an erroneous GrpcServer state");
+            OnError("Cannot add service '" + std::string(serviceName) + "' due to an erroneous GrpcServer state");
             return nullptr;
         }
 
@@ -135,19 +135,19 @@ public:
         GRPC_SERVICE* service = new (std::nothrow) GRPC_SERVICE(std::forward<SERVICE_ARGS>(args)...);
         if(!service)
         {
-            OnError("Out of memory allocating '" + std::string(serverName) + "' service");
+            OnError("Out of memory allocating '" + std::string(serviceName) + "' service");
             return nullptr;
         }
         // Note: Call OnInit() on GrpcServiceBase since it might be private in derived class
         else if(service->srv = this; !((GrpcServiceBase*)service)->OnInit())
         {
             runServer = false;  // Do not run if any of the services fail initialization
-            OnError("OnInit() failed for service '" + std::string(serverName) + "'");
+            OnError("OnInit() failed for service '" + std::string(serviceName) + "'");
             delete service;
             return nullptr;
         }
 
-        serviceMap[service->GetName()].reset(service);
+        serviceMap[serviceName].reset(service);
         return service;
     }
 
@@ -224,15 +224,15 @@ private:
             }
 
             // Add Completion Queues - one queue per a thread for a best performance
-            std::vector<std::unique_ptr<::grpc::ServerCompletionQueue>> cqueus;
+            std::vector<std::unique_ptr<::grpc::ServerCompletionQueue>> cqueues;
             for(int i = 0; i < threadCount; i++)
             {
-                cqueus.emplace_back(builder.AddCompletionQueue());
-                if(!cqueus.back())
+                cqueues.emplace_back(builder.AddCompletionQueue());
+                if(!cqueues.back())
                     break;
             }
 
-            if((int)cqueus.size() != threadCount)
+            if((int)cqueues.size() != threadCount)
             {
                 OnError("Failed to add Completion Queue");
                 break;
@@ -251,7 +251,7 @@ private:
             std::vector<std::thread> threads;
             for(int i = 0; i < threadCount; i++)
             {
-                threads.emplace_back(&GrpcServer::ProcessEvents, this, cqueus[i].get(), i);
+                threads.emplace_back(&GrpcServer::ProcessEvents, this, cqueues[i].get(), i);
             }
 
             OnInfo("GrpcServer is running with " + std::to_string(threads.size()) + " threads");
