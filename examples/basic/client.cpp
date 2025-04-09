@@ -4,23 +4,34 @@
 #include <grpcpp/grpcpp.h>
 #include <grpc/fork.h>
 #include <sys/wait.h>
+#include <grpc/support/port_platform.h>
 #include "serverConfig.hpp"  // for PORT_NUMBER
 #include "hello.grpc.pb.h"
 
 void PingTest(const char* addressUri)
 {
     // Instantiate a channel, out of which the actual RPCs are created
+
+    // Channel-based compression
+    // grpc::ChannelArguments channel_args;
+    // channel_args.SetCompressionAlgorithm(grpc_compression_algorithm::GRPC_COMPRESS_GZIP);
+    // std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(addressUri, grpc::InsecureChannelCredentials(), channel_args);
+    // // std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
+    // std::unique_ptr<test::Hello::Stub> stub = test::Hello::NewStub(channel);
+    // grpc::ClientContext context;
+
+    // Per-call compression
     std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
     std::unique_ptr<test::Hello::Stub> stub = test::Hello::NewStub(channel);
     grpc::ClientContext context;
+    context.set_compression_algorithm(GRPC_COMPRESS_GZIP);
 
     test::PingRequest req;
     test::PingResponse resp;
 
     if(grpc::Status s = stub->Ping(&context, req, &resp); !s.ok())
     {
-        std::cerr << "PintTest failed with error code: " 
-            << s.error_code() << " (" << s.error_message() << ")" << std::endl;
+        std::cerr << "PintTest failed with error code: " << s.error_code() << " (" << s.error_message() << ")" << std::endl;
     }
     else
     {
@@ -28,73 +39,138 @@ void PingTest(const char* addressUri)
     }
 }
 
+// Process Parent/Child/GrandChild status used by ForkTest
+int gRole{1}; // Initially, 1-->PARENT, 2-->CHILD, 3-->GRANDCHILD
+std::string GetRole()
+{
+    return std::to_string(getpid()) +
+        (gRole == 1 ? " (PARENT)     : " : 
+         gRole == 2 ? " (CHILD)      : " : 
+         gRole == 3 ? " (GRANDCHILD) : " : 
+                      " (UNKNOWN)    : ");
+};
+#define TRACE(msg) std::cout << GetRole() << msg << std::endl
+
 void ForkTest(const char* addressUri)
 {
-    // Note: grpc_prefork() requires gRPC to be initialized prior to its invocation.
-    // Calling grpc_prefork() before gRPC is initialized will result in a crash.
-    // It appears that even though grpc_prefork() might internally attempt to check
-    // for gRPC initialization, this check may not function reliably. Therefore, the
-    // workaround is to explicitly call grpc_is_initialized() before the first grpc_prefork()
-    // call. While grpc_is_initialized() does not itself initialize gRPC, calling it
-    // preceding grpc_prefork() prevents the crash that occurs when grpc_prefork() is
-    // called before gRPC is initialized.
-    int res = grpc_is_initialized();
-    std::cout << "grpc_is_initialized() returned " << res << std::endl;
-
-    int num_children = 0;
-    for(; num_children < 50; num_children++)
+    auto Ping = [addressUri]() 
     {
-        // Parent call gRpc service
-        PingTest(addressUri);
-        PingTest(addressUri);
-        PingTest(addressUri);
+        std::shared_ptr<grpc::Channel> channel = grpc::CreateChannel(addressUri, grpc::InsecureChannelCredentials());
+        std::unique_ptr<test::Hello::Stub> stub = test::Hello::NewStub(channel);
+        grpc::ClientContext context;
+        test::PingRequest req;
+        test::PingResponse resp;
+        if(grpc::Status s = stub->Ping(&context, req, &resp); !s.ok())
+            TRACE("PintTest failed with error code: " << s.error_code() << " (" << s.error_message() << ")");
+    };
 
-        std::cout << "Parent before grpc_prefork" << std::endl;
+    gRole = 1; // PARENT
+    int childrenCount = 5;
+    int grandChildrenCount = 30;
+    int rpcCount = 100;
+
+    // Parent started
+    TRACE("Running...");
+
+    // Parent calls gRpc service
+    for(int j = 0; j < rpcCount; j++)
+        Ping();
+
+    // Parent forks children
+    setpgid(0, getpid()); // Make parent a process group leader
+    for(int n = 0; n < childrenCount; n++)
+    {
         grpc_prefork();
-        std::cout << "Parent after grpc_prefork" << std::endl;
 
         pid_t pid = fork();
         if(pid > 0)
         {
             // Parent process
-            std::cout << "Parent before grpc_postfork_parent" << std::endl;
             grpc_postfork_parent();
-            std::cout << "Parent after grpc_postfork_parent" << std::endl;
         }
         else if(pid == 0)
         {
             // Child process
-            std::cout << "Child before grpc_postfork_child" << std::endl;
             grpc_postfork_child();
-            std::cout << "Child after grpc_postfork_child" << std::endl;
 
-            // Child calls gRpc service
-            for(int i=0; i<500; i++)
-            {
-                std::cout << "PingTest #" << (i + 1) << ":" << std::endl;
-                PingTest(addressUri);
-            }
-            return; // Child exits
+            gRole++; // Transition PARENT-->CHILD
+            TRACE("Running...");
+
+            setpgid(0, getppid()); // Join parent's process group
+            break;
         }
         else
         {
-            std::cout << "Fork failed" << std::endl;
+            // If fork fails, kill the entire process group
+            TRACE("Fork failed");
+            kill(-getpgrp(), SIGTERM);
+            exit(1);
+        }
+    }
+
+    // If we are parent, then wait for children then exit
+    if(gRole == 1) // Parent process
+    {
+        for(int i = 0; i < childrenCount; ++i)
+            wait(nullptr); // Wait for any child
+
+        TRACE("All children finished (" << childrenCount << ")");
+        return;
+    }
+
+    // Child process continue; calls gRpc service
+    for(int j = 0; j < rpcCount; j++)
+        Ping();
+
+    // Child forks grandchildren
+    pid_t pgid = getpgrp(); // Child process group id
+    for(int i = 0; i < grandChildrenCount; i++)
+    {
+        grpc_prefork();
+
+        pid_t pid = fork();
+        if(pid > 0)
+        {
+            // Parent process
+            grpc_postfork_parent();
+        }
+        else if(pid == 0)
+        {
+            // Grandchild process
+            grpc_postfork_child();
+
+            gRole++; // Transition CHILD-->GRANDCHILD
+            setpgid(0, pgid); // Join grandparent's process group
+
+            // TRACE("Running...");
+
+            // Grandchild calls gRpc service
+            for(int j = 0; j < rpcCount; j++)
+                Ping();
+            
+            return; // Grandchild exits
+        }
+        else
+        {
+            // If fork fails, kill the entire process group
+            TRACE("Fork failed");
+            kill(-getpgrp(), SIGTERM);
             return;
         }
     }
 
-    // Parent waits for all children
-    for (int i = 0; i < num_children; ++i)
-        wait(nullptr); // Wait for any child
+    // Child  - waits for grandchildren, then exit
+    for(int i = 0; i < grandChildrenCount; ++i)
+        wait(nullptr); // Wait for any grandchild
 
-    std::cout << "All children finished" << std::endl;
+    TRACE("All grandchildren finished (" << grandChildrenCount << ")");
 }
 
 void PrintUsage()
 {
-    std::cout << "Usage: client <hostname (optional)> <test name>" << std::endl;
-    std::cout << "       client ping" << std::endl;
-    std::cout << "       client fork" << std::endl;
+    std::cout << getpid() << ": Usage: client <hostname (optional)> <test name>" << std::endl;
+    std::cout << getpid() << ":        client ping" << std::endl;
+    std::cout << getpid() << ":        client fork" << std::endl;
 }
 
 int main(int argc, char** argv)
