@@ -1,7 +1,8 @@
 # grpc_async_server
-Headers-only C++ library for building asynchronous gRPC servers that support unary, server-side streaming, and client-side streaming RPCs.
+A headers-only C++ library to build asynchronous gRPC servers with support for unary, server-side streaming, and client-side streaming RPCs.
 
-Environment: gRPC 1.60.0, GCC with C++17, Ubuntu 22.04 or RedHat 7 & 8 or Almalinux 8 or 9.  
+Environment: gRPC 1.60.0, GCC with C++17, Ubuntu 22.04, RedHat 7 & 8, or AlmaLinux 8 & 9.
+
 You may need to adjust the Makefile to suit your build environment.
 
 **Basic example:**  (located in the 'example_basic' directory):
