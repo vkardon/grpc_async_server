@@ -118,10 +118,10 @@ public:
     }
 
     void Shutdown() { runServer = false; }
-    bool IsRunning() { return runServer; }
+    bool IsRunning() { return isRunning; }
 
     template<class GRPC_SERVICE, class... SERVICE_ARGS>
-    GRPC_SERVICE* AddService(SERVICE_ARGS&&...args)
+    std::shared_ptr<GRPC_SERVICE> AddService(SERVICE_ARGS&&...args)
     {
         char const* serviceName = GRPC_SERVICE::service_full_name();
 
@@ -132,22 +132,21 @@ public:
         }
 
         // Note: Use std::forward<Args>(args) to ensures that rvalue references are preserved correctly
-        GRPC_SERVICE* service = new (std::nothrow) GRPC_SERVICE(std::forward<SERVICE_ARGS>(args)...);
+        std::shared_ptr<GRPC_SERVICE> service(new (std::nothrow) GRPC_SERVICE(std::forward<SERVICE_ARGS>(args)...));
         if(!service)
         {
             OnError("Out of memory allocating '" + std::string(serviceName) + "' service");
             return nullptr;
         }
         // Note: Call OnInit() on GrpcServiceBase since it might be private in derived class
-        else if(service->srv = this; !((GrpcServiceBase*)service)->OnInit())
+        else if(service->srv = this; !dynamic_cast<GrpcServiceBase*>(service.get())->OnInit())
         {
             runServer = false;  // Do not run if any of the services fail initialization
             OnError("OnInit() failed for service '" + std::string(serviceName) + "'");
-            delete service;
             return nullptr;
         }
 
-        serviceMap[serviceName].reset(service);
+        serviceMap[serviceName] = service;
         return service;
     }
 
@@ -247,7 +246,6 @@ private:
             }
 
             // Start threads
-            runThreads = true;
             std::vector<std::thread> threads;
             for(int i = 0; i < threadCount; i++)
             {
@@ -257,6 +255,7 @@ private:
             OnInfo("GrpcServer is running with " + std::to_string(threads.size()) + " threads");
 
             // Loop until runServer is true
+            isRunning = true;
             while(runServer)
             {
                 OnRun();
@@ -283,16 +282,13 @@ private:
             OnInfo("All server threads are completed");
 
             // We are done
+            isRunning = false;
             result = true;
             break;
         }
 
-        // Clean up...
-        serviceMap.clear();
-        requestContextList.clear();
-        runServer = true;
-        runThreads = false;
-
+        // Clean up and reset to initial values
+        Cleanup();
         return result;
     }
 
@@ -426,6 +422,15 @@ private:
         OnInfo("Thread " + std::to_string(threadIndex) + " is completed");
     }
 
+    void Cleanup()
+    {
+        serviceMap.clear();
+        requestContextList.clear();
+        isRunning = false;
+        runServer = true;
+        runThreads = true;
+    }
+
     // Helpers
     void AddRpcRequest(RequestContext* ctx) { requestContextList.emplace_back(ctx); }
 
@@ -434,10 +439,11 @@ private:
     virtual void OnRun() {}
 
     // Class data
-    std::map<std::string, std::unique_ptr<GrpcServiceBase>> serviceMap;
+    std::map<std::string, std::shared_ptr<GrpcServiceBase>> serviceMap;
     std::list<std::unique_ptr<RequestContext>> requestContextList;
-    std::atomic<bool> runServer{true};
-    std::atomic<bool> runThreads{false};            // Initially, since we don't have any threads yet
+    std::atomic<bool> isRunning{false};             // Initially, since we are not running yet
+    std::atomic<bool> runServer{true};              // Initially, since we intend to run the server
+    std::atomic<bool> runThreads{true};             // Initially, since we intend to run threads
     unsigned int runIntervalMicroseconds{1000000};  // 1 secs default
 
     template<class RPC_SERVICE>
