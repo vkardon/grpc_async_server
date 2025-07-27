@@ -12,7 +12,7 @@ namespace gen {
 //
 // Pipe class to provide thread-safe read/write access to stored objects
 //
-template<class DATA>
+template<typename DATA>
 class Pipe
 {
 public:
@@ -52,7 +52,7 @@ private:
 //
 // Pipe class implementation
 //
-template<class DATA>
+template<typename DATA>
 void Pipe<DATA>::Push(const DATA& data)
 {
     std::unique_lock<std::mutex> lock(mMtx);
@@ -64,7 +64,7 @@ void Pipe<DATA>::Push(const DATA& data)
     mPopCv.notify_one();
 }
 
-template<class DATA>
+template<typename DATA>
 void Pipe<DATA>::Push(DATA&& data)
 {
     std::unique_lock<std::mutex> lock(mMtx);
@@ -76,7 +76,7 @@ void Pipe<DATA>::Push(DATA&& data)
     mPopCv.notify_one();
 }
 
-template<class DATA>
+template<typename DATA>
 bool Pipe<DATA>::Pop(DATA& data)
 {
     // Wait for a data to arrive
@@ -104,7 +104,7 @@ bool Pipe<DATA>::Pop(DATA& data)
     return true;
 }
 
-template<class DATA>
+template<typename DATA>
 void Pipe<DATA>::SetHasMore(bool hasMore)
 {
     std::unique_lock<std::mutex> lock(mMtx);
@@ -112,7 +112,7 @@ void Pipe<DATA>::SetHasMore(bool hasMore)
     mPopCv.notify_all();    // In case we are waiting in Pop()
 }
 
-template<class DATA>
+template<typename DATA>
 void Pipe<DATA>::Clear()
 {
     std::unique_lock<std::mutex> lock(mMtx);

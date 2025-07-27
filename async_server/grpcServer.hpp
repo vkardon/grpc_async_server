@@ -120,7 +120,7 @@ public:
     void Shutdown() { runServer = false; }
     bool IsRunning() { return isRunning; }
 
-    template<class GRPC_SERVICE, class... SERVICE_ARGS>
+    template<typename GRPC_SERVICE, typename... SERVICE_ARGS>
     std::shared_ptr<GRPC_SERVICE> AddService(SERVICE_ARGS&&...args)
     {
         char const* serviceName = GRPC_SERVICE::service_full_name();
@@ -446,39 +446,39 @@ private:
     std::atomic<bool> runThreads{true};             // Initially, since we intend to run threads
     unsigned int runIntervalMicroseconds{1000000};  // 1 secs default
 
-    template<class RPC_SERVICE>
+    template<typename RPC_SERVICE>
     friend class GrpcService;
 };
 
-template<class RPC_SERVICE>
+template<typename RPC_SERVICE>
 class GrpcService;
 
 //
 // Template pointer to function that does actual unary/stream processing
 //
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 using UnaryProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const Context&, const REQ&, RESP&);
 
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 using ServerStreamProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const ServerStreamContext&, const REQ&, RESP&);
 
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 using ClientStreamProcessFunc = void (GrpcService<RPC_SERVICE>::*)(const ClientStreamContext&, const REQ&, RESP&);
 
 //
 // Template pointer to function that *request* the system to start processing unary/strean requests
 //
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 using UnaryRequestFunc = void (RPC_SERVICE::AsyncService::*)(::grpc::ServerContext*,
         REQ*, ::grpc::ServerAsyncResponseWriter<RESP>*,
         ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 using ServerStreamRequestFunc = void (RPC_SERVICE::AsyncService::*)(::grpc::ServerContext*,
         REQ*, ::grpc::ServerAsyncWriter<RESP>*,
         ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
 
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 using ClientStreamRequestFunc = void (RPC_SERVICE::AsyncService::*)(::grpc::ServerContext*,
         ::grpc::ServerAsyncReader<RESP, REQ>*,
         ::grpc::CompletionQueue*, ::grpc::ServerCompletionQueue*, void*);
@@ -486,7 +486,7 @@ using ClientStreamRequestFunc = void (RPC_SERVICE::AsyncService::*)(::grpc::Serv
 //
 // Template class to handle unary respone
 //
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 struct UnaryRequestContext : public RequestContext
 {
     UnaryRequestContext(GrpcService<RPC_SERVICE>* service_,
@@ -574,7 +574,7 @@ struct UnaryRequestContext : public RequestContext
 //
 // Template class to handle streaming respone
 //
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 struct ServerStreamRequestContext : public RequestContext
 {
     ServerStreamRequestContext(GrpcService<RPC_SERVICE>* service_,
@@ -718,7 +718,7 @@ struct ServerStreamRequestContext : public RequestContext
 //
 // Template class to handle client streaming respone
 //
-template<class RPC_SERVICE, class REQ, class RESP>
+template<typename RPC_SERVICE, typename REQ, typename RESP>
 struct ClientStreamRequestContext : public RequestContext
 {
     ClientStreamRequestContext(GrpcService<RPC_SERVICE>* service_,
@@ -849,7 +849,7 @@ struct ClientStreamRequestContext : public RequestContext
 //
 // Template implementation of service-specific GrpcService class
 //
-template<class RPC_SERVICE>
+template<typename RPC_SERVICE>
 class GrpcService : public GrpcServiceBase
 {
 public:
@@ -868,9 +868,9 @@ public:
     virtual ::grpc::Service* GetService() override { return &async; }
 
     // Add request for unary RPC
-    template<class REQ, class RESP, class SERVICE_IMPL>
+    template<typename REQ, typename RESP, typename SERVICE_IMPL, typename REQUEST_FUNC>
     void Bind(void (SERVICE_IMPL::*processFunc)(const Context&, const REQ&, RESP&),
-              auto requestFunc, const void* processParam = nullptr)
+              REQUEST_FUNC requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>(
@@ -882,9 +882,9 @@ public:
     }
 
     // Add request for server-stream RPC
-    template<class REQ, class RESP, class SERVICE_IMPL>
+    template<typename REQ, typename RESP, typename SERVICE_IMPL, typename REQUEST_FUNC>
     void Bind(void (SERVICE_IMPL::*processFunc)(const ServerStreamContext&, const REQ&, RESP&),
-              auto requestFunc, const void* processParam = nullptr)
+              REQUEST_FUNC requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>
@@ -896,9 +896,9 @@ public:
     }
 
     // Add request for client-stream RPC
-    template<class REQ, class RESP, class SERVICE_IMPL>
+    template<typename REQ, typename RESP, typename SERVICE_IMPL, typename REQUEST_FUNC>
     void Bind(void (SERVICE_IMPL::*processFunc)(const ClientStreamContext&, const REQ&, RESP&),
-              auto requestFunc, const void* processParam = nullptr)
+              REQUEST_FUNC requestFunc, const void* processParam = nullptr)
     {
         // Bind RPC-specific grpc service with the corresponding processing function.
         auto ctx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>
@@ -915,13 +915,13 @@ protected:
 
     friend class GrpcServer;
 
-    template<class RPC_SERVICE_, class REQ, class RESP>
+    template<typename RPC_SERVICE_, typename REQ, typename RESP>
     friend struct UnaryRequestContext;
 
-    template<class RPC_SERVICE_, class REQ, class RESP>
+    template<typename RPC_SERVICE_, typename REQ, typename RESP>
     friend struct ServerStreamRequestContext;
 
-    template<class RPC_SERVICE_, class REQ, class RESP>
+    template<typename RPC_SERVICE_, typename REQ, typename RESP>
     friend struct ClientStreamRequestContext;
 };
 

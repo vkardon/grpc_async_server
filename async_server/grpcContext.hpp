@@ -114,7 +114,7 @@ private:
     mutable bool streamHasMore = true;    // Are there more responses to stream?
     mutable void* streamParam = nullptr;  // Request-specific stream data (for derived class to use)
 
-    template<class RPC_SERVICE, class REQ, class RESP>
+    template<typename RPC_SERVICE, typename REQ, typename RESP>
     friend struct ServerStreamRequestContext;
 };
 
@@ -134,9 +134,9 @@ public:
 
 private:
     bool streamHasMore = false;           // Are there more request to read?
-    mutable void* streamParam = nullptr;  // Request-specific stream data (for derived class to use)
+    mutable void* streamParam = nullptr;  // Request-specific stream data (for derived typename to use)
 
-    template<class RPC_SERVICE, class REQ, class RESP>
+    template<typename RPC_SERVICE, typename REQ, typename RESP>
     friend struct ClientStreamRequestContext;
 };
 

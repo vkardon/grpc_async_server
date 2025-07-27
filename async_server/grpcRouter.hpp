@@ -15,7 +15,7 @@ namespace gen {
 //
 // Helper class to forward UNARY/STREAM a destination gRpc service
 //
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 class GrpcRouter
 {
 public:
@@ -47,17 +47,17 @@ public:
     }
 
     // Forward unary request
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     void Forward(const gen::Context& ctx,
                  const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc);
 
     // Forward server-side stream of requests
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     void Forward(const gen::ServerStreamContext& ctx,
                  const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc);
 
     // Forward client-side stream of requests
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     void Forward(const gen::ClientStreamContext& ctx,
                  const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc);
 
@@ -113,16 +113,16 @@ protected:
     unsigned long mPipeCapacity{5};         // Max number or requests in pipe (when
 
     // Make GrpcAsyncStreamReader & GrpcAsyncStreamReader friends
-    template <class GRPC_SERVICE2, class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_SERVICE2, typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     friend class GrpcAsyncStreamReader;
-    template <class GRPC_SERVICE2, class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_SERVICE2, typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     friend class GrpcSyncStreamReader;
 };
 
 //
 // Helper class to read stream of messages
 //
-template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE, typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 class GrpcStreamReader
 {
 public:
@@ -149,7 +149,7 @@ protected:
 //
 // Asynchronous stream reader to be used with a synchronous gRPC server.
 //
-template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE, typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 class GrpcAsyncStreamReader final : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
 {
 public:
@@ -231,7 +231,7 @@ private:
 //
 // Synchronous stream reader to be used with an asynchronous gRPC server
 //
-template <class GRPC_SERVICE, class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE, typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 class GrpcSyncStreamReader final : public GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>
 {
 public:
@@ -320,8 +320,8 @@ private:
 //
 // Forward unary request
 //
-template <class GRPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE>
+template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
                                        const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
@@ -382,8 +382,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
 //
 // Forward server-side stream of requests
 //
-template <class GRPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE>
+template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
                                        const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
@@ -468,8 +468,8 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
 //
 // Forward client-side stream of requests
 //
-template <class GRPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE>
+template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ClientStreamContext& ctx,
                                        const REQ& req, RESP& resp, GRPC_STUB_FUNC grpcStubFunc)
 {
@@ -479,14 +479,14 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ClientStreamContext& ctx,
 //
 // For derived class to override (Error and Info reporting)
 //
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 void GrpcRouter<GRPC_SERVICE>::OnError(const char* fname, int lineNum, const std::string& err,
                                        const void* /*callParam*/) const
 {
     std::cout << "ERROR: " << fname << ":" << lineNum << " " << err << std::endl;
 }
 
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 void GrpcRouter<GRPC_SERVICE>::OnInfo(const char* fname, int lineNum, const std::string& info,
                                       const void* /*callParam*/) const
 {
@@ -496,7 +496,7 @@ void GrpcRouter<GRPC_SERVICE>::OnInfo(const char* fname, int lineNum, const std:
 //
 // Helper method to format errorcd
 //
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 std::string GrpcRouter<GRPC_SERVICE>::FormatStatusMsg(const google::protobuf::Message& req,
                                                       const ::grpc::Status& status,
                                                       const void* /*callParam*/) const
@@ -513,7 +513,7 @@ std::string GrpcRouter<GRPC_SERVICE>::FormatStatusMsg(const google::protobuf::Me
 //
 // Helper method to get client metadata
 //
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 void GrpcRouter<GRPC_SERVICE>::GetMetadata(const grpc::ServerContext& ctx,
                                            std::map<std::string, std::string>& metadata,
                                            const void* /*callParam*/) const

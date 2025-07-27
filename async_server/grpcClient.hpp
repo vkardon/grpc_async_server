@@ -33,7 +33,7 @@ struct StatusEx : public grpc::Status
 //
 // Helper class to call UNARY/STREAM gRpc service
 //
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 class GrpcClient
 {
 public:
@@ -70,14 +70,14 @@ public:
               const grpc::ChannelArguments* channelArgs = nullptr);
 
     // UNARY gRpc
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
                   const REQ& req, RESP& resp,
                   const std::map<std::string, std::string>& metadata,
                   std::string& errMsg, unsigned long timeout = 0);
 
     // UNARY gRpc - no metadata
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     StatusEx Call(GRPC_STUB_FUNC grpcStubFunc,
                   const REQ& req, RESP& resp,
                   std::string& errMsg, unsigned long timeout = 0)
@@ -86,14 +86,14 @@ public:
     }
 
     // Server-side STREAM gRpc
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
                         const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                         const std::map<std::string, std::string>& metadata,
                         std::string& errMsg, unsigned long timeout = 0);
 
     // Server-side STREAM gRpc - no metadata
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     StatusEx CallStream(GRPC_STUB_FUNC grpcStubFunc,
                         const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                         std::string& errMsg, unsigned long timeout = 0)
@@ -102,14 +102,14 @@ public:
     }
 
     // Client-side STREAM gRpc
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                               const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                               const std::map<std::string, std::string>& metadata,
                               std::string& errMsg, unsigned long timeout = 0);
 
     // Client-side STREAM gRpc - no metadata
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     StatusEx CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                               const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                               std::string& errMsg, unsigned long timeout = 0)
@@ -121,7 +121,7 @@ public:
                        const std::map<std::string, std::string>& metadata,
                        unsigned long timeout) const;
 
-    template <class GRPC_STUB_FUNC, class REQ, class RESP>
+    template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
     StatusEx GetStream(GRPC_STUB_FUNC grpcStubFunc, const REQ& req,
                        std::unique_ptr<grpc::ClientReader<RESP>>& reader,
                        grpc::ClientContext& context,
@@ -168,7 +168,7 @@ private:
     static inline const std::map<std::string, std::string> dummy_metadata;
 };
 
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
                                     const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*= nullptr*/,
                                     const grpc::ChannelArguments* channelArgsIn /*= nullptr*/)
@@ -197,7 +197,7 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
     return (stub != nullptr);
 }
 
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 bool GrpcClient<GRPC_SERVICE>::IsValid()
 {
     std::unique_lock<std::mutex> lock(mStubMtx);
@@ -207,7 +207,7 @@ bool GrpcClient<GRPC_SERVICE>::IsValid()
 // Terminate a channel (if it exists) and reset GrpcClient to the initial state
 // Note: This method is NOT thread-safe and should not be used when the GrpcClient
 // is shared among multiple threads.
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 void GrpcClient<GRPC_SERVICE>::Clear()
 {
     stub.reset();
@@ -218,7 +218,7 @@ void GrpcClient<GRPC_SERVICE>::Clear()
 
 // Terminate the channel (if it exists) and initialize the GrpcClient using
 // the same arguments as the last Init() call
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 bool GrpcClient<GRPC_SERVICE>::Reset()
 {
     if(addressUri.empty())
@@ -233,8 +233,8 @@ bool GrpcClient<GRPC_SERVICE>::Reset()
 }
 
 // UNARY gRpc
-template <class GRPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE>
+template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
                                         const REQ& req, RESP& resp,
                                         const std::map<std::string, std::string>& metadata,
@@ -269,8 +269,8 @@ StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
 }
 
 // Server-side STREAM gRpc
-template <class GRPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE>
+template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
                                               const REQ& req, const std::function<bool(const RESP&)>& respCallback,
                                               const std::map<std::string, std::string>& metadata,
@@ -301,8 +301,8 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallStream(GRPC_STUB_FUNC grpcStubFunc,
 }
 
 // Client-side STREAM gRpc
-template <class GRPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE>
+template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                                                     const std::function<bool(REQ&)>& reqCallback, RESP& resp,
                                                     const std::map<std::string, std::string>& metadata,
@@ -348,7 +348,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
     return s;
 }
 
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 void GrpcClient<GRPC_SERVICE>::CreateContext(grpc::ClientContext& context,
                                              const std::map<std::string, std::string>& metadata,
                                              unsigned long timeout) const
@@ -367,8 +367,8 @@ void GrpcClient<GRPC_SERVICE>::CreateContext(grpc::ClientContext& context,
 }
 
 // Server-side STREAM gRpc - get a stream reader
-template <class GRPC_SERVICE>
-template <class GRPC_STUB_FUNC, class REQ, class RESP>
+template <typename GRPC_SERVICE>
+template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
 StatusEx GrpcClient<GRPC_SERVICE>::GetStream(GRPC_STUB_FUNC grpcStubFunc, const REQ& req,
                                              std::unique_ptr<grpc::ClientReader<RESP>>& reader,
                                              grpc::ClientContext& context,
@@ -403,7 +403,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::GetStream(GRPC_STUB_FUNC grpcStubFunc, const 
     return grpc::Status::OK;
 }
 
-template <class GRPC_SERVICE>
+template <typename GRPC_SERVICE>
 void GrpcClient<GRPC_SERVICE>::FormatStatusMsg(std::string& msg, const std::string& fname,
                                                const google::protobuf::Message& req,
                                                const grpc::Status& status) const
@@ -415,7 +415,7 @@ void GrpcClient<GRPC_SERVICE>::FormatStatusMsg(std::string& msg, const std::stri
 }
 
 // Experimantal...
-//template <class GRPC_SERVICE>
+//template <typename GRPC_SERVICE>
 //pid_t grpcFork(GrpcClient<GRPC_SERVICE>& grpcClient)
 //{
 //    // gRpc fork support: Reset GrpcClient before fork()
