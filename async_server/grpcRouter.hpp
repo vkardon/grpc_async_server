@@ -5,9 +5,9 @@
 #ifndef __GRPC_ROUTER_HPP__
 #define __GRPC_ROUTER_HPP__
 
-#include "grpcContext.hpp"      // gen::RpcContext & gen::RpcServerStreamContext
+#include "grpcContext.hpp"      // gen::Context & gen::ServerStreamContext
 #include "grpcClient.hpp"       // gen::GrpcClient
-#include "pipe.hpp"             // Pipe
+#include "pipe.hpp"             // gen::Pipe
 #include <sstream>              // stringstream
 
 namespace gen {
