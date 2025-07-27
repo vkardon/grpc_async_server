@@ -354,8 +354,8 @@ void GrpcClient<GRPC_SERVICE>::CreateContext(grpc::ClientContext& context,
                                              unsigned long timeout) const
 {
     // Create context and set metadata (if we have any...)
-    for(const auto& p : metadata)
-        context.AddMetadata(p.first, p.second);
+    for(const auto& [key, value] : metadata)
+        context.AddMetadata(key, value);
 
     // Set deadline of how long to wait for a server reply
     if(timeout > 0)

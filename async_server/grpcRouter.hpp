@@ -518,9 +518,9 @@ void GrpcRouter<GRPC_SERVICE>::GetMetadata(const grpc::ServerContext& ctx,
                                            std::map<std::string, std::string>& metadata,
                                            const void* /*callParam*/) const
 {
-    for(const auto& pair : ctx.client_metadata())
+    for(const auto& [key, value] : ctx.client_metadata())
     {
-        metadata[std::string(pair.first.data(), pair.first.size())] = std::string(pair.second.data(), pair.second.size());
+        metadata[{ key.data(), key.size() }] = { value.data(), value.size() };
     }
 }
 

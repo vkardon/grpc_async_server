@@ -214,7 +214,7 @@ private:
             }
 
             // Register services
-            for(auto& pair : serviceMap)
+            for(const auto& pair : serviceMap)
             {
                 // Note: Only register service once. This would be the case
                 // when gRpc server stopped and then started again.
