@@ -19,6 +19,7 @@ private:
     {
         // Bind all HelloService RPCs
         Bind(&HelloService::PingTest, &test::Hello::AsyncService::RequestPing);
+        Bind(&HelloService::CompressionTest, &test::Hello::AsyncService::RequestCompressionTest);
         Bind(&HelloService::ServerStreamTest, &test::Hello::AsyncService::RequestServerStream);
         Bind(&HelloService::ClientStreamTest, &test::Hello::AsyncService::RequestClientStream);
         return true;
@@ -27,6 +28,9 @@ private:
     // Supported RPCs
     void PingTest(const gen::Context& ctx,
                   const test::PingRequest& req, test::PingResponse& resp);
+
+    void CompressionTest(const gen::Context& ctx,
+                         const test::CompressionTestRequest& req, test::CompressionTestResponse& resp);
 
     void ServerStreamTest(const gen::ServerStreamContext& ctx,
                           const test::ServerStreamRequest& req, test::ServerStreamResponse& resp);

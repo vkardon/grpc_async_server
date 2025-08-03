@@ -27,6 +27,26 @@ void HelloService::PingTest(const gen::Context& ctx,
     resp.set_msg("Pong");
 }
 
+void HelloService::CompressionTest(const gen::Context& ctx,
+                                   const test::CompressionTestRequest& req,
+                                   test::CompressionTestResponse& resp)
+{
+    INFOMSG("From " << ctx.Peer());
+
+    //
+    // Note: Enable gRPC Trace Logging to see compression in action:
+    // export GRPC_TRACE=compression
+    //
+
+    // Force GZIP compression for the server response
+    gen::Context& srvCtx = const_cast<gen::Context&>(ctx);
+    srvCtx.set_compression_algorithm(GRPC_COMPRESS_GZIP);
+
+    // Populate a respone data with 5KB of 'B'
+    resp.set_data(std::string(1024 * 5, 'B'));
+    INFOMSG("Request size is " << req.data().size());
+}
+
 void HelloService::ServerStreamTest(const gen::ServerStreamContext& ctx,
                                     const test::ServerStreamRequest& req,
                                     test::ServerStreamResponse& resp)
@@ -34,7 +54,7 @@ void HelloService::ServerStreamTest(const gen::ServerStreamContext& ctx,
 //    // Statistics - track the total number of opened streams
 //    static std::atomic<int> opened_streams{0};
 
-    ResponseList* respList = (ResponseList*)ctx.GetParam();
+    ResponseList* respList = static_cast<ResponseList*>(ctx.GetParam());
 
     // Are we done?
     if(ctx.GetStreamStatus() == gen::StreamStatus::SUCCESS ||

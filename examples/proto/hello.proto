@@ -9,6 +9,9 @@ service Hello
     // Unary RPC
     rpc Ping (PingRequest) returns (PingResponse) {}
 
+    // Unary RPC 
+    rpc CompressionTest (CompressionTestRequest) returns (CompressionTestResponse) {}
+
     // Server-side streaming RPC
     rpc ServerStream (ServerStreamRequest) returns (stream ServerStreamResponse) {}
 
@@ -49,3 +52,12 @@ message ClientStreamResponse
     bool result = 1;
 }
 
+message CompressionTestRequest
+{
+    string data = 1;
+}
+
+message CompressionTestResponse
+{
+    string data = 1;
+}

@@ -38,6 +38,45 @@ bool PingTest(const std::string& addressUri)
     return true;
 }
 
+bool CompressionTest(const std::string& addressUri)
+{
+    test::CompressionTestRequest req;
+    test::CompressionTestResponse resp;
+
+    // Populate a request data with 2MB of 'A'
+    req.set_data(std::string(1024 * 1024 * 2, 'A'));
+    INFOMSG("Request size is " << req.data().size());
+
+    // Set optional metadata "key-value" data if you need/want any.
+    // If you don't need any metadata, then use no-metadata version of Call().
+    std::map<std::string, std::string> metadata;
+    metadata["sessionid"] = std::to_string(rand() % 1000);
+    metadata["requestid"] = std::to_string(rand() % 1000);
+    unsigned long timeout = 1000; // milliseconds
+
+    //
+    // Note: Enable gRPC Trace Logging to see compression in action:
+    // export GRPC_TRACE=compression
+    //
+
+    // Force GZIP compression for the client request
+    grpc::ChannelArguments channelArgs;
+    channelArgs.SetCompressionAlgorithm(GRPC_COMPRESS_GZIP);
+    //channelArgs.SetInt(GRPC_COMPRESSION_CHANNEL_DEFAULT_ALGORITHM, GRPC_COMPRESS_GZIP);
+
+    std::string errMsg;
+    gen::GrpcClient<test::Hello> grpcClient(addressUri, gCreds, &channelArgs);
+
+    if(!grpcClient.Call(&test::Hello::Stub::CompressionTest, req, resp, metadata, errMsg, timeout))
+    {
+        ERRORMSG(errMsg);
+        return false;
+    }
+
+    INFOMSG("Response size is " << resp.data().size());
+    return true;
+}
+
 bool ServerStreamTest(const std::string& addressUri, bool silent = false)
 {
     test::ServerStreamRequest req;
@@ -178,6 +217,7 @@ void PrintUsage()
     std::cout << "       client ping" << std::endl;
     std::cout << "       client serverstream" << std::endl;
     std::cout << "       client clientstream" << std::endl;
+    std::cout << "       client compression" << std::endl;
     std::cout << "       client shutdown" << std::endl;
     std::cout << "       client status" << std::endl;
     std::cout << "       client load" << std::endl;
@@ -231,6 +271,10 @@ int main(int argc, char** argv)
     else if(!strcmp(testName, "clientstream"))
     {
         ClientStreamTest(addressUri);
+    }
+    else if(!strcmp(testName, "compression"))
+    {
+        CompressionTest(addressUri);
     }
     else if(!strcmp(testName, "shutdown"))
     {
