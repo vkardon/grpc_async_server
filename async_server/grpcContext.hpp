@@ -13,8 +13,6 @@
 
 #include <string>
 
-namespace grpc { class Service; }
-
 namespace gen {
 
 //
