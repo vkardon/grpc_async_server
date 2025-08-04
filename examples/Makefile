@@ -1,6 +1,7 @@
 # Top-level Makefile
 SUBDIRS = basic \
-          complete \
+          server_simple \
+          server_complete \
           router 
 
 # Default target: build all subdirectories
