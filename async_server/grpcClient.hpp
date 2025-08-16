@@ -65,7 +65,7 @@ public:
         return Init(FormatDnsAddressUri(host, port), creds, channelArgs);
     }
 
-    bool Init(const std::string& addressUriIn,
+    bool Init(const std::string& addressUri,
               const std::shared_ptr<grpc::ChannelCredentials>& creds = nullptr,
               const grpc::ChannelArguments* channelArgs = nullptr);
 
@@ -127,9 +127,9 @@ public:
                        grpc::ClientContext& context,
                        std::string& errMsg);
 
-    const std::shared_ptr<grpc::ChannelCredentials> GetCredentials() const { return creds; }
-    const std::shared_ptr<grpc::ChannelArguments> GetChannelArgs() const { return channelArgs; }
-    const std::string GetAddressUri() const { return addressUri; }
+    const std::shared_ptr<grpc::ChannelCredentials> GetCredentials() const { return mCreds; }
+    const std::shared_ptr<grpc::ChannelArguments> GetChannelArgs() const { return mChannelArgs; }
+    const std::string GetAddressUri() const { return mAddressUri; }
     bool IsValid();
 
     // Terminate a channel (if it exists) and reset GrpcClient to the initial state
@@ -158,10 +158,10 @@ private:
     GrpcClient& operator=(const GrpcClient&) = delete;
 
 private:
-    std::shared_ptr<typename GRPC_SERVICE::Stub> stub;  // Note: std::shared_ptr to support multithreading
-    std::shared_ptr<grpc::ChannelCredentials> creds;
-    std::shared_ptr<grpc::ChannelArguments> channelArgs;
-    std::string addressUri;
+    std::shared_ptr<typename GRPC_SERVICE::Stub> mStub;  // Note: std::shared_ptr to support multithreading
+    std::shared_ptr<grpc::ChannelCredentials> mCreds;
+    std::shared_ptr<grpc::ChannelArguments> mChannelArgs;
+    std::string mAddressUri;
     std::mutex mStubMtx;
 
     // Dummy metadata used by no-metadata calls
@@ -169,39 +169,39 @@ private:
 };
 
 template <typename GRPC_SERVICE>
-bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUriIn,
-                                    const std::shared_ptr<grpc::ChannelCredentials>& credsIn /*= nullptr*/,
-                                    const grpc::ChannelArguments* channelArgsIn /*= nullptr*/)
+bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUri,
+                                    const std::shared_ptr<grpc::ChannelCredentials>& creds /*= nullptr*/,
+                                    const grpc::ChannelArguments* channelArgs /*= nullptr*/)
 {
     Clear();
 
-    addressUri = addressUriIn;
-    creds = (credsIn ? credsIn : grpc::InsecureChannelCredentials());
+    mAddressUri = addressUri;
+    mCreds = (creds ? creds : grpc::InsecureChannelCredentials());
 
-    if(channelArgsIn)
+    if(channelArgs)
     {
-        channelArgs = std::make_shared<grpc::ChannelArguments>(*channelArgsIn);
+        mChannelArgs = std::make_shared<grpc::ChannelArguments>(*channelArgs);
     }
     else
     {
-        channelArgs = std::make_shared<grpc::ChannelArguments>();
+        mChannelArgs = std::make_shared<grpc::ChannelArguments>();
 
         // Maximise sent/receive mesage size (instead of 4MB default)
-        channelArgs->SetMaxSendMessageSize(INT_MAX);
-        channelArgs->SetMaxReceiveMessageSize(INT_MAX);
+        mChannelArgs->SetMaxSendMessageSize(INT_MAX);
+        mChannelArgs->SetMaxReceiveMessageSize(INT_MAX);
     }
 
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgs);
+    std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(mAddressUri, mCreds, *mChannelArgs);
     if(channel)
-        stub = GRPC_SERVICE::NewStub(channel);
-    return (stub != nullptr);
+        mStub = GRPC_SERVICE::NewStub(channel);
+    return (mStub != nullptr);
 }
 
 template <typename GRPC_SERVICE>
 bool GrpcClient<GRPC_SERVICE>::IsValid()
 {
     std::unique_lock<std::mutex> lock(mStubMtx);
-    return (bool)stub;
+    return (bool)mStub;
 }
 
 // Terminate a channel (if it exists) and reset GrpcClient to the initial state
@@ -210,10 +210,10 @@ bool GrpcClient<GRPC_SERVICE>::IsValid()
 template <typename GRPC_SERVICE>
 void GrpcClient<GRPC_SERVICE>::Clear()
 {
-    stub.reset();
-    creds.reset();
-    channelArgs.reset();
-    addressUri.clear();
+    mStub.reset();
+    mCreds.reset();
+    mChannelArgs.reset();
+    mAddressUri.clear();
 }
 
 // Terminate the channel (if it exists) and initialize the GrpcClient using
@@ -221,15 +221,15 @@ void GrpcClient<GRPC_SERVICE>::Clear()
 template <typename GRPC_SERVICE>
 bool GrpcClient<GRPC_SERVICE>::Reset()
 {
-    if(addressUri.empty())
+    if(mAddressUri.empty())
         return false;
 
     std::unique_lock<std::mutex> lock(mStubMtx);
-    stub.reset();
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(addressUri, creds, *channelArgs);
+    mStub.reset();
+    std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(mAddressUri, mCreds, *mChannelArgs);
     if(channel)
-        stub = GRPC_SERVICE::NewStub(channel);
-    return (stub != nullptr);
+        mStub = GRPC_SERVICE::NewStub(channel);
+    return (mStub != nullptr);
 }
 
 // UNARY gRpc
@@ -246,7 +246,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
 
     {
         std::unique_lock<std::mutex> lock(mStubMtx);
-        thisStub = stub;
+        thisStub = mStub;
     }
 
     if(!thisStub)
@@ -314,7 +314,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
 
     {
         std::unique_lock<std::mutex> lock(mStubMtx);
-        thisStub = stub;
+        thisStub = mStub;
     }
 
     if(!thisStub)
@@ -380,7 +380,7 @@ StatusEx GrpcClient<GRPC_SERVICE>::GetStream(GRPC_STUB_FUNC grpcStubFunc, const 
 
     {
         std::unique_lock<std::mutex> lock(mStubMtx);
-        thisStub = stub;
+        thisStub = mStub;
     }
 
     if(!thisStub)
@@ -408,7 +408,7 @@ void GrpcClient<GRPC_SERVICE>::FormatStatusMsg(std::string& msg, const std::stri
                                                const google::protobuf::Message& req,
                                                const grpc::Status& status) const
 {
-    msg = fname + "(" + req.GetTypeName() + ") to uri='" + addressUri + "', status: " +
+    msg = fname + "(" + req.GetTypeName() + ") to uri='" + mAddressUri + "', status: " +
             std::to_string(status.error_code()) + " (" + StatusToStr(status.error_code()) + ")";
     if(!status.error_message().empty())
         msg += ", err: '" + status.error_message() + "'";
