@@ -1,5 +1,0 @@
-0000000000000000 D absl::lts_20250512::cord_internal::cordz_next_sample
-0000000000000030 T absl::lts_20250512::cord_internal::get_cordz_mean_interval()
-0000000000000160 T absl::lts_20250512::cord_internal::set_cordz_mean_interval(int)
-0000000000000040 T absl::lts_20250512::cord_internal::cordz_should_profile_slow(absl::lts_20250512::cord_internal::SamplingState&)
-0000000000000000 T absl::lts_20250512::cord_internal::cordz_set_next_sample_for_testing(long)

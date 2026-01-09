@@ -1,8 +1,0 @@
-0000000000000000 W absl::lts_20250512::base_internal::AtomicHook<void (*)(char const*, int, char const*, char const*, char const*)>::DummyFunction(char const*, int, char const*, char const*, char const*)
-0000000000000394 T absl::lts_20250512::raw_log_internal::RegisterAbortHook(void (*)(char const*, int, char const*, char const*, char const*))
-0000000000000010 D absl::lts_20250512::raw_log_internal::internal_log_function[abi:cxx11]
-0000000000000360 T absl::lts_20250512::raw_log_internal::RawLoggingFullySupported()
-0000000000000100 T absl::lts_20250512::raw_log_internal::AsyncSignalSafeWriteError(char const*, unsigned long)
-00000000000003c0 T absl::lts_20250512::raw_log_internal::RegisterInternalLogFunction(void (*)(absl::lts_20250512::LogSeverity, char const*, int, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&))
-0000000000000370 T absl::lts_20250512::raw_log_internal::RegisterLogFilterAndPrefixHook(bool (*)(absl::lts_20250512::LogSeverity, char const*, int, char**, int*))
-00000000000002d4 T absl::lts_20250512::raw_log_internal::RawLog(absl::lts_20250512::LogSeverity, char const*, int, char const*, ...)

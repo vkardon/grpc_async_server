@@ -1,2 +1,0 @@
-0000000000000020 T absl::lts_20250512::profiling_internal::PeriodicSamplerBase::SubtleConfirmSample()
-0000000000000000 T absl::lts_20250512::profiling_internal::PeriodicSamplerBase::GetExponentialBiased(int)

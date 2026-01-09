@@ -1,8 +1,0 @@
-0000000000000950 T absl::lts_20250512::log_internal::AddLogSink(absl::lts_20250512::LogSink*)
-00000000000004d0 T absl::lts_20250512::log_internal::LogToSinks(absl::lts_20250512::LogEntry const&, absl::lts_20250512::Span<absl::lts_20250512::LogSink*>, bool)
-00000000000006e0 T absl::lts_20250512::log_internal::FlushLogSinks()
-0000000000000820 T absl::lts_20250512::log_internal::RemoveLogSink(absl::lts_20250512::LogSink*)
-0000000000000314 T absl::lts_20250512::log_internal::ThreadIsLoggingToLogSink()
-0000000000000000 W absl::lts_20250512::LogSink::Flush()
-0000000000000000 W void absl::lts_20250512::base_internal::AtomicHook<void (*)(absl::lts_20250512::LogSeverity, char const*, int, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)>::operator()<absl::lts_20250512::LogSeverity, char const* const&, int, char const (&) [38]>(absl::lts_20250512::LogSeverity&&, char const* const&, int&&, char const (&) [38]) const
-0000000000000000 W void std::vector<absl::lts_20250512::LogSink*, std::allocator<absl::lts_20250512::LogSink*> >::_M_realloc_insert<absl::lts_20250512::LogSink* const&>(__gnu_cxx::__normal_iterator<absl::lts_20250512::LogSink**, std::vector<absl::lts_20250512::LogSink*, std::allocator<absl::lts_20250512::LogSink*> > >, absl::lts_20250512::LogSink* const&)
