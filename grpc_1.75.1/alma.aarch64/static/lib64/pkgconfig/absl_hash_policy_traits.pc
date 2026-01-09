@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/lib64
+includedir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_hash_policy_traits
+Description: Abseil hash_policy_traits library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_common_policy_traits = 20250512, absl_meta = 20250512
+Libs: -L${libdir}  
+Cflags: -I${includedir} -DNOMINMAX

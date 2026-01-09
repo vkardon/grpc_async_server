@@ -1,0 +1,17 @@
+0000000000000390 T absl::lts_20250512::BadStatusOrAccess::operator=(absl::lts_20250512::BadStatusOrAccess&&)
+00000000000002f0 T absl::lts_20250512::BadStatusOrAccess::operator=(absl::lts_20250512::BadStatusOrAccess const&)
+0000000000000000 T absl::lts_20250512::BadStatusOrAccess::BadStatusOrAccess(absl::lts_20250512::Status)
+00000000000000a0 T absl::lts_20250512::BadStatusOrAccess::BadStatusOrAccess(absl::lts_20250512::BadStatusOrAccess&&)
+0000000000000030 T absl::lts_20250512::BadStatusOrAccess::BadStatusOrAccess(absl::lts_20250512::BadStatusOrAccess const&)
+0000000000000000 T absl::lts_20250512::BadStatusOrAccess::BadStatusOrAccess(absl::lts_20250512::Status)
+00000000000000a0 T absl::lts_20250512::BadStatusOrAccess::BadStatusOrAccess(absl::lts_20250512::BadStatusOrAccess&&)
+0000000000000030 T absl::lts_20250512::BadStatusOrAccess::BadStatusOrAccess(absl::lts_20250512::BadStatusOrAccess const&)
+0000000000000000 W absl::lts_20250512::BadStatusOrAccess::~BadStatusOrAccess()
+0000000000000000 W absl::lts_20250512::BadStatusOrAccess::~BadStatusOrAccess()
+0000000000000000 W absl::lts_20250512::BadStatusOrAccess::~BadStatusOrAccess()
+0000000000000000 T absl::lts_20250512::internal_statusor::ThrowBadStatusOrAccess(absl::lts_20250512::Status)
+0000000000000524 T absl::lts_20250512::internal_statusor::Helper::HandleInvalidStatusCtorArg(absl::lts_20250512::Status*)
+0000000000000670 T absl::lts_20250512::internal_statusor::Helper::Crash(absl::lts_20250512::Status const&)
+0000000000000500 T absl::lts_20250512::BadStatusOrAccess::what() const
+00000000000000d0 T absl::lts_20250512::BadStatusOrAccess::status() const
+00000000000000e0 T absl::lts_20250512::BadStatusOrAccess::InitWhat() const

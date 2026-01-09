@@ -1,0 +1,37 @@
+0000000000000000 T absl::lts_20250512::debugging_internal::AddressIsReadable(void const*)
+0000000000000674 T absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator::Update(unsigned int)
+00000000000005d0 T absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator::SymbolIterator(void const*, unsigned int)
+00000000000005d0 T absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator::SymbolIterator(void const*, unsigned int)
+0000000000000820 T absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator::operator++()
+0000000000000000 R absl::lts_20250512::debugging_internal::ElfMemImage::kInvalidBaseSentinel
+00000000000002d0 T absl::lts_20250512::debugging_internal::ElfMemImage::Init(void const*)
+0000000000000580 T absl::lts_20250512::debugging_internal::ElfMemImage::ElfMemImage(void const*)
+0000000000000580 T absl::lts_20250512::debugging_internal::ElfMemImage::ElfMemImage(void const*)
+0000000000000180 T absl::lts_20250512::debugging_internal::ElfMemImage::GetSymAddr(Elf64_Sym const*) const
+0000000000000270 T absl::lts_20250512::debugging_internal::ElfMemImage::GetVerdefAux(Elf64_Verdef const*) const
+0000000000000890 T absl::lts_20250512::debugging_internal::ElfMemImage::LookupSymbol(char const*, char const*, int, absl::lts_20250512::debugging_internal::ElfMemImage::SymbolInfo*) const
+0000000000000000 T absl::lts_20250512::debugging_internal::ElfMemImage::GetNumSymbols() const
+00000000000005e4 T absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator::operator*() const
+00000000000005f0 T absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator::operator==(absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator const&) const
+0000000000000620 T absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator::operator!=(absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator const&) const
+00000000000005e0 T absl::lts_20250512::debugging_internal::ElfMemImage::SymbolIterator::operator->() const
+0000000000000980 T absl::lts_20250512::debugging_internal::ElfMemImage::LookupSymbolByAddress(void const*, absl::lts_20250512::debugging_internal::ElfMemImage::SymbolInfo*) const
+0000000000000640 T absl::lts_20250512::debugging_internal::ElfMemImage::end() const
+0000000000000850 T absl::lts_20250512::debugging_internal::ElfMemImage::begin() const
+00000000000000d4 T absl::lts_20250512::debugging_internal::ElfMemImage::GetPhdr(int) const
+0000000000000130 T absl::lts_20250512::debugging_internal::ElfMemImage::GetDynstr(unsigned int) const
+0000000000000010 T absl::lts_20250512::debugging_internal::ElfMemImage::GetDynsym(unsigned int) const
+00000000000001f0 T absl::lts_20250512::debugging_internal::ElfMemImage::GetVerdef(int) const
+0000000000000280 T absl::lts_20250512::debugging_internal::ElfMemImage::GetVerstr(unsigned int) const
+0000000000000074 T absl::lts_20250512::debugging_internal::ElfMemImage::GetVersym(unsigned int) const
+0000000000000000 D absl::lts_20250512::debugging_internal::VDSOSupport::getcpu_fn_
+0000000000000008 D absl::lts_20250512::debugging_internal::VDSOSupport::vdso_base_
+00000000000002a0 T absl::lts_20250512::debugging_internal::VDSOSupport::InitAndGetCPU(unsigned int*, void*, void*)
+0000000000000000 T absl::lts_20250512::debugging_internal::VDSOSupport::GetCPUViaSyscall(unsigned int*, void*, void*)
+00000000000000a0 T absl::lts_20250512::debugging_internal::VDSOSupport::Init()
+0000000000000014 T absl::lts_20250512::debugging_internal::VDSOSupport::SetBase(void const*)
+0000000000000240 T absl::lts_20250512::debugging_internal::VDSOSupport::VDSOSupport()
+0000000000000240 T absl::lts_20250512::debugging_internal::VDSOSupport::VDSOSupport()
+0000000000000334 T absl::lts_20250512::debugging_internal::GetCPU()
+0000000000000094 T absl::lts_20250512::debugging_internal::VDSOSupport::LookupSymbol(char const*, char const*, int, absl::lts_20250512::debugging_internal::ElfMemImage::SymbolInfo*) const
+0000000000000330 T absl::lts_20250512::debugging_internal::VDSOSupport::LookupSymbolByAddress(void const*, absl::lts_20250512::debugging_internal::ElfMemImage::SymbolInfo*) const

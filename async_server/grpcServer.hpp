@@ -57,7 +57,7 @@ struct RequestContext
     virtual void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) = 0;
 
     virtual RequestContext* Clone() = 0;
-    virtual std::string GetRequestName() const = 0;
+    virtual std::string_view GetRequestName() const = 0;
 };
 
 //
@@ -568,7 +568,7 @@ struct UnaryRequestContext : public RequestContext
         return reqCtx;
     }
 
-    std::string GetRequestName() const override { return req.GetTypeName(); }
+    std::string_view GetRequestName() const override { return req.GetTypeName(); }
 };
 
 //
@@ -712,7 +712,7 @@ struct ServerStreamRequestContext : public RequestContext
         return reqCtx;
     }
 
-    std::string GetRequestName() const override { return req.GetTypeName(); }
+    std::string_view GetRequestName() const override { return req.GetTypeName(); }
 };
 
 //
@@ -843,7 +843,7 @@ struct ClientStreamRequestContext : public RequestContext
         return reqCtx;
     }
 
-    std::string GetRequestName() const override { return req.GetTypeName(); }
+    std::string_view GetRequestName() const override { return req.GetTypeName(); }
 };
 
 //

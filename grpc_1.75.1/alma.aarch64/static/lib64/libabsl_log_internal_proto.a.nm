@@ -1,0 +1,8 @@
+0000000000000850 T absl::lts_20250512::log_internal::ProtoField::DecodeFrom(absl::lts_20250512::Span<char const>*)
+0000000000000270 T absl::lts_20250512::log_internal::Encode32Bit(unsigned long, unsigned int, absl::lts_20250512::Span<char>*)
+0000000000000140 T absl::lts_20250512::log_internal::Encode64Bit(unsigned long, unsigned long, absl::lts_20250512::Span<char>*)
+0000000000000370 T absl::lts_20250512::log_internal::EncodeBytes(unsigned long, absl::lts_20250512::Span<char const>, absl::lts_20250512::Span<char>*)
+0000000000000000 T absl::lts_20250512::log_internal::EncodeVarint(unsigned long, unsigned long, absl::lts_20250512::Span<char>*)
+00000000000006b0 T absl::lts_20250512::log_internal::EncodeMessageStart(unsigned long, unsigned long, absl::lts_20250512::Span<char>*)
+00000000000004f4 T absl::lts_20250512::log_internal::EncodeBytesTruncate(unsigned long, absl::lts_20250512::Span<char const>, absl::lts_20250512::Span<char>*)
+0000000000000800 T absl::lts_20250512::log_internal::EncodeMessageLength(absl::lts_20250512::Span<char>, absl::lts_20250512::Span<char> const*)

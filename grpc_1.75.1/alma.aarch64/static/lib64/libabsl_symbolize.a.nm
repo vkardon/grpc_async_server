@@ -1,0 +1,10 @@
+0000000000002a30 T AbslInternalGetFileMappingHint
+0000000000000c40 T absl::lts_20250512::debugging_internal::ForEachSection(int, std::function<bool (std::basic_string_view<char, std::char_traits<char> >, Elf64_Shdr const&)> const&)
+0000000000001430 T absl::lts_20250512::debugging_internal::GetFileMappingHint(void const**, void const**, unsigned long*, char const**)
+0000000000000fd0 T absl::lts_20250512::debugging_internal::RemoveSymbolDecorator(int)
+0000000000000db4 T absl::lts_20250512::debugging_internal::GetSectionHeaderByName(int, char const*, unsigned long, Elf64_Shdr*)
+00000000000011d0 T absl::lts_20250512::debugging_internal::InstallSymbolDecorator(void (*)(absl::lts_20250512::debugging_internal::SymbolDecoratorArgs const*), void*)
+00000000000012a0 T absl::lts_20250512::debugging_internal::RegisterFileMappingHint(void const*, void const*, unsigned long, char const*)
+0000000000000f34 T absl::lts_20250512::debugging_internal::RemoveAllSymbolDecorators()
+0000000000000bd0 T absl::lts_20250512::InitializeSymbolizer(char const*)
+00000000000026b0 T absl::lts_20250512::Symbolize(void const*, char*, int)

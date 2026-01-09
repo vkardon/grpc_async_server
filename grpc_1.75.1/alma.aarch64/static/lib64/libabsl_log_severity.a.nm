@@ -1,0 +1,3 @@
+0000000000000000 T absl::lts_20250512::operator<<(std::ostream&, absl::lts_20250512::LogSeverity)
+0000000000000140 T absl::lts_20250512::operator<<(std::ostream&, absl::lts_20250512::LogSeverityAtMost)
+00000000000000d0 T absl::lts_20250512::operator<<(std::ostream&, absl::lts_20250512::LogSeverityAtLeast)

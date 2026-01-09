@@ -1,0 +1,20 @@
+0000000000000000 D absl::lts_20250512::cord_internal::CordzInfo::global_list_
+00000000000006c4 T absl::lts_20250512::cord_internal::CordzInfo::FillParentStack(absl::lts_20250512::cord_internal::CordzInfo const*, void**)
+00000000000006a0 T absl::lts_20250512::cord_internal::CordzInfo::GetParentMethod(absl::lts_20250512::cord_internal::CordzInfo const*)
+0000000000000b80 T absl::lts_20250512::cord_internal::CordzInfo::MaybeTrackCordImpl(absl::lts_20250512::cord_internal::InlineData&, absl::lts_20250512::cord_internal::InlineData const&, absl::lts_20250512::cord_internal::CordzUpdateTracker::MethodIdentifier)
+0000000000000680 T absl::lts_20250512::cord_internal::CordzInfo::Head(absl::lts_20250512::cord_internal::CordzSnapshot const&)
+0000000000000be0 T absl::lts_20250512::cord_internal::CordzInfo::Lock(absl::lts_20250512::cord_internal::CordzUpdateTracker::MethodIdentifier)
+0000000000000884 T absl::lts_20250512::cord_internal::CordzInfo::Track()
+0000000000000c20 T absl::lts_20250512::cord_internal::CordzInfo::Unlock()
+00000000000009a0 T absl::lts_20250512::cord_internal::CordzInfo::Untrack()
+0000000000000920 T absl::lts_20250512::cord_internal::CordzInfo::TrackCord(absl::lts_20250512::cord_internal::InlineData&, absl::lts_20250512::cord_internal::CordzUpdateTracker::MethodIdentifier, long)
+0000000000000ae0 T absl::lts_20250512::cord_internal::CordzInfo::TrackCord(absl::lts_20250512::cord_internal::InlineData&, absl::lts_20250512::cord_internal::InlineData const&, absl::lts_20250512::cord_internal::CordzUpdateTracker::MethodIdentifier)
+0000000000000730 T absl::lts_20250512::cord_internal::CordzInfo::CordzInfo(absl::lts_20250512::cord_internal::CordRep*, absl::lts_20250512::cord_internal::CordzInfo const*, absl::lts_20250512::cord_internal::CordzUpdateTracker::MethodIdentifier, long)
+0000000000000730 T absl::lts_20250512::cord_internal::CordzInfo::CordzInfo(absl::lts_20250512::cord_internal::CordRep*, absl::lts_20250512::cord_internal::CordzInfo const*, absl::lts_20250512::cord_internal::CordzUpdateTracker::MethodIdentifier, long)
+0000000000000060 T absl::lts_20250512::cord_internal::CordzInfo::~CordzInfo()
+0000000000000000 T absl::lts_20250512::cord_internal::CordzInfo::~CordzInfo()
+0000000000000000 T absl::lts_20250512::cord_internal::CordzInfo::~CordzInfo()
+0000000000000c70 T absl::lts_20250512::cord_internal::CordzInfo::GetParentStack() const
+0000000000000c80 T absl::lts_20250512::cord_internal::CordzInfo::GetCordzStatistics() const
+0000000000000694 T absl::lts_20250512::cord_internal::CordzInfo::Next(absl::lts_20250512::cord_internal::CordzSnapshot const&) const
+0000000000000c60 T absl::lts_20250512::cord_internal::CordzInfo::GetStack() const

@@ -1,0 +1,21 @@
+0000000000000f54 T absl::lts_20250512::crc_internal::CRC::Crc32c()
+0000000000000ea0 T absl::lts_20250512::crc_internal::CRC::CRC()
+0000000000000ea0 T absl::lts_20250512::crc_internal::CRC::CRC()
+0000000000000e74 T absl::lts_20250512::crc_internal::CRC::~CRC()
+0000000000000e70 T absl::lts_20250512::crc_internal::CRC::~CRC()
+0000000000000e70 T absl::lts_20250512::crc_internal::CRC::~CRC()
+0000000000000a30 T absl::lts_20250512::crc_internal::CRC32::InitTables()
+0000000000000c00 T absl::lts_20250512::crc_internal::CRC32::ExtendByZeroesImpl(unsigned int*, unsigned long, unsigned int const*, unsigned int const*)
+0000000000000000 W absl::lts_20250512::crc_internal::CRC32::~CRC32()
+0000000000000000 W absl::lts_20250512::crc_internal::CRC32::~CRC32()
+0000000000000000 W absl::lts_20250512::crc_internal::CRC32::~CRC32()
+0000000000000eb4 T absl::lts_20250512::crc_internal::CRCImpl::NewInternal()
+0000000000000794 T absl::lts_20250512::crc_internal::CRCImpl::FillWordTable(unsigned int, unsigned int, int, unsigned int (*) [256])
+0000000000000950 T absl::lts_20250512::crc_internal::CRCImpl::FillZeroesTable(unsigned int, unsigned int (*) [256])
+0000000000000020 T absl::lts_20250512::crc_internal::CRC32::Unscramble(unsigned int*) const
+0000000000000d80 T absl::lts_20250512::crc_internal::CRC32::ExtendByZeroes(unsigned int*, unsigned long) const
+0000000000000da0 T absl::lts_20250512::crc_internal::CRC32::UnextendByZeroes(unsigned int*, unsigned long) const
+0000000000000040 T absl::lts_20250512::crc_internal::CRC32::Extend(unsigned int*, void const*, unsigned long) const
+0000000000000000 T absl::lts_20250512::crc_internal::CRC32::Scramble(unsigned int*) const
+0000000000000000 T absl::lts_20250512::crc_internal::NewCRC32AcceleratedX86ARMCombinedAll()
+0000000000000010 T absl::lts_20250512::crc_internal::TryNewCRC32AcceleratedX86ARMCombined()

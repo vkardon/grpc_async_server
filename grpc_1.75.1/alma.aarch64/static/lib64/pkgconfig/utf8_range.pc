@@ -1,0 +1,11 @@
+prefix=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static
+libdir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/lib64
+includedir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: UTF8 Range
+Description: Google's UTF8 Library
+Version: 1.0
+Requires: absl_strings
+Libs: -L${libdir} -lutf8_validity -lutf8_range 
+Cflags: -I${includedir}
