@@ -1,0 +1,12 @@
+prefix=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static/lib64
+includedir=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_log_internal_nullguard
+Description: Abseil log_internal_nullguard library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_config = 20250512, absl_core_headers = 20250512
+Libs: -L${libdir}  -labsl_log_internal_nullguard 
+Cflags: -I${includedir} -DNOMINMAX

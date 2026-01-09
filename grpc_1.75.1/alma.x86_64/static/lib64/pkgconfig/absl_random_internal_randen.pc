@@ -1,0 +1,12 @@
+prefix=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static/lib64
+includedir=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_random_internal_randen
+Description: Abseil random_internal_randen library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_random_internal_platform = 20250512, absl_random_internal_randen_hwaes = 20250512, absl_random_internal_randen_slow = 20250512
+Libs: -L${libdir}  -labsl_random_internal_randen 
+Cflags: -I${includedir} -DNOMINMAX

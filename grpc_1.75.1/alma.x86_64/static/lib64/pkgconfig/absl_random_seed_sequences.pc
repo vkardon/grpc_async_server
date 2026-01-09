@@ -1,0 +1,12 @@
+prefix=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static/lib64
+includedir=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_random_seed_sequences
+Description: Abseil random_seed_sequences library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_config = 20250512, absl_inlined_vector = 20250512, absl_nullability = 20250512, absl_random_internal_entropy_pool = 20250512, absl_random_internal_salted_seed_seq = 20250512, absl_random_internal_seed_material = 20250512, absl_random_seed_gen_exception = 20250512, absl_span = 20250512, absl_string_view = 20250512
+Libs: -L${libdir}  -labsl_random_seed_sequences 
+Cflags: -I${includedir} -DNOMINMAX

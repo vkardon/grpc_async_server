@@ -1,0 +1,12 @@
+prefix=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static/lib64
+includedir=/home/vkardons/local/victor/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_random_internal_randen_hwaes_impl
+Description: Abseil random_internal_randen_hwaes_impl library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_random_internal_platform = 20250512, absl_config = 20250512
+Libs: -L${libdir}  -labsl_random_internal_randen_hwaes_impl 
+Cflags: -I${includedir} -DNOMINMAX
