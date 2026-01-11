@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/lib
+includedir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_flags
+Description: Abseil flags library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_config = 20250512, absl_flags_commandlineflag = 20250512, absl_flags_config = 20250512, absl_flags_internal = 20250512, absl_flags_reflection = 20250512, absl_core_headers = 20250512, absl_nullability = 20250512, absl_strings = 20250512
+Libs: -L${libdir}  
+Cflags: -I${includedir} -DNOMINMAX

@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/lib
+includedir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_random_internal_salted_seed_seq
+Description: Abseil random_internal_salted_seed_seq library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_inlined_vector = 20250512, absl_optional = 20250512, absl_span = 20250512, absl_random_internal_seed_material = 20250512, absl_type_traits = 20250512
+Libs: -L${libdir}  
+Cflags: -I${includedir} -DNOMINMAX

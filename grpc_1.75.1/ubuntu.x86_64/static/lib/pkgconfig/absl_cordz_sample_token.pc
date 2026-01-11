@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/lib
+includedir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_cordz_sample_token
+Description: Abseil cordz_sample_token library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_config = 20250512, absl_cordz_handle = 20250512, absl_cordz_info = 20250512
+Libs: -L${libdir}  -labsl_cordz_sample_token 
+Cflags: -I${includedir} -DNOMINMAX

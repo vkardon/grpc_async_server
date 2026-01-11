@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/lib
+includedir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_examine_stack
+Description: Abseil examine_stack library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_stacktrace = 20250512, absl_symbolize = 20250512, absl_config = 20250512, absl_core_headers = 20250512, absl_raw_logging_internal = 20250512
+Libs: -L${libdir}  -labsl_examine_stack 
+Cflags: -I${includedir} -DNOMINMAX

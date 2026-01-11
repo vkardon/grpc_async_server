@@ -1,0 +1,12 @@
+prefix=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static
+exec_prefix=${prefix}
+libdir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/lib
+includedir=/home/victor/Projects/github/grpc_build/1.75.1/grpc_install/static/include
+
+Name: absl_random_distributions
+Description: Abseil random_distributions library
+URL: https://abseil.io/
+Version: 20250512
+Requires: absl_base_internal = 20250512, absl_config = 20250512, absl_core_headers = 20250512, absl_random_internal_generate_real = 20250512, absl_random_internal_distribution_caller = 20250512, absl_random_internal_fast_uniform_bits = 20250512, absl_random_internal_fastmath = 20250512, absl_random_internal_iostream_state_saver = 20250512, absl_random_internal_traits = 20250512, absl_random_internal_uniform_helper = 20250512, absl_random_internal_wide_multiply = 20250512, absl_strings = 20250512, absl_type_traits = 20250512
+Libs: -L${libdir}  -labsl_random_distributions 
+Cflags: -I${includedir} -DNOMINMAX
