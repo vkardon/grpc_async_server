@@ -47,7 +47,7 @@ PROTOC = $(GRPC_BIN)/protoc
 GRPC_CPP_PLUGIN = $(GRPC_BIN)/grpc_cpp_plugin
 
 # Include directories
-INCS = -I../../async_server \
+INCS = -I../../inc \
        -I$(PROJECT_HOME) \
        -I$(GRPC_INC) \
        -I$(PROTO_OUT)
