@@ -36,11 +36,9 @@ public:
             grpcStatus = ::grpc::Status::OK;
     }
 
-    void SetMetadata(const char* key, const std::string& value) const
+    void SetMetadata(const char* key, const std::string& value)
     {
-        // TODO: What is the correct way to modify grpc::ServerContext
-        // without casting away its constness?
-        GetMutableContext().AddTrailingMetadata(key, value);
+        AddTrailingMetadata(key, value);
     }
 
     std::string GetMetadata(const char* key) const
@@ -65,17 +63,6 @@ public:
 
     // Get application-level data set by AddUnaryRpcRequest/AddStreamRpcRequest
     const void* GetRpcParam() const { return rpcParam; }
-
-    Context& GetMutableContext() const
-    {
-        // TODO: The gen::Context class is typically received by const reference.
-        // However, we need to access its base class, grpc::ServerContext, to modify
-        // its metadata or compression algorithm, for example. This requires a const_cast,
-        // which is generally not a good practice. What is the correct way to modify
-        // grpc::ServerContext without casting away its constness?
-        //
-        return *const_cast<Context*>(this);
-    }
 
 private:
     // Helper method to replace all occurrences of substring with another substring

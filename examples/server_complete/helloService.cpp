@@ -39,7 +39,8 @@ void HelloService::CompressionTest(const gen::Context& ctx,
     //
 
     // Force GZIP compression for the server response
-    ctx.GetMutableContext().set_compression_algorithm(GRPC_COMPRESS_GZIP);
+    auto& mutableCtx = const_cast<gen::Context&>(ctx);
+    mutableCtx.set_compression_algorithm(GRPC_COMPRESS_GZIP);
 
     // Populate a respone data with 5KB of 'B'
     resp.set_data(std::string(1024 * 5, 'B'));
