@@ -560,7 +560,7 @@ struct UnaryRequestContext : public RequestContext
         StartProcessing(cq);
     }
 
-    virtual RequestContext* Clone() override
+    RequestContext* Clone() override
     {
         auto reqCtx = new (std::nothrow) UnaryRequestContext<RPC_SERVICE, REQ, RESP>(*this);
         if(!reqCtx)
@@ -704,7 +704,7 @@ struct ServerStreamRequestContext : public RequestContext
         StartProcessing(cq);
     }
 
-    virtual RequestContext* Clone() override
+    RequestContext* Clone() override
     {
         auto reqCtx = new (std::nothrow) ServerStreamRequestContext<RPC_SERVICE, REQ, RESP>(*this);
         if(!reqCtx)
@@ -835,7 +835,7 @@ struct ClientStreamRequestContext : public RequestContext
         StartProcessing(cq);
     }
 
-    virtual RequestContext* Clone() override
+    RequestContext* Clone() override
     {
         auto reqCtx = new (std::nothrow) ClientStreamRequestContext<RPC_SERVICE, REQ, RESP>(*this);
         if(!reqCtx)
@@ -865,7 +865,7 @@ public:
     const char* GetName() override { return service_full_name(); }
 
     // Get the actual AsyncService
-    virtual ::grpc::Service* GetService() override { return &async; }
+    ::grpc::Service* GetService() override { return &async; }
 
     // Add request for unary RPC
     template<typename REQ, typename RESP, typename SERVICE_IMPL, typename REQUEST_FUNC>

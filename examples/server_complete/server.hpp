@@ -14,11 +14,11 @@ class MyServer : public gen::GrpcServer
 {
 public:
     MyServer() = default;
-    virtual ~MyServer() = default;
+    ~MyServer() override = default;
 
 private:
     // gen::GrpcServer overrides
-    virtual bool OnInit(::grpc::ServerBuilder& builder) override
+    bool OnInit(::grpc::ServerBuilder& builder) override
     {
         // Add all services
         AddService<HelloService>();
@@ -55,7 +55,7 @@ private:
         return true;
     }
 
-    virtual void OnRun() override
+    void OnRun() override
     {
         // OnRun is called periodically in the context of the thread that started
         // gRpc server. The default call interval is 1 sec or whatever is set by
@@ -63,13 +63,13 @@ private:
         // Note: OnRun is stopped being called after you call Shutdown.
     }
 
-    virtual void OnError(const std::string& err) const override
+    void OnError(const std::string& err) const override
     {
         // Error messages produced by gen::GrpcServer
         ERRORMSG(err);
     }
 
-    virtual void OnInfo(const std::string& info) const override
+    void OnInfo(const std::string& info) const override
     {
         // Info messages produced by gen::GrpcServer
         INFOMSG(info);

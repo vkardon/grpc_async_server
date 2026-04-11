@@ -11,11 +11,11 @@ class HelloService : public gen::GrpcService<test::Hello>
 {
 public:
     HelloService() = default;
-    virtual ~HelloService() = default;
+    ~HelloService() override = default;
 
 private:
     // gen::GrpcService overrides
-    virtual bool OnInit() override
+    bool OnInit() override
     {
         // Bind all HelloService RPCs
         Bind(&HelloService::Ping, &test::Hello::AsyncService::RequestPing);

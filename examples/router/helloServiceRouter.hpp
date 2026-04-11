@@ -39,10 +39,10 @@ public:
         // Set Verbose to get OnInfo() messages
         SetVerbose(true);
     }
-    virtual ~HelloServiceRouter() = default;
+    ~HelloServiceRouter() override = default;
 
 private:
-    virtual ::grpc::Status OnCallBegin(const gen::Context& /*ctx*/, const void** callParam) override
+    ::grpc::Status OnCallBegin(const gen::Context& /*ctx*/, const void** callParam) override
     {
         // This method can be used for authentication and other purposes.
         // If a Status other than OK is returned, the call will be terminated.
@@ -58,20 +58,20 @@ private:
         return ::grpc::Status::OK;
     }
 
-    virtual void OnCallEnd(const gen::Context& ctx, const void* callParam) override
+    void OnCallEnd(const gen::Context& ctx, const void* callParam) override
     {
         // Note: You can use this method to clean up any resources associated with callParam
     }
 
     // Error/Info messages produced by gen::GrpcRouter
-    virtual void OnError(const char* /*fname*/, int /*lineNum*/, const std::string& err, 
-                         const void* /*callParam*/) const override
+    void OnError(const char* /*fname*/, int /*lineNum*/, const std::string& err, 
+                 const void* /*callParam*/) const override
     {
         ERRORMSG(err);
     }
 
-    virtual void OnInfo(const char* /*fname*/, int /*lineNum*/, const std::string& info, 
-                        const void* /*callParam*/) const override
+    void OnInfo(const char* /*fname*/, int /*lineNum*/, const std::string& info, 
+                const void* /*callParam*/) const override
     {
         INFOMSG(info);
     }
@@ -85,11 +85,11 @@ class HelloService : public gen::GrpcService<test::Hello>
 public:
     HelloService(const std::string& targetHost, unsigned short targetPort)
         : mRouter(targetHost, targetPort) {}
-    virtual ~HelloService() = default;
+    ~HelloService() override = default;
 
 private:
     // gen::GrpcService overrides
-    virtual bool OnInit() override
+    bool OnInit() override
     {
         // Bind all HelloService RPCs
         Bind(&HelloService::Ping, &test::Hello::AsyncService::RequestPing);

@@ -11,11 +11,11 @@ class ControlService : public gen::GrpcService<test::Control>
 {
 public:
     ControlService() = default;
-    virtual ~ControlService() = default;
+    ~ControlService() override = default;
 
 private:
     // gen::GrpcService overrides
-    virtual bool OnInit() override
+    bool OnInit() override
     {
         // Bind all ControlService RPCs
         Bind(&ControlService::Shutdown, &test::Control::AsyncService::RequestShutdown);

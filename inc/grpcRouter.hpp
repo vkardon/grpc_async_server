@@ -156,10 +156,10 @@ public:
     GrpcAsyncStreamReader(GrpcRouter<GRPC_SERVICE>* router, const void* callParam, size_t capacity)
         : GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>(router, callParam),
           mPipe(capacity) {}
-    virtual ~GrpcAsyncStreamReader() = default;
+    ~GrpcAsyncStreamReader() override = default;
 
-    virtual void Call(const gen::ServerStreamContext& ctx,
-                      const REQ& req, GRPC_STUB_FUNC grpcStubFunc) override
+    void Call(const gen::ServerStreamContext& ctx,
+              const REQ& req, GRPC_STUB_FUNC grpcStubFunc) override
     {
         mThread = std::thread([&, grpcStubFunc]()
         {
@@ -198,13 +198,13 @@ public:
         });
     }
 
-    virtual bool Read(RESP& resp) override
+    bool Read(RESP& resp) override
     {
         // Note: Pop() return false when nothing left to read
         return mPipe.Pop(resp);
     }
 
-    virtual void Stop() override
+    void Stop() override
     {
         // If the reader thread is still running, we must stop it before proceeding
         mStop = true;
@@ -238,10 +238,10 @@ public:
     GrpcSyncStreamReader(GrpcRouter<GRPC_SERVICE>* router, const void* callParam)
         : GrpcStreamReader<GRPC_SERVICE, GRPC_STUB_FUNC, REQ, RESP>(router, callParam),
           mGrpcClient(router->GetTargetClient()) {}
-    virtual ~GrpcSyncStreamReader() = default;
+    ~GrpcSyncStreamReader() override = default;
 
-    virtual void Call(const gen::ServerStreamContext& ctx,
-                      const REQ& req, GRPC_STUB_FUNC grpcStubFunc) override
+    void Call(const gen::ServerStreamContext& ctx,
+              const REQ& req, GRPC_STUB_FUNC grpcStubFunc) override
     {
         // Copy client metadata from a ServerContext
         std::map<std::string, std::string> metadata;
@@ -258,7 +258,7 @@ public:
         }
     }
 
-    virtual bool Read(RESP& resp) override
+    bool Read(RESP& resp) override
     {
         if(!mReader)
             return false;
@@ -288,7 +288,7 @@ public:
         return false;       // Reading is done
     }
 
-    virtual void Stop() override
+    void Stop() override
     {
         if(mReader)
         {
