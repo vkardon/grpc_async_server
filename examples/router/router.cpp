@@ -17,11 +17,11 @@ public:
         AddService<HelloService>(targetHost, targetPort);
         AddService<ControlService>();
     }
-    virtual ~MyRouter() = default;
+    ~MyRouter() override = default;
 
 private:
     // GrpcServer overrides
-    virtual bool OnInit(::grpc::ServerBuilder& builder) override
+    bool OnInit(::grpc::ServerBuilder& builder) override
     {
         builder.AddChannelArgument(GRPC_ARG_ALLOW_REUSEPORT, 0);
 
@@ -42,8 +42,8 @@ private:
     }
 
     // Error/Info messages produced by gen::GrpcServer
-    virtual void OnError(const std::string& err) const override { ERRORMSG(err); }
-    virtual void OnInfo(const std::string& info) const override { INFOMSG(info); }
+    void OnError(const std::string& err) const override { ERRORMSG(err); }
+    void OnInfo(const std::string& info) const override { INFOMSG(info); }
 };
 
 int main(int argc, char* argv[])

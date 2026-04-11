@@ -10,9 +10,9 @@ class MyServer : public gen::GrpcServer
 {
 public:
     MyServer() = default;
-    virtual ~MyServer() = default;
+    ~MyServer() override = default;
 
-    virtual bool OnInit(::grpc::ServerBuilder& /*builder*/) override
+    bool OnInit(::grpc::ServerBuilder& /*builder*/) override
     {
         // Add all services
         AddService<HelloService>();
