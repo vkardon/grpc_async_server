@@ -130,24 +130,20 @@ public:
     const std::shared_ptr<grpc::ChannelCredentials> GetCredentials() const { return mCreds; }
     const std::shared_ptr<grpc::ChannelArguments> GetChannelArgs() const { return mChannelArgs; }
     const std::string GetAddressUri() const { return mAddressUri; }
-    bool IsValid();
+    bool IsValid() const { return (bool)mStub; }
 
     // Terminate a channel (if it exists) and reset GrpcClient to the initial state
     // Note: This method is NOT thread-safe and should not be used when the GrpcClient
     // is shared among multiple threads.
     void Clear();
 
-    // Terminate the channel (if it exists) and initialize the GrpcClient using
-    // the same arguments as the last Init() call
-    bool Reset();
+    void FormatStatusMsg(std::string& errOut, const std::string& fname,
+                         const google::protobuf::Message& req,
+                         const grpc::Status& status) const;
 
     void FormatStatusMsg(std::string& errOut, const std::string& fname,
-                  const google::protobuf::Message& req,
-                  const grpc::Status& status) const;
-
-    void FormatStatusMsg(std::string& errOut, const std::string& fname,
-                  const google::protobuf::Message& req,
-                  ::grpc::StatusCode statusCode, const std::string& err) const
+                         const google::protobuf::Message& req,
+                         ::grpc::StatusCode statusCode, const std::string& err) const
     {
         return FormatStatusMsg(errOut, fname, req, grpc::Status(statusCode, err));
     }
@@ -162,7 +158,6 @@ private:
     std::shared_ptr<grpc::ChannelCredentials> mCreds;
     std::shared_ptr<grpc::ChannelArguments> mChannelArgs;
     std::string mAddressUri;
-    std::mutex mStubMtx;
 
     // Dummy metadata used by no-metadata calls
     static inline const std::map<std::string, std::string> dummy_metadata;
@@ -189,19 +184,30 @@ bool GrpcClient<GRPC_SERVICE>::Init(const std::string& addressUri,
         // Maximise sent/receive mesage size (instead of 4MB default)
         mChannelArgs->SetMaxSendMessageSize(INT_MAX);
         mChannelArgs->SetMaxReceiveMessageSize(INT_MAX);
+
+        // The gRPC client library has internal backoff policy, which determines
+        // how long the client should wait between attempts to re-establish
+        // a connection after a transient failure (like a server crash/restart).
+        //
+        // 1. By default, gRPC uses an Exponential Backoff algorithm. We can tune it
+        // to shorten the maximum delay so the client retries more aggressively.
+        
+        // Set the maximum delay between reconnection attempts to 5 seconds (5,000 milliseconds)
+        mChannelArgs->SetInt(GRPC_ARG_MAX_RECONNECT_BACKOFF_MS, 5000); 
+
+        // Set the initial delay to 500ms
+        mChannelArgs->SetInt(GRPC_ARG_INITIAL_RECONNECT_BACKOFF_MS, 500);
+
+        // 2. Enable Aggressive Keepalives to help the client detect a broken connection much faster
+        // mChannelArgs->SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);        // Send a ping every 10s
+        // mChannelArgs->SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 5000);      // Wait 5s for response
+        // mChannelArgs->SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 0); // Keep pinging even if idle
     }
 
     std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(mAddressUri, mCreds, *mChannelArgs);
     if(channel)
         mStub = GRPC_SERVICE::NewStub(channel);
     return (mStub != nullptr);
-}
-
-template <typename GRPC_SERVICE>
-bool GrpcClient<GRPC_SERVICE>::IsValid()
-{
-    std::unique_lock<std::mutex> lock(mStubMtx);
-    return (bool)mStub;
 }
 
 // Terminate a channel (if it exists) and reset GrpcClient to the initial state
@@ -216,22 +222,6 @@ void GrpcClient<GRPC_SERVICE>::Clear()
     mAddressUri.clear();
 }
 
-// Terminate the channel (if it exists) and initialize the GrpcClient using
-// the same arguments as the last Init() call
-template <typename GRPC_SERVICE>
-bool GrpcClient<GRPC_SERVICE>::Reset()
-{
-    if(mAddressUri.empty())
-        return false;
-
-    std::unique_lock<std::mutex> lock(mStubMtx);
-    mStub.reset();
-    std::shared_ptr<grpc::Channel> channel = grpc::CreateCustomChannel(mAddressUri, mCreds, *mChannelArgs);
-    if(channel)
-        mStub = GRPC_SERVICE::NewStub(channel);
-    return (mStub != nullptr);
-}
-
 // UNARY gRpc
 template <typename GRPC_SERVICE>
 template <typename GRPC_STUB_FUNC, typename REQ, typename RESP>
@@ -240,28 +230,12 @@ StatusEx GrpcClient<GRPC_SERVICE>::Call(GRPC_STUB_FUNC grpcStubFunc,
                                         const std::map<std::string, std::string>& metadata,
                                         std::string& errMsg, unsigned long timeout)
 {
-    // Make a local copy of the stub std::shared_ptr.
-    // This is to make sure we have a valid stub even if another thread reset stub.
-    std::shared_ptr<typename GRPC_SERVICE::Stub> thisStub;
-
-    {
-        std::unique_lock<std::mutex> lock(mStubMtx);
-        thisStub = mStub;
-    }
-
-    if(!thisStub)
-    {
-        grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        FormatStatusMsg(errMsg, __func__, req, s);
-        return s;
-    }
-
     // Create client context
     grpc::ClientContext context;
     CreateContext(context, metadata, timeout);
 
     // Call service
-    grpc::Status s = (thisStub.get()->*grpcStubFunc)(&context, req, &resp);
+    grpc::Status s = (mStub.get()->*grpcStubFunc)(&context, req, &resp);
     if(!s.ok())
         FormatStatusMsg(errMsg, __func__, req, s);
 
@@ -308,28 +282,12 @@ StatusEx GrpcClient<GRPC_SERVICE>::CallClientStream(GRPC_STUB_FUNC grpcStubFunc,
                                                     const std::map<std::string, std::string>& metadata,
                                                     std::string& errMsg, unsigned long timeout)
 {
-    // Make a local copy of the stub std::shared_ptr.
-    // This is to make sure we have a valid stub even if another thread reset stub.
-    std::shared_ptr<typename GRPC_SERVICE::Stub> thisStub;
-
-    {
-        std::unique_lock<std::mutex> lock(mStubMtx);
-        thisStub = mStub;
-    }
-
-    if(!thisStub)
-    {
-        grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        FormatStatusMsg(errMsg, __func__, REQ(), s);
-        return s;
-    }
-
     // Create client context
     grpc::ClientContext context;
     CreateContext(context, metadata, timeout);
 
     // Call service
-    std::unique_ptr<grpc::ClientWriter<REQ>> writer((thisStub.get()->*grpcStubFunc)(&context, &resp));
+    std::unique_ptr<grpc::ClientWriter<REQ>> writer((mStub.get()->*grpcStubFunc)(&context, &resp));
 
     REQ req;
     while(reqCallback(req))
@@ -374,25 +332,9 @@ StatusEx GrpcClient<GRPC_SERVICE>::GetStream(GRPC_STUB_FUNC grpcStubFunc, const 
                                              grpc::ClientContext& context,
                                              std::string& errMsg)
 {
-    // Make a local copy of the stub std::shared_ptr.
-    // This is to make sure we have a valid stub even if another thread reset stub.
-    std::shared_ptr<typename GRPC_SERVICE::Stub> thisStub;
-
-    {
-        std::unique_lock<std::mutex> lock(mStubMtx);
-        thisStub = mStub;
-    }
-
-    if(!thisStub)
-    {
-        grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) gRpc service stub");
-        FormatStatusMsg(errMsg, __func__, req, s);
-        return s;
-    }
-
     // Call service
     RESP resp;
-    reader = (thisStub.get()->*grpcStubFunc)(&context, req);
+    reader = (mStub.get()->*grpcStubFunc)(&context, req);
     if(!reader)
     {
         grpc::Status s(grpc::StatusCode::INTERNAL, "Invalid (null) client stream reader");
@@ -413,29 +355,6 @@ void GrpcClient<GRPC_SERVICE>::FormatStatusMsg(std::string& msg, const std::stri
     if(!status.error_message().empty())
         msg += ", err: '" + status.error_message() + "'";
 }
-
-// Experimantal...
-//template <typename GRPC_SERVICE>
-//pid_t grpcFork(GrpcClient<GRPC_SERVICE>& grpcClient)
-//{
-//    // gRpc fork support: Reset GrpcClient before fork()
-//    std::shared_ptr<grpc::ChannelCredentials> creds;
-//    std::string addressUri;
-//    if(grpcClient.IsValid())
-//    {
-//        creds = grpcClient.GetCredentials();
-//        addressUri = grpcClient.GetAddressUri();
-//        grpcClient.Clear();
-//    }
-//
-//    pid_t pid = fork();
-//
-//    // gRpc fork support: Re-Initialize GrpcClient after fork()
-//    if(!addressUri.empty())
-//        grpcClient.Init(addressUri, creds);
-//
-//    return pid;
-//}
 
 } //namespace gen
 

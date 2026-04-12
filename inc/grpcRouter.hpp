@@ -185,9 +185,6 @@ public:
                 mStatus = { ::grpc::INTERNAL, errMsg };
                 errMsg = mRouter->FormatStatusMsg(req, mStatus, mCallParam);
                 mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
-
-                // Reset the channel to avoid gRPC's internal handling of broken connections
-                grpcClient.Reset();
             }
             else
             {
@@ -274,9 +271,6 @@ public:
             mStatus = { ::grpc::INTERNAL, errMsg };
             errMsg = mRouter->FormatStatusMsg(REQ(), mStatus, mCallParam);
             mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
-
-            // Reset the channel to avoid gRPC's internal handling of broken connections
-            mGrpcClient.Reset();
         }
         else
         {
@@ -364,8 +358,6 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
     std::string errMsg;
     if(!mTargetClient.Call(grpcStubFunc, req, resp, metadata, errMsg, timeout))
     {
-        // Reset the channel to avoid gRPC's internal handling of broken connections
-        mTargetClient.Reset();
         ctx.SetStatus(::grpc::INTERNAL, errMsg);
         std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
         OnError(__FNAME__, __LINE__, err, callParam);
