@@ -119,6 +119,9 @@ protected:
     friend class GrpcSyncStreamReader;
 };
 
+// Compile-time constant for the current filename
+static constexpr const char* THIS_FILE = gen::GetFileName(__FILE__);
+
 //
 // Helper class to read stream of messages
 //
@@ -184,7 +187,7 @@ public:
                 mPipe.Clear();
                 mStatus = { ::grpc::INTERNAL, errMsg };
                 errMsg = mRouter->FormatStatusMsg(req, mStatus, mCallParam);
-                mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
+                mRouter->OnError(THIS_FILE, __LINE__, errMsg, mCallParam);
             }
             else
             {
@@ -251,7 +254,7 @@ public:
         {
             mStatus = { ::grpc::INTERNAL, errMsg };
             errMsg = mRouter->FormatStatusMsg(req, mStatus, mCallParam);
-            mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
+            mRouter->OnError(THIS_FILE, __LINE__, errMsg, mCallParam);
         }
     }
 
@@ -270,7 +273,7 @@ public:
             mGrpcClient.FormatStatusMsg(errMsg, __func__, REQ(), s);
             mStatus = { ::grpc::INTERNAL, errMsg };
             errMsg = mRouter->FormatStatusMsg(REQ(), mStatus, mCallParam);
-            mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
+            mRouter->OnError(THIS_FILE, __LINE__, errMsg, mCallParam);
         }
         else
         {
@@ -295,7 +298,7 @@ public:
             mGrpcClient.FormatStatusMsg(errMsg, __func__, REQ(), s);
             mStatus = { ::grpc::INTERNAL, errMsg };
             errMsg = mRouter->FormatStatusMsg(REQ(), mStatus, mCallParam);
-            mRouter->OnError(__FNAME__, __LINE__, errMsg, mCallParam);
+            mRouter->OnError(THIS_FILE, __LINE__, errMsg, mCallParam);
         }
     }
 
@@ -326,7 +329,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
     {
         ctx.SetStatus(s.error_code(), s.error_message());
         std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
-        OnError(__FNAME__, __LINE__, err, callParam);
+        OnError(THIS_FILE, __LINE__, err, callParam);
         OnCallEnd(ctx, callParam);  // Send CallEnd notification
         return;
     }
@@ -340,7 +343,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
     {
         ctx.SetStatus(::grpc::DEADLINE_EXCEEDED, "Request already past deadline");
         std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
-        OnError(__FNAME__, __LINE__, err, callParam);
+        OnError(THIS_FILE, __LINE__, err, callParam);
         OnCallEnd(ctx, callParam);  // Send CallEnd notification
         return;
     }
@@ -360,12 +363,12 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::Context& ctx,
     {
         ctx.SetStatus(::grpc::INTERNAL, errMsg);
         std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
-        OnError(__FNAME__, __LINE__, err, callParam);
+        OnError(THIS_FILE, __LINE__, err, callParam);
     }
     else if(mVerbose)
     {
         std::string info = FormatStatusMsg(req, ctx.GetStatus(), callParam);
-        OnInfo(__FNAME__, __LINE__, info, callParam);
+        OnInfo(THIS_FILE, __LINE__, info, callParam);
     }
 
     OnCallEnd(ctx, callParam);  // Send CallEnd notification
@@ -420,7 +423,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
             {
                 ctx.EndOfStream(s.error_code(), s.error_message());
                 std::string err = FormatStatusMsg(req, ctx.GetStatus(), callParam);
-                OnError(__FNAME__, __LINE__, err, callParam);
+                OnError(THIS_FILE, __LINE__, err, callParam);
                 OnEndOfStream(ctx, callParam);  // Send EndOfStream notification
 
                 // Since we don't have a reader, we have no place to keep callParam.
@@ -450,7 +453,7 @@ void GrpcRouter<GRPC_SERVICE>::Forward(const gen::ServerStreamContext& ctx,
             if(mVerbose)
             {
                 std::string info = FormatStatusMsg(req, ctx.GetStatus(), reader->GetCallParam());
-                OnInfo(__FNAME__, __LINE__, info, reader->GetCallParam());
+                OnInfo(THIS_FILE, __LINE__, info, reader->GetCallParam());
             }
             OnEndOfStream(ctx, reader->GetCallParam());  // Send EndOfStream notification
         }

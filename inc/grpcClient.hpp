@@ -11,8 +11,6 @@
 #pragma GCC diagnostic pop
 
 #include "grpcUtils.hpp"
-#include <functional>
-#include <mutex>
 
 namespace gen {
 
