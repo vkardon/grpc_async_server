@@ -512,6 +512,7 @@ struct UnaryRequestContext : public RequestContext
     const void* processParam{nullptr};
 
     REQ req;
+    RESP resp;
     std::unique_ptr<::grpc::ServerAsyncResponseWriter<RESP>> resp_writer;
     std::unique_ptr<Context> ctx;
 
@@ -533,7 +534,6 @@ struct UnaryRequestContext : public RequestContext
     void Process() override
     {
         // The actual processing
-        RESP resp;
         (service->*processFunc)(*ctx, req, resp);
 
         // And we are done!
@@ -600,6 +600,7 @@ struct ServerStreamRequestContext : public RequestContext
     const void* processParam{nullptr};
 
     REQ req;
+    RESP resp;
     std::unique_ptr<::grpc::ServerAsyncWriter<RESP>> resp_writer;
     std::unique_ptr<ServerStreamContext> ctx;
 
@@ -630,7 +631,6 @@ struct ServerStreamRequestContext : public RequestContext
         }
 
         // The actual processing
-        RESP resp;
         (service->*processFunc)(*ctx, req, resp);
 
         // Are there more responses to stream?
