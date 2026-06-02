@@ -522,6 +522,7 @@ struct UnaryRequestContext : public RequestContext
         ctx.reset(new Context(processParam));
         resp_writer.reset(new ::grpc::ServerAsyncResponseWriter<RESP>(ctx.get()));
         req.Clear();
+        resp.Clear();
 
         // *Request* that the system start processing given requests.
         // In this request, "this" acts as the tag uniquely identifying
@@ -610,6 +611,7 @@ struct ServerStreamRequestContext : public RequestContext
         ctx.reset(new ServerStreamContext(processParam));
         resp_writer.reset(new ::grpc::ServerAsyncWriter<RESP>(ctx.get()));
         req.Clear();
+        resp.Clear();
 
 //        // victor test
 //        TRACE("Calling requestFunc(), tag=" << this << ", state=" << GetStateStr());
