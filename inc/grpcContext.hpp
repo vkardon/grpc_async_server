@@ -54,6 +54,12 @@ public:
     {
         std::string peer = grpc::ServerContext::peer();
 
+        // If gRPC has already torn down the channel, return a placeholder instead of an empty string.
+        if(peer.empty())
+        {
+            return "[Unknown/Disconnected]";
+        }
+
         // Note: Un-escape peer by replacing "%5B" and "%5D" with "[" and "]"
         // respectively in order to support older gRpc releases
         Replace(peer, "%5B", "[");
@@ -68,11 +74,22 @@ private:
     // Helper method to replace all occurrences of substring with another substring
     void Replace(std::string& str, const char* substr1, const char* substr2) const
     {
-        if(size_t len1 = (substr1 ? strlen(substr1) : 0); len1 > 0)
+        if(!substr1 || !substr2)
+            return;
+
+        size_t len1 = strlen(substr1);
+        if(len1 == 0)
+            return;
+
+        size_t len2 = strlen(substr2);
+
+        size_t i = str.find(substr1, 0);
+        while(i != std::string::npos)
         {
-            size_t len2 = (substr2 ? strlen(substr2) : 0);
-            for(size_t i = str.find(substr1, 0); i != std::string::npos; i = str.find(substr1, i + len2))
-                str.replace(i, len1, substr2);
+            str.replace(i, len1, substr2);
+
+            // Safely advance past the newly inserted string
+            i = str.find(substr1, i + len2);
         }
     };
 
