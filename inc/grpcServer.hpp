@@ -633,6 +633,7 @@ struct ServerStreamRequestContext : public RequestContext
         }
 
         // The actual processing
+        resp.Clear();
         (service->*processFunc)(*ctx, req, resp);
 
         // Are there more responses to stream?
