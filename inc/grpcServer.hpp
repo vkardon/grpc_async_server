@@ -54,7 +54,7 @@ struct RequestContext
 
     virtual void Process() = 0;
     virtual void StartProcessing(::grpc::ServerCompletionQueue* cq) = 0;
-    virtual void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) = 0;
+    virtual void EndProcessing(bool isError) = 0;
 
     virtual RequestContext* Clone() = 0;
     virtual std::string_view GetRequestName() const = 0;
@@ -302,8 +302,8 @@ private:
         sigaddset(&set, SIGINT);
         pthread_sigmask(SIG_BLOCK, &set, nullptr);
 
-        // Ask the system start processing requests
-        std::list<std::unique_ptr<RequestContext>> threadRequestContextList;
+        // Initial seeding: Ask the system start processing requests.
+        // Just arm one listener per registered request type
         for(const std::unique_ptr<RequestContext>& ctx : requestContextList)
         {
             RequestContext* threadRequestContext = ctx->Clone();
@@ -312,7 +312,6 @@ private:
                 OnError("Thread " + std::to_string(threadIndex) + " failed to start");
                 return;
             }
-            threadRequestContextList.emplace_back(threadRequestContext);
             threadRequestContext->StartProcessing(cq);
         }
 
@@ -384,7 +383,7 @@ private:
                        << "Failed to read Completion Queue event: state=" << ctx->GetStateStr()
                        << ", ctx=" << ctx << ", " << "req=" << ctx->GetRequestName();
                     OnError(ss.str());
-                    ctx->EndProcessing(cq, true /*isError*/);
+                    ctx->EndProcessing(true /*isError*/);
                 }
                 continue;
             }
@@ -393,7 +392,24 @@ private:
             switch(ctx->state)
             {
             case RequestContext::REQUEST:  // Completion of fRequestPtr()
+                // Re-arm: A new client has connected.
+                // Immediately spin up a replacement listener on this completion queue.
+                {
+                    RequestContext* nextCtx = ctx->Clone();
+                    if(nextCtx)
+                    {
+                        nextCtx->StartProcessing(cq);
+                    }
+                    else
+                    {
+                        OnError("Failed to clone RequestContext for next request");
+                    }
+                }
+                [[fallthrough]]; // Fall through to process the current request
+
             case RequestContext::READ:     // Completion of Read()
+                [[fallthrough]]; // Fall through to process the current request
+
             case RequestContext::WRITE:    // Completion of Write()
                 // Process request
                 ctx->Process();
@@ -401,7 +417,7 @@ private:
 
             case RequestContext::FINISH:    // Completion of Finish()
                 // Process post-Finish() event
-                ctx->EndProcessing(cq, false /*isError*/);
+                ctx->EndProcessing(false /*isError*/);
                 break;
 
             default:
@@ -521,8 +537,6 @@ struct UnaryRequestContext : public RequestContext
         state = RequestContext::REQUEST;
         ctx.reset(new Context(processParam));
         resp_writer.reset(new ::grpc::ServerAsyncResponseWriter<RESP>(ctx.get()));
-        req.Clear();
-        resp.Clear();
 
         // *Request* that the system start processing given requests.
         // In this request, "this" acts as the tag uniquely identifying
@@ -545,7 +559,7 @@ struct UnaryRequestContext : public RequestContext
         resp_writer->Finish(resp, ctx->GetStatus(), this);
     }
 
-    void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) override
+    void EndProcessing(bool isError) override
     {
         if(isError)
         {
@@ -557,8 +571,8 @@ struct UnaryRequestContext : public RequestContext
             }
         }
 
-        // Ask the system start processing requests
-        StartProcessing(cq);
+        // Self-destruct completely (no looping back to StartProcessing)
+        delete this;
     }
 
     RequestContext* Clone() override
@@ -610,8 +624,6 @@ struct ServerStreamRequestContext : public RequestContext
         state = RequestContext::REQUEST;
         ctx.reset(new ServerStreamContext(processParam));
         resp_writer.reset(new ::grpc::ServerAsyncWriter<RESP>(ctx.get()));
-        req.Clear();
-        resp.Clear();
 
 //        // victor test
 //        TRACE("Calling requestFunc(), tag=" << this << ", state=" << GetStateStr());
@@ -659,7 +671,7 @@ struct ServerStreamRequestContext : public RequestContext
         }
     }
 
-    void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) override
+    void EndProcessing(bool isError) override
     {
         if(isError)
         {
@@ -703,8 +715,8 @@ struct ServerStreamRequestContext : public RequestContext
             service->srv->OnError(ss.str());
         }
 
-        // Ask the system start processing requests
-        StartProcessing(cq);
+        // Self-destruct completely (no looping back to StartProcessing)
+        delete this;
     }
 
     RequestContext* Clone() override
@@ -807,8 +819,6 @@ struct ClientStreamRequestContext : public RequestContext
             //TRACE("this=" << this << ", READ END");     // victor test
 
             // And we are done!
-            req.Clear();
-            resp.Clear();
             state = RequestContext::FINISH;
             ctx->streamHasMore = false;
             (service->*processFunc)(*ctx, req, resp);
@@ -827,15 +837,15 @@ struct ClientStreamRequestContext : public RequestContext
         }
     }
 
-    void EndProcessing(::grpc::ServerCompletionQueue* cq, bool isError) override
+    void EndProcessing(bool isError) override
     {
         if(isError)
         {
             // TODO: Handle processing errors ...
         }
 
-        // Ask the system start processing requests
-        StartProcessing(cq);
+        // Self-destruct completely (no looping back to StartProcessing)
+        delete this;
     }
 
     RequestContext* Clone() override
