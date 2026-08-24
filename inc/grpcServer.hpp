@@ -57,7 +57,9 @@ struct RequestContext
     virtual void EndProcessing(bool isError) = 0;
 
     virtual RequestContext* Clone() = 0;
-    virtual std::string_view GetRequestName() const = 0;
+    virtual std::string GetRequestName() const = 0;
+
+    void Destroy() { delete this; /* Self-destruct */ }
 };
 
 //
@@ -316,9 +318,6 @@ private:
         }
 
         // Enter event loop to process events
-        void* tag = nullptr;
-        bool eventReadSuccess = false;
-
         const std::chrono::milliseconds timeout(200);
         std::chrono::time_point<std::chrono::system_clock> deadline;
 
@@ -329,6 +328,9 @@ private:
 
         while(runThreads)
         {
+            void* tag = nullptr;
+            bool eventReadSuccess = false;
+
             deadline = std::chrono::system_clock::now() + timeout;
             const grpc::CompletionQueue::NextStatus status = cq->AsyncNext(&tag, &eventReadSuccess, deadline);
 
@@ -372,18 +374,25 @@ private:
                     // Done reading client-streaming messages
                     ctx->state = RequestContext::READEND;
                     ctx->Process();
-                    continue;
                 }
-                // Ignore events that failed to read due to shutting down
-                else if(ctx->state != RequestContext::REQUEST)
+                else
                 {
-                    // Abort processing if we failed reading event
-                    std::stringstream ss;
-                    ss << __func__ << ':' << __LINE__ << ' '
-                       << "Failed to read Completion Queue event: state=" << ctx->GetStateStr()
-                       << ", ctx=" << ctx << ", " << "req=" << ctx->GetRequestName();
-                    OnError(ss.str());
-                    ctx->EndProcessing(true /*isError*/);
+                    // Clean up for ALL failed events.
+                    // Note: The failed completion event in the REQUEST state means we are shutting down.
+                    if(ctx->state == RequestContext::REQUEST)
+                    {
+                        ctx->Destroy(); // Shutting down listener; not a real error
+                    }
+                    else
+                    {
+                        std::stringstream ss;
+                        ss << __func__ << ':' << __LINE__ << ' '
+                           << "Failed to read Completion Queue event: state=" << ctx->GetStateStr()
+                           << ", ctx=" << ctx << ", req=" << ctx->GetRequestName();
+                        OnError(ss.str());
+
+                        ctx->EndProcessing(true /*isError*/);
+                    }
                 }
                 continue;
             }
@@ -392,18 +401,11 @@ private:
             switch(ctx->state)
             {
             case RequestContext::REQUEST:  // Completion of fRequestPtr()
-                // Re-arm: A new client has connected.
-                // Immediately spin up a replacement listener on this completion queue.
+                // A new client has connected.
+                // Re-arm: Spin up a replacement listener on this completion queue.
+                if(RequestContext* nextCtx = ctx->Clone(); nextCtx != nullptr)
                 {
-                    RequestContext* nextCtx = ctx->Clone();
-                    if(nextCtx)
-                    {
-                        nextCtx->StartProcessing(cq);
-                    }
-                    else
-                    {
-                        OnError("Failed to clone RequestContext for next request");
-                    }
+                    nextCtx->StartProcessing(cq);
                 }
                 [[fallthrough]]; // Fall through to process the current request
 
@@ -411,8 +413,7 @@ private:
                 [[fallthrough]]; // Fall through to process the current request
 
             case RequestContext::WRITE:    // Completion of Write()
-                // Process request
-                ctx->Process();
+                ctx->Process();  // Process the current request
                 break;
 
             case RequestContext::FINISH:    // Completion of Finish()
@@ -432,8 +433,17 @@ private:
 
         // Shutdown and drain the completion queue
         cq->Shutdown();
-        while(cq->Next(&tag, &eventReadSuccess))
-            ; // Ignore all remaining events
+        void* drainTag = nullptr;
+        bool drainSuccess = false;
+        while(cq->Next(&drainTag, &drainSuccess))
+        {
+            // Ignore all remaining events
+            if(drainTag != nullptr)
+            {
+                RequestContext* ctx = static_cast<RequestContext*>(drainTag);
+                ctx->Destroy();
+            }
+        }
 
         OnInfo("Thread " + std::to_string(threadIndex) + " is completed");
     }
@@ -529,8 +539,8 @@ struct UnaryRequestContext : public RequestContext
 
     REQ req;
     RESP resp;
-    std::unique_ptr<::grpc::ServerAsyncResponseWriter<RESP>> resp_writer;
     std::unique_ptr<Context> ctx;
+    std::unique_ptr<::grpc::ServerAsyncResponseWriter<RESP>> resp_writer;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
@@ -548,14 +558,15 @@ struct UnaryRequestContext : public RequestContext
 
     void Process() override
     {
-        // The actual processing
+        // Mark as finished
+        state = RequestContext::FINISH;
+
+        // The actual processing (which might take time)
         (service->*processFunc)(*ctx, req, resp);
 
         // And we are done!
         // Let the gRPC runtime know we've finished, using the memory address 
         // of this instance as the uniquely identifying tag for the event.
-        state = RequestContext::FINISH;
-
         resp_writer->Finish(resp, ctx->GetStatus(), this);
     }
 
@@ -564,15 +575,9 @@ struct UnaryRequestContext : public RequestContext
         if(isError)
         {
             // TODO: Handle processing errors ...
-            if(state != RequestContext::FINISH)
-            {
-//                ::grpc::Status grpcStatus(grpc::StatusCode::INTERNAL, "Server Completion Queue failed to read event");
-//                resp_writer->FinishWithError(grpcStatus, this);
-            }
         }
 
-        // Self-destruct completely (no looping back to StartProcessing)
-        delete this;
+        Destroy(); // Self-destruct
     }
 
     RequestContext* Clone() override
@@ -583,7 +588,7 @@ struct UnaryRequestContext : public RequestContext
         return reqCtx;
     }
 
-    std::string_view GetRequestName() const override { return req.GetTypeName(); }
+    std::string GetRequestName() const override { return std::string(REQ().GetTypeName()); }
 };
 
 //
@@ -616,8 +621,8 @@ struct ServerStreamRequestContext : public RequestContext
 
     REQ req;
     RESP resp;
-    std::unique_ptr<::grpc::ServerAsyncWriter<RESP>> resp_writer;
     std::unique_ptr<ServerStreamContext> ctx;
+    std::unique_ptr<::grpc::ServerAsyncWriter<RESP>> resp_writer;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
@@ -675,26 +680,15 @@ struct ServerStreamRequestContext : public RequestContext
     {
         if(isError)
         {
-//            const char* stateStr =
-//                (state == RequestContext::REQUEST ? "REQUEST (ServerAsyncWriter::requestFunc() failed)" :
-//                 state == RequestContext::WRITE   ? "WRITE (ServerAsyncWriter::Write() failed)" :
-//                 state == RequestContext::FINISH  ? "FINISH (ServerAsyncWriter::Finish() failed)" : "UNKNOWN");
-//
+            // TODO: Handle processing errors ...
             std::stringstream ss;
             ss << __func__ << ':' << __LINE__ << ' '
                << "Server streaming failed for tag=" << this << ", req=" << GetRequestName()
                << ", streamParam=" << ctx->streamParam << ", state=" << GetStateStr();
             service->srv->OnError(ss.str());
-
-            // TODO: Handle processing errors ...
-            if(state != RequestContext::FINISH)
-            {
-//                ::grpc::Status grpcStatus(grpc::StatusCode::INTERNAL, "Server Completion Queue failed to read event");
-//                resp_writer->Finish(grpcStatus, this);
-            }
         }
 
-        if(ctx)
+        if(state != RequestContext::REQUEST)
         {
             // End processing
             ctx->streamStatus = (isError ? StreamStatus::ERROR : StreamStatus::SUCCESS);
@@ -703,11 +697,9 @@ struct ServerStreamRequestContext : public RequestContext
         }
         else
         {
-            // Note: stream_ctx is set by a very first Process() call, that is called
-            // after successful compleation of the event placed by requestFunc().
-            // If processing of requestFunc() event failed, then we will be here
-            // even before stream_ctx gets a chance to be initialized.
-            // In this case we don't have a stream yet.
+            // Note: state is reset by a very first Process() call, that is called
+            // after successful completion of the event placed by requestFunc().
+            // If we are here but the state is still REQUEST, then we don't have a stream yet.
             std::stringstream ss;
             ss << __func__ << ':' << __LINE__ << ' '
                << "Ending streaming for tag=" << this << ", req=" << GetRequestName()
@@ -715,8 +707,7 @@ struct ServerStreamRequestContext : public RequestContext
             service->srv->OnError(ss.str());
         }
 
-        // Self-destruct completely (no looping back to StartProcessing)
-        delete this;
+        Destroy(); // Self-destruct
     }
 
     RequestContext* Clone() override
@@ -727,7 +718,7 @@ struct ServerStreamRequestContext : public RequestContext
         return reqCtx;
     }
 
-    std::string_view GetRequestName() const override { return req.GetTypeName(); }
+    std::string GetRequestName() const override { return std::string(REQ().GetTypeName()); }
 };
 
 //
@@ -760,8 +751,8 @@ struct ClientStreamRequestContext : public RequestContext
 
     REQ req;
     RESP resp;
-    std::unique_ptr<::grpc::ServerAsyncReader<RESP, REQ>> req_reader;
     std::unique_ptr<ClientStreamContext> ctx;
+    std::unique_ptr<::grpc::ServerAsyncReader<RESP, REQ>> req_reader;
 
     void StartProcessing(::grpc::ServerCompletionQueue* cq) override
     {
@@ -844,8 +835,7 @@ struct ClientStreamRequestContext : public RequestContext
             // TODO: Handle processing errors ...
         }
 
-        // Self-destruct completely (no looping back to StartProcessing)
-        delete this;
+        Destroy(); // Self-destruct
     }
 
     RequestContext* Clone() override
@@ -856,7 +846,7 @@ struct ClientStreamRequestContext : public RequestContext
         return reqCtx;
     }
 
-    std::string_view GetRequestName() const override { return req.GetTypeName(); }
+    std::string GetRequestName() const override { return std::string(REQ().GetTypeName()); }
 };
 
 //
